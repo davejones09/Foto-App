@@ -4,6 +4,7 @@ import { T, f, namensVorschlag } from '../texte.mjs';
 import { $, el, frage, melde, Urls, datumKurz } from '../ui.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
+import { einspielenWaehlen } from './ausfahrt.mjs';
 
 const v = $('#v-strecken');
 const liste = $('.sl-liste', v);
@@ -76,6 +77,7 @@ export async function neueStreckeFragen() {
 }
 
 $('#sl-neu').addEventListener('click', neueStreckeFragen);
+$('#sl-einspielen').addEventListener('click', einspielenWaehlen);
 $('#sl-zurueck').addEventListener('click', () => zeige('strecke'));
 
 registriere('strecken', {

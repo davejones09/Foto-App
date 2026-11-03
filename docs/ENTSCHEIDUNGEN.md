@@ -23,3 +23,12 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Stempel** sitzt rechts unten auf der Bühne, damit der Faden sichtbar bleibt.
 - **Strecken** erreicht man über die Strecke (Knopf oben links). Der Sucher bleibt frei.
 - **Test-Chromium kodiert JPEGs nach Screenshots gelegentlich langsamer** (bis 2 s je Bild). Das ist ein Effekt der Testumgebung, nicht der App. Die Nähzeit auf dem iPhone zeigt die Diagnose.
+
+## Etappe 3
+
+- **Ausgaben starten durch Antippen ihrer Zeile.** Erst bauen, dann erscheint „Teilen“ (frische Nutzergeste für `navigator.share`). Scheitert das Teilen, gibt es „Stattdessen speichern“ und bei mehr als 10 Dateien Portionen zu je 10.
+- **Karussell-Aufteilung:** Mehr als 20 Bilder werden auf möglichst gleich große Beiträge verteilt.
+- **Letztes Karussellbild:** Das Band läuft in den Grund aus. Ist rechts zu wenig Platz für die Endstation, beginnt das Auslaufen spätestens bei 55 % der Bildbreite. So hat die Endstation immer Platz und die Bildanzahl bleibt `ceil(Bandbreite / 1296)`.
+- **Fahrt:** 0,6 s Stand am Anfang, am Ende 3 s mit eingeblendeter Endstation. Ist die Strecke kürzer als eine Rampe, gibt es eine einzige weiche Bewegung. Bei Strecken schmaler als das Video steht das Band mittig.
+- **Sicherung einspielen** gibt es in der Ausfahrt und in der Streckenliste (dort braucht man es, wenn die App neu installiert wurde). Jede Datei wird beim Einspielen per CRC geprüft; scheitert etwas, wird die halb eingespielte Strecke wieder entfernt.
+- **Sicherungserinnerung:** Gezählt wird ab dem letzten erfolgreichen Teilen oder Speichern der Sicherung.

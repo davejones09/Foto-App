@@ -209,7 +209,8 @@ button:active { filter: brightness(0.85); }
 .af-erinnerung { margin: 4px 16px 8px; color: var(--gelb); }
 .af-liste { flex: 1; overflow-y: auto; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
 .af-punkt { background: var(--grund2); border: 1px solid var(--linie); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.af-punkt h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.af-titel { text-align: left; font-weight: 600; padding: 10px 14px; min-height: 52px; width: 100%; }
+.af-status { color: var(--text) !important; }
 .af-punkt p { margin: 0; color: var(--text2); font-size: 14px; }
 .af-reihe { display: flex; gap: 8px; flex-wrap: wrap; }
 .af-tempi { display: flex; border: 1px solid var(--linie); border-radius: 12px; overflow: hidden; }
