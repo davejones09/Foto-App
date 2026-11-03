@@ -108,6 +108,7 @@ test('Dauerhafter Fehler: kein weiteres Foto wird angefasst, nach dem Ende des F
   await page.click('#meldung button.neben2'); // Später
   for (let i = 0; i < 5; i++) await page.click('#version');
   await page.waitForSelector('#diagnose:not([hidden])');
+  await warteAuf(page, () => /Lesetest/.test(document.querySelector('.dg-text').textContent));
   const bericht = await page.textContent('.dg-text');
   assert.match(bericht, /Testfehler: Bild nicht lesbar/);
   assert.match(bericht, /Serie \(\d+\):/);
