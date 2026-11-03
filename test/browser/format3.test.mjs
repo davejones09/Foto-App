@@ -80,7 +80,8 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
 
   // Strecke zeichnet aus der Datenbank
   await page.click('#zur-strecke');
-  await warteAuf(page, () => document.querySelector('#v-strecke .band').dataset.breite === String(4 * 933 + 363));
+  const BAND = 1296 + 3 * 2160 - 3 * 363; // Kamerahalt plus drei ganze 4:3-Fotos
+  await warteAuf(page, (b) => document.querySelector('#v-strecke .band').dataset.breite === String(b), BAND);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${ERGEBNISSE}/f3-strecke.png` });
 
@@ -103,14 +104,16 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
     const masse = async (f) => { const bm = await createImageBitmap(f); const m = `${bm.width}x${bm.height}`; bm.close(); return m; };
     return { karussell: await Promise.all(karussell.map(masse)), gesamt: await masse(gesamt), zipName: zip.name, zipGroesse: zip.size, zip: await (async () => { const u = new Uint8Array(await zip.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768)); return btoa(s); })() };
   });
-  assert.equal(aus.karussell.length, Math.ceil((4 * 933 + 363) / 1296));
+  assert.ok(aus.karussell.length <= Math.ceil(BAND / 1296) && aus.karussell.length >= Math.ceil((BAND - 195) / 1296));
   for (const m of aus.karussell) assert.equal(m, '1080x1350');
-  assert.equal(aus.gesamt, `${4 * 933 + 363}x1620`);
+  assert.match(aus.gesamt, /^\d+x\d+$/);
+  const [gb, gh] = aus.gesamt.split('x').map(Number);
+  assert.ok(Math.abs(gb / gh - BAND / 1620) < 0.01, `Gesamtbild ${aus.gesamt}`);
   assert.ok(aus.zipGroesse > 100000, 'Sicherung enthält die Bilder');
 
   // Einspielen und wieder alles lesen
   await page.setInputFiles('#datei-sicherung', { name: aus.zipName, mimeType: 'application/zip', buffer: Buffer.from(aus.zip, 'base64') });
-  await warteAuf(page, () => document.body.dataset.ansicht === 'strecke' && document.querySelector('#v-strecke .band').dataset.breite === String(4 * 933 + 363), null, 60000);
+  await warteAuf(page, (b) => document.body.dataset.ansicht === 'strecke' && document.querySelector('#v-strecke .band').dataset.breite === String(b), BAND, 60000);
   const neu = await page.evaluate(async () => {
     const db = await import('./src/speicher.mjs');
     const t = await db.lesetest(localStorage.getItem('nahtlos-aktiv'));

@@ -1,7 +1,7 @@
-// Serie aus der Mediathek: Reihenfolge, fester Start, Motivschutz, Aufnahmezeit, Held-Karp, EXIF.
+// Serie aus der Mediathek: Reihenfolge über volle Fotos, fester Start, Motivkarte, Zuschnitt, Aufnahmezeit, Held-Karp, EXIF.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ausschnitte, skaliere, fotoKandidaten, kantenMerkmale, paarWert, heldKarp, SerienPlaner, KB, KH, KUE } from '../src/serie.mjs';
+import { skaliere, kantenMerkmale, paarWert, heldKarp, SerienPlaner, motivKarte, motivSetzen, zuschnitt, erhalt, spaltenProfil, KH, KUE } from '../src/serie.mjs';
 import { analysiere, ausschnitt } from '../src/kern.mjs';
 import { aufnahmezeit } from '../src/exif.mjs';
 
@@ -35,9 +35,10 @@ function foto(w, h, { a, b, oben, unten, seed = 1, motiv = null, flach = 0.3 }) 
   return { w, h, d };
 }
 
+// Ein Foto wird als Ganzes bewertet: ein einziger Kandidat, kleine Fassung mit 120 Zeilen.
+const klein = (bild) => skaliere(bild, { x: 0, y: 0, w: bild.w, h: bild.h }, Math.round((KH * bild.w) / bild.h), KH);
 function vorbereiten(bild) {
-  const motivBild = skaliere(bild, { x: 0, y: 0, w: bild.w, h: bild.h }, Math.round(bild.w / 8), Math.round(bild.h / 8));
-  return fotoKandidaten(bild.w, bild.h, motivBild, (r) => skaliere(bild, r, KB, KH));
+  return [{ ...kantenMerkmale(klein(bild)), kosten: 0, erlaubt: true }];
 }
 
 const FARBEN = [
@@ -50,28 +51,16 @@ function kette(n = 5) {
   return Array.from({ length: n }, (_, k) => foto(240, 300, { a: HOEHEN[k], b: HOEHEN[k + 1], oben: FARBEN[k][0], unten: FARBEN[k][1], seed: 10 + k }));
 }
 
-test('Ausschnitte: drei Zoomstufen mal 5 × 5 Positionen, ohne doppelte', () => {
-  const quer = ausschnitte(480, 360);
-  const hoch = ausschnitte(400, 500);
-  assert.equal(quer.length, 5 + 25 + 25);
-  assert.equal(hoch.length, 1 + 25 + 25);
-  for (const a of [...quer, ...hoch]) {
-    assert.ok(Math.abs(a.w / a.h - 0.8) < 1e-9);
-    assert.ok(a.x >= -1e-9 && a.y >= -1e-9);
-  }
-  assert.ok(ausschnitte(4000, 3000).length >= 55 && ausschnitte(4000, 3000).length <= 75);
-});
-
 test('Schneller Paarwert folgt dem Kern: Treffer hoch, versetzte Linie niedrig', () => {
   const a = foto(240, 300, { a: 0.5, b: 0.5, oben: FARBEN[0][0], unten: FARBEN[0][1], seed: 1 });
   const gut = foto(240, 300, { a: 0.5, b: 0.5, oben: FARBEN[1][0], unten: FARBEN[1][1], seed: 2 });
   const schlecht = foto(240, 300, { a: 0.25, b: 0.25, oben: FARBEN[1][0], unten: FARBEN[1][1], seed: 3 });
-  const k = (b) => skaliere(b, { x: 0, y: 0, w: b.w, h: b.h }, KB, KH);
+  const k = klein;
   const ma = kantenMerkmale(k(a));
   const wg = paarWert(ma.rechts, kantenMerkmale(k(gut)).links);
   const ws = paarWert(ma.rechts, kantenMerkmale(k(schlecht)).links);
-  const kg = analysiere(ausschnitt(k(a), KB - KUE, KUE), ausschnitt(k(gut), 0, KUE)).wert;
-  const ks = analysiere(ausschnitt(k(a), KB - KUE, KUE), ausschnitt(k(schlecht), 0, KUE)).wert;
+  const kg = analysiere(ausschnitt(k(a), k(a).w - KUE, KUE), ausschnitt(k(gut), 0, KUE)).wert;
+  const ks = analysiere(ausschnitt(k(a), k(a).w - KUE, KUE), ausschnitt(k(schlecht), 0, KUE)).wert;
   assert.ok(wg >= 70, `gut ${wg} (Kern ${kg})`);
   assert.ok(ws < 40, `schlecht ${ws} (Kern ${ks})`);
   assert.ok(kg >= 70 && ks < 40, 'Kern sieht es genauso');
@@ -103,7 +92,6 @@ test('Reihenfolge: gemischte Fotos werden zur durchgehenden Kette', () => {
   const r = p.plane({ modus: 'beste' });
   assert.deepEqual(r.reihenfolge, ['f0', 'f1', 'f2', 'f3', 'f4']);
   for (const w of r.werte.slice(1)) assert.ok(w >= 70, `Anschlüsse ${r.werte}`);
-  for (const id of r.reihenfolge) assert.equal(p.fotos.get(id).kandidaten[r.wahl[id]].zoom, 1, 'kein unnötiger Zoom');
 });
 
 test('Fester Start: der letzte Halt der Strecke bestimmt das erste Foto', () => {
@@ -112,14 +100,14 @@ test('Fester Start: der letzte Halt der Strecke bestimmt das erste Foto', () => 
   const p = new SerienPlaner();
   for (const k of [0, 1, 2, 3, 4]) p.setze({ id: `f${k}`, zeit: k, kandidaten: vorbereiten(fotos[k]) });
   assert.equal(p.plane().reihenfolge[0], 'f0');
-  p.setzeStart(kantenMerkmale(skaliere(halt, { x: 0, y: 0, w: 240, h: 300 }, KB, KH)).rechts);
+  p.setzeStart(kantenMerkmale(klein(halt)).rechts);
   const r = p.plane({ modus: 'beste' });
   assert.equal(r.reihenfolge[0], 'f2', `Reihenfolge ${r.reihenfolge}`);
   assert.deepEqual(r.reihenfolge.slice(0, 3), ['f2', 'f3', 'f4']);
   assert.ok(r.werte[0] >= 70, `Anschluss an den Start ${r.werte[0]}`);
 });
 
-test('Nach Aufnahmezeit: Reihenfolge bleibt fest, nur die Ausschnitte werden gewählt', () => {
+test('Nach Aufnahmezeit: Reihenfolge folgt der Zeit, eigene Reihenfolge bleibt', () => {
   const fotos = kette(4);
   const p = new SerienPlaner();
   const zeiten = { f0: 40, f1: 10, f2: 30, f3: 20 };
@@ -128,64 +116,90 @@ test('Nach Aufnahmezeit: Reihenfolge bleibt fest, nur die Ausschnitte werden gew
   assert.deepEqual(r.reihenfolge, ['f1', 'f3', 'f2', 'f0']);
   assert.equal(Object.keys(r.wahl).length, 4);
   // Eigene Reihenfolge und fest gewählter Ausschnitt bleiben ebenfalls erhalten
-  const eigen = p.plane({ reihenfolge: ['f2', 'f0', 'f1', 'f3'], fest: { f0: 3 } });
+  const eigen = p.plane({ reihenfolge: ['f2', 'f0', 'f1', 'f3'] });
   assert.deepEqual(eigen.reihenfolge, ['f2', 'f0', 'f1', 'f3']);
-  assert.equal(eigen.wahl.f0, 3);
 });
 
-test('Motivschutz: das Hauptmotiv bleibt im Ausschnitt, auch wenn ein anderer besser anschließen würde', () => {
-  // Querformat, links ein roter Kreis. Die Linie liegt links hoch, rechts tief.
-  // Der nächste Halt passt nur zur rechten Seite, dort ist das Motiv aber weg.
-  const linieRechts = 0.66;
-  const motiv = { x: 0.17, y: 0.5, r: 0.07 };
-  const mitMotiv = foto(480, 360, { a: 0.32, b: linieRechts, oben: FARBEN[3][0], unten: FARBEN[3][1], seed: 5, motiv, flach: 0.35 });
-  const ohneMotiv = foto(480, 360, { a: 0.32, b: linieRechts, oben: FARBEN[3][0], unten: FARBEN[3][1], seed: 5, flach: 0.35 });
-  const weiter = foto(240, 300, { a: linieRechts, b: 0.5, oben: FARBEN[1][0], unten: FARBEN[1][1], seed: 6 });
-  const enthaeltMotiv = (a) => a.x <= (motiv.x - motiv.r) * 480 + 1 && a.x + a.w >= (motiv.x + motiv.r) * 480 - 1;
-
-  const mit = new SerienPlaner();
-  mit.setze({ id: 'm', zeit: 1, kandidaten: vorbereiten(mitMotiv) });
-  mit.setze({ id: 'q', zeit: 2, kandidaten: vorbereiten(weiter) });
-  const r = mit.plane({ modus: 'zeit' });
-  const gewaehlt = mit.fotos.get('m').kandidaten[r.wahl.m];
-  assert.ok(enthaeltMotiv(gewaehlt), `Ausschnitt x=${gewaehlt.x.toFixed(0)} w=${gewaehlt.w.toFixed(0)} zoom=${gewaehlt.zoom}`);
-
-  // Gegenprobe: ein Ausschnitt ohne Motiv hätte klar besser angeschlossen ...
-  const kand = mit.fotos.get('m').kandidaten;
-  let besterOhne = -1;
-  kand.forEach((a, i) => { if (!enthaeltMotiv(a)) besterOhne = Math.max(besterOhne, mit.wert('m', i, 'q', r.wahl.q)); });
-  assert.ok(besterOhne > r.werte[1] + 15, `ohne Motiv ${besterOhne}, gewählt ${r.werte[1]}`);
-  // ... und ohne Motiv im Bild nimmt der Planer genau so einen.
-  const ohne = new SerienPlaner();
-  ohne.setze({ id: 'm', zeit: 1, kandidaten: vorbereiten(ohneMotiv) });
-  ohne.setze({ id: 'q', zeit: 2, kandidaten: vorbereiten(weiter) });
-  const r2 = ohne.plane({ modus: 'zeit' });
-  assert.ok(!enthaeltMotiv(ohne.fotos.get('m').kandidaten[r2.wahl.m]), 'ohne Motiv zählt der Anschluss');
-  assert.ok(r2.werte[1] > r.werte[1]);
-});
-
-test('Motivschutz: erlaubte Ausschnitte behalten mindestens 95 % des Motivs, auch beim Zoomen', () => {
-  for (const my of [0.2, 0.3, 0.5]) {
-    const W = 400;
-    const H = 500;
-    const m = { x: 0.5, y: my, r: 0.1 };
-    const b = foto(W, H, { a: 0.6, b: 0.6, oben: FARBEN[2][0], unten: FARBEN[2][1], seed: 8, motiv: m });
-    const k = vorbereiten(b);
-    const anteil = (a) => {
-      let drin = 0;
-      let alle = 0;
-      for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
-        const dx = (x / W - m.x) / m.r;
-        const dy = (y / H - m.y) / ((m.r * W) / H);
-        if (dx * dx + dy * dy >= 1) continue;
-        alle++;
-        if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) drin++;
+// Arbeitsfassung für die Motivkarte: Himmel, großer dunkler, unscharfer Vordergrund, gleichmäßige Textur
+// (wie Meer) und ein kleines, scharfes Motiv.
+function szeneMitMotiv(w, h, { motivX = 0.75, motivY = 0.35, motivR = 0.06, vordergrund = true, textur = true } = {}) {
+  const d = new Uint8ClampedArray(w * h * 4);
+  const r = zufall(42);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const v = y / h;
+      let f = [150 + 60 * (1 - v), 175 + 40 * (1 - v), 215];
+      if (textur && v > 0.6) { const n = (r() - 0.5) * 50; f = [40 + n, 80 + n, 110 + n]; }
+      if (vordergrund) {
+        // Großer, dunkler Vordergrund mit sehr weichem Rand (unscharf)
+        const t = Math.min(1, Math.max(0, (0.55 - Math.hypot(u - 0.2, v - 0.85)) / 0.25));
+        const k = t * t * (3 - 2 * t);
+        f = f.map((c) => c * (1 - k) + 20 * k);
       }
-      return drin / alle;
-    };
-    for (const a of k.filter((x) => x.erlaubt)) assert.ok(anteil(a) >= 0.95, `Motiv bei ${my}: erlaubter Ausschnitt behält nur ${anteil(a)}`);
-    if (my === 0.2) assert.ok(k.some((x) => !x.erlaubt && anteil(x) < 0.8), 'Ausschnitte, die das Motiv anschneiden, sind verboten');
+      const du = (u - motivX) / motivR;
+      const dv = (v - motivY) / ((motivR * w) / h);
+      if (du * du + dv * dv < 1) f = ((Math.floor(x / 3) + Math.floor(y / 3)) % 2) ? [240, 230, 210] : [30, 20, 25]; // scharf
+      const i = (y * w + x) * 4;
+      d[i] = f[0]; d[i + 1] = f[1]; d[i + 2] = f[2]; d[i + 3] = 255;
+    }
   }
+  return { w, h, d };
+}
+
+const motivRect = (w, h, mx, my, mr) => ({ x: (mx - mr) * w, y: (my - mr * (w / h)) * h, w: 2 * mr * w, h: 2 * mr * w });
+
+test('Motivkarte: das kleine scharfe Motiv gewinnt gegen großen, unscharfen, dunklen Vordergrund und Textur', () => {
+  const W = 640;
+  const H = 480;
+  const b = szeneMitMotiv(W, H);
+  const t0 = performance.now();
+  const k = motivKarte(b);
+  console.log(`Motivkarte ${W}x${H}: ${(performance.now() - t0).toFixed(0)} ms`);
+  let arg = 0;
+  for (let i = 1; i < k.sal.length; i++) if (k.sal[i] > k.sal[arg]) arg = i;
+  const ax = (arg % W) / W;
+  const ay = Math.floor(arg / W) / H;
+  assert.ok(Math.abs(ax - 0.75) < 0.08 && Math.abs(ay - 0.35) < 0.1, `Spitze bei ${ax.toFixed(2)}, ${ay.toFixed(2)}`);
+  const motiv = erhalt(k, motivRect(W, H, 0.75, 0.35, 0.09));
+  const vorne = erhalt(k, { x: 0, y: 0.55 * H, w: 0.45 * W, h: 0.45 * H });
+  const meer = erhalt(k, { x: 0.45 * W, y: 0.62 * H, w: 0.55 * W, h: 0.38 * H });
+  console.log(`Anteile: Motiv ${motiv.toFixed(2)}, Vordergrund ${vorne.toFixed(2)}, Textur ${meer.toFixed(2)}`);
+  assert.ok(motiv > 0.6, `Motiv ${motiv}`);
+  assert.ok(motiv > 4 * vorne, 'unscharfer Vordergrund zählt kaum');
+  assert.ok(motiv > 4 * meer, 'gleichmäßige Textur zählt kaum');
+});
+
+test('Zuschnitt nur außerhalb von 0,7 bis 2:1, dann um das Motiv herum', () => {
+  for (const [w, h] of [[640, 480], [480, 640], [448, 640], [640, 320], [4000, 3000]]) {
+    const z = zuschnitt(w, h, null);
+    assert.equal(z.beschnitten, false, `${w}x${h} bleibt ganz`);
+    assert.deepEqual([z.x, z.y, z.w, z.h], [0, 0, w, h]);
+  }
+  // Panorama 3:1, Motiv rechts: Zuschnitt auf 2:1 enthält das Motiv
+  const pano = szeneMitMotiv(960, 320, { motivX: 0.85, motivY: 0.4, motivR: 0.03, vordergrund: false });
+  const kp = motivKarte(pano);
+  const zp = zuschnitt(960, 320, kp);
+  assert.ok(zp.beschnitten);
+  assert.ok(Math.abs(zp.w / zp.h - 2) < 1e-9);
+  assert.ok(zp.x + zp.w >= 0.88 * 960 && zp.x <= 0.82 * 960, `Fenster ${zp.x}..${zp.x + zp.w}`);
+  // Sehr hohes Bild (0,5), Motiv oben
+  const hoch = szeneMitMotiv(320, 640, { motivX: 0.5, motivY: 0.12, motivR: 0.08, vordergrund: false, textur: false });
+  const zh = zuschnitt(320, 640, motivKarte(hoch));
+  assert.ok(Math.abs(zh.w / zh.h - 0.7) < 1e-9);
+  assert.ok(zh.y <= 0.05 * 640, `oben geblieben: ${zh.y}`);
+  // Per Antippen gesetztes Motiv schlägt die Karte
+  const links = zuschnitt(960, 320, motivSetzen(kp, { x: 0.1, y: 0.5 }));
+  assert.ok(links.x <= 0.05 * 960, `nach links: ${links.x}`);
+});
+
+test('Spaltenprofil: Summe je Spalte, Spitze beim Motiv', () => {
+  const b = szeneMitMotiv(640, 320, { motivX: 0.3, motivY: 0.5, motivR: 0.05, vordergrund: false });
+  const p = spaltenProfil(motivKarte(b));
+  assert.equal(p.length, 640);
+  let arg = 0;
+  for (let i = 1; i < p.length; i++) if (p[i] > p[arg]) arg = i;
+  assert.ok(Math.abs(arg / 640 - 0.3) < 0.05, `Spitze bei ${arg / 640}`);
 });
 
 function jpegMitExif(datum, gross = false) {

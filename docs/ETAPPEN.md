@@ -77,6 +77,16 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Node-Tests Merkmale, Auswahl, Wiederholungsfreiheit, Kontrast und die Richtung (gegen ein Kameramodell) prüfen und der Browser-Test Idee, Ort und Richtungshinweis im Sucher zeigt.
 
+## Nachtrag: Serie ganz lassen
+
+- Halte mit eigener Breite, Serienfotos ganz (nur außerhalb 0,7 bis 2:1 um das Motiv beschnitten), Format 4 mit Breite 1296 für alte Halte
+- Motivkarte über Schärfe, Motiv per Antippen
+- Serien-Übergang ohne Blur: harter Schnitt, weiter Farbverlauf, Linien verbiegen
+- Reihenfolge nach vollen Fotos, Feinjustieren statt Ausschnittwahl
+- Karussell mit Versatz gegen Grenzen im Motiv
+
+**Fertig, wenn:** Node-Tests Bandbreiten, Motivkarte (scharf gegen unscharf), Zuschnitt, Übergang (Biegung bis 8 %, harter Schnitt, Farbverlauf) und Karussell-Versatz prüfen und der Browser-Test eine Serie mit ganzen Fotos, Panorama-Zuschnitt und Feinjustieren baut.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:

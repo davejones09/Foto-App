@@ -1,48 +1,28 @@
-// Serie aus der Mediathek: Ausschnitte, Motivschutz, schnelle Paarwerte, Reihenfolge (Held-Karp)
-// und Ausschnittwahl entlang der Kette (Viterbi). Reine Rechnung, läuft in Node, Worker und Hauptthread.
-// Bild-Typ wie im Kern: { w, h, d } mit d = RGBA, Zeile für Zeile.
+// Serie aus der Mediathek: Motivkarte, Zuschnitt (nur außerhalb 0,7 bis 2:1), schnelle Paarwerte und
+// Reihenfolge (Held-Karp). Fotos bleiben ganz: Bewertet wird das volle Foto, nicht mehr 75 Ausschnitte.
+// Reine Rechnung, läuft in Node, Worker und Hauptthread. Bild-Typ wie im Kern: { w, h, d } mit d = RGBA.
 
 export const SERIE_MAX = 10;
-export const ZOOMS = [1, 1.15, 1.3];
-export const POSITIONEN = [0, 0.25, 0.5, 0.75, 1];
-export const KB = 96; // kleine Fassung eines Ausschnitts, wie die Live-Analyse
-export const KH = 120;
-export const KUE = 27;
+export const KH = 120; // kleine Fassung eines Fotos: 120 Zeilen, Breite nach Seitenverhältnis
+export const KUE = 27; // 363 von 1620 Pixeln Höhe, auf 120 Zeilen
+export const SEITE_MIN = 0.7;
+export const SEITE_MAX = 2;
 
+// Motivkarte über Schärfe (Werte aus Tests an echten Fotos).
 export const MOTIV = {
-  gewicht: 250, // Punkte für den vollständigen Verlust des Auffälligen (ein Anschluss bringt höchstens 100)
-  minErhalt: 0.8, // darunter ist ein Ausschnitt gar nicht erlaubt (relativ zum besten Ausschnitt)
-  zoomKosten: 50, // Punkte je +1,0 Zoom, also 7,5 bei 1,15 und 15 bei 1,3
-  mitteSigma: 0.3,
+  lang: 640, // Arbeitsfassung, lange Seite
+  detailSigma: 1, // Detail = |L − L weich|
+  fenster: 9, // Detail über 9 × 9 Pixel gemittelt
+  medianFaktor: 1.5, // so viel vom Median der Umgebung abziehen: entfernt gleichmäßige Textur
+  abzug: 0.3,
+  glattSigma: 6,
+  mitteSigma: 0.4, // Mittengewicht, nur schwach
+  block: 32, // Umgebung: Mittel je Block, davon der Median über 5 × 5 Blöcke
 };
 
-const TOPK = 10; // Ausschnitte je Foto, mit denen Held-Karp die Reihenfolge abschätzt
+const TOPK = 10;
 
 const klemme = (v, a, b) => (v < a ? a : v > b ? b : v);
-
-// --- Ausschnitte: 3 Zoomstufen mal 5 × 5 Positionen, doppelte fallen weg ---
-export function ausschnitte(pw, ph) {
-  let bw;
-  let bh;
-  if (pw / ph > 0.8) { bh = ph; bw = ph * 0.8; } else { bw = pw; bh = pw / 0.8; }
-  const aus = [];
-  const gesehen = new Set();
-  for (const zoom of ZOOMS) {
-    const w = bw / zoom;
-    const h = bh / zoom;
-    for (const v of POSITIONEN) {
-      for (const u of POSITIONEN) {
-        const x = u * (pw - w);
-        const y = v * (ph - h);
-        const sch = `${zoom}|${Math.round(x * 4)}|${Math.round(y * 4)}`;
-        if (gesehen.has(sch)) continue;
-        gesehen.add(sch);
-        aus.push({ zoom, u, v, x, y, w, h });
-      }
-    }
-  }
-  return aus;
-}
 
 // Flächengemittelte Verkleinerung eines Rechtecks (für Tests und ohne Canvas).
 export function skaliere(bild, r, zw, zh) {
@@ -70,80 +50,142 @@ export function skaliere(bild, r, zw, zh) {
   return { w: zw, h: zh, d };
 }
 
-// --- Motivschutz: wo liegt das Auffällige? Farbabweichung zur Umgebung und Kanten, zur Mitte stärker gewichtet ---
-// Abweichung zur Umgebung statt zum Bildmittel: Große, gleichmäßige Flächen (Himmel, Meer) sind dann
-// unauffällig, ein kleines, andersfarbiges Motiv sticht heraus.
-function boxWeich(werte, w, h, r) {
-  const I = new Float64Array((w + 1) * (h + 1));
-  for (let y = 0; y < h; y++) {
-    let z = 0;
-    for (let x = 0; x < w; x++) { z += werte[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + z; }
-  }
+// --- Motivkarte: Wo ist das Bild scharf? ---
+// Ein unscharfer Vordergrund oder gleichmäßige Textur (Meer, Gras) zählt nicht, das scharfe Motiv schon.
+
+function gaussBild(werte, w, h, sigma) {
+  const r = Math.max(1, Math.ceil(sigma * 3));
+  const k = new Float32Array(2 * r + 1);
+  let summe = 0;
+  for (let i = -r; i <= r; i++) { k[i + r] = Math.exp(-(i * i) / (2 * sigma * sigma)); summe += k[i + r]; }
+  for (let i = 0; i < k.length; i++) k[i] /= summe;
+  const t = new Float32Array(w * h);
   const aus = new Float32Array(w * h);
   for (let y = 0; y < h; y++) {
-    const y0 = Math.max(0, y - r); const y1 = Math.min(h, y + r + 1);
+    const z = y * w;
     for (let x = 0; x < w; x++) {
-      const x0 = Math.max(0, x - r); const x1 = Math.min(w, x + r + 1);
-      const s = I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0];
-      aus[y * w + x] = s / ((y1 - y0) * (x1 - x0));
+      let v = 0;
+      for (let i = -r; i <= r; i++) v += werte[z + klemme(x + i, 0, w - 1)] * k[i + r];
+      t[z + x] = v;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let i = -r; i <= r; i++) v += t[klemme(y + i, 0, h - 1) * w + x] * k[i + r];
+      aus[y * w + x] = v;
     }
   }
   return aus;
 }
 
-export function motivKarte(bild) {
+function integral(werte, w, h) {
+  const I = new Float64Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y++) {
+    let z = 0;
+    for (let x = 0; x < w; x++) { z += werte[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + z; }
+  }
+  return I;
+}
+
+const rechteck = (I, w, x0, y0, x1, y1) => I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0];
+
+// Median der Umgebung: Mittel je Block, Median über 5 × 5 Blöcke, bilinear auf Pixel zurück.
+function umgebungsMedian(werte, w, h, block) {
+  const I = integral(werte, w, h);
+  const bw = Math.max(1, Math.ceil(w / block));
+  const bh = Math.max(1, Math.ceil(h / block));
+  const mittel = new Float32Array(bw * bh);
+  for (let by = 0; by < bh; by++) {
+    for (let bx = 0; bx < bw; bx++) {
+      const x0 = bx * block; const y0 = by * block;
+      const x1 = Math.min(w, x0 + block); const y1 = Math.min(h, y0 + block);
+      mittel[by * bw + bx] = rechteck(I, w, x0, y0, x1, y1) / ((x1 - x0) * (y1 - y0));
+    }
+  }
+  const med = new Float32Array(bw * bh);
+  const l = [];
+  for (let by = 0; by < bh; by++) {
+    for (let bx = 0; bx < bw; bx++) {
+      l.length = 0;
+      for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) {
+        const x = bx + i; const y = by + j;
+        if (x >= 0 && y >= 0 && x < bw && y < bh) l.push(mittel[y * bw + x]);
+      }
+      l.sort((a, b) => a - b);
+      med[by * bw + bx] = l.length % 2 ? l[(l.length - 1) / 2] : 0.5 * (l[l.length / 2 - 1] + l[l.length / 2]);
+    }
+  }
+  const aus = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const fy = klemme((y + 0.5) / block - 0.5, 0, bh - 1);
+    const y0 = Math.floor(fy); const y1 = Math.min(bh - 1, y0 + 1); const ty = fy - y0;
+    for (let x = 0; x < w; x++) {
+      const fx = klemme((x + 0.5) / block - 0.5, 0, bw - 1);
+      const x0 = Math.floor(fx); const x1 = Math.min(bw - 1, x0 + 1); const tx = fx - x0;
+      aus[y * w + x] = (med[y0 * bw + x0] * (1 - tx) + med[y0 * bw + x1] * tx) * (1 - ty)
+        + (med[y1 * bw + x0] * (1 - tx) + med[y1 * bw + x1] * tx) * ty;
+    }
+  }
+  return aus;
+}
+
+// bild: Arbeitsfassung mit langer Seite MOTIV.lang (640). Liefert Karte mit Integralbild.
+export function motivKarte(bild, cfg = MOTIV) {
   const { w, h, d } = bild;
   const n = w * h;
   const L = new Float32Array(n);
-  const U = new Float32Array(n);
-  const V = new Float32Array(n);
-  for (let p = 0; p < n; p++) {
-    const r = d[p * 4]; const g = d[p * 4 + 1]; const b = d[p * 4 + 2];
-    L[p] = 0.299 * r + 0.587 * g + 0.114 * b;
-    U[p] = r - g;
-    V[p] = 0.5 * (r + g) - b;
-  }
-  const rad = Math.max(2, Math.round(Math.min(w, h) / 5));
-  const Lw = boxWeich(L, w, h, rad);
-  const Uw = boxWeich(U, w, h, rad);
-  const Vw = boxWeich(V, w, h, rad);
-  const farbe = new Float32Array(n);
-  const kante = new Float32Array(n);
-  let maxF = 1e-6;
-  let maxK = 1e-6;
+  for (let p = 0; p < n; p++) L[p] = 0.299 * d[p * 4] + 0.587 * d[p * 4 + 1] + 0.114 * d[p * 4 + 2];
+  // Detail: Betrag von L minus L weich (Sigma 1), über 9 × 9 gemittelt
+  const weich = gaussBild(L, w, h, cfg.detailSigma);
+  const roh = new Float32Array(n);
+  for (let p = 0; p < n; p++) roh[p] = Math.abs(L[p] - weich[p]);
+  const r = (cfg.fenster - 1) / 2;
+  const I = integral(roh, w, h);
+  const detail = new Float32Array(n);
   for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - r); const y1 = Math.min(h, y + r + 1);
     for (let x = 0; x < w; x++) {
-      const p = y * w + x;
-      farbe[p] = 0.6 * Math.abs(L[p] - Lw[p]) + Math.abs(U[p] - Uw[p]) + Math.abs(V[p] - Vw[p]);
-      const gx = L[y * w + Math.min(w - 1, x + 1)] - L[y * w + Math.max(0, x - 1)];
-      const gy = L[Math.min(h - 1, y + 1) * w + x] - L[Math.max(0, y - 1) * w + x];
-      kante[p] = Math.hypot(gx, gy);
-      if (farbe[p] > maxF) maxF = farbe[p];
-      if (kante[p] > maxK) maxK = kante[p];
+      const x0 = Math.max(0, x - r); const x1 = Math.min(w, x + r + 1);
+      detail[y * w + x] = rechteck(I, w, x0, y0, x1, y1) / ((x1 - x0) * (y1 - y0));
     }
   }
-  const sal = new Float32Array(n);
-  const s2 = 2 * MOTIV.mitteSigma * MOTIV.mitteSigma;
+  // Gleichmäßige Textur abziehen: 1,5 × Median der Umgebung und 0,3
+  const med = umgebungsMedian(detail, w, h, cfg.block);
+  const rest = new Float32Array(n);
+  for (let p = 0; p < n; p++) rest[p] = Math.max(0, detail[p] - cfg.medianFaktor * med[p] - cfg.abzug);
+  // Glätten, dann ein schwaches Mittengewicht
+  const sal = gaussBild(rest, w, h, cfg.glattSigma);
+  const s2 = 2 * cfg.mitteSigma * cfg.mitteSigma;
   for (let y = 0; y < h; y++) {
     const dy = (y + 0.5) / h - 0.5;
     for (let x = 0; x < w; x++) {
       const dx = (x + 0.5) / w - 0.5;
-      const mitte = 0.4 + 0.6 * Math.exp(-(dx * dx + dy * dy) / s2);
-      const p = y * w + x;
-      const roh = farbe[p] / maxF + 0.5 * (kante[p] / maxK);
-      sal[p] = roh * roh * mitte; // Quadrat: Deutliches zählt viel mehr als leichtes Rauschen
+      sal[y * w + x] *= Math.exp(-(dx * dx + dy * dy) / s2);
     }
   }
-  // Integralbild für schnelle Rechtecksummen
-  const I = new Float64Array((w + 1) * (h + 1));
+  const J = integral(sal, w, h);
+  return { w, h, sal, I: J, summe: J[h * (w + 1) + w] };
+}
+
+// Setzt ein per Antippen gewähltes Motiv: eine kräftige Glocke um den Punkt (x, y in Anteilen).
+export function motivSetzen(karte, punkt) {
+  if (!punkt) return karte;
+  const { w, h } = karte;
+  const sal = new Float32Array(karte.sal);
+  let max = 1e-6;
+  for (const v of sal) if (v > max) max = v;
+  const sx = 0.12 * w;
+  const sy = 0.12 * h;
   for (let y = 0; y < h; y++) {
-    let zeile = 0;
     for (let x = 0; x < w; x++) {
-      zeile += sal[y * w + x];
-      I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + zeile;
+      const dx = (x - punkt.x * w) / sx;
+      const dy = (y - punkt.y * h) / sy;
+      sal[y * w + x] += 4 * max * Math.exp(-0.5 * (dx * dx + dy * dy));
     }
   }
-  return { w, h, sal, I, summe: I[h * (w + 1) + w] };
+  const J = integral(sal, w, h);
+  return { w, h, sal, I: J, summe: J[h * (w + 1) + w] };
 }
 
 // Anteil des Auffälligen im Rechteck r (Koordinaten im Maßstab "masse", z. B. der Vorschau).
@@ -159,14 +201,36 @@ export function erhalt(karte, r, masse = { w: karte.w, h: karte.h }) {
   return karte.summe > 0 ? s / karte.summe : 1;
 }
 
-// Kosten je Ausschnitt: Verlust am Auffälligen (relativ zum besten Ausschnitt) und Zoom.
-export function ausschnittKosten(karte, liste, masse) {
-  const e = liste.map((a) => erhalt(karte, a, masse));
-  const best = Math.max(1e-9, ...e);
-  return liste.map((a, i) => {
-    const rel = e[i] / best;
-    return { erhalt: rel, erlaubt: rel >= MOTIV.minErhalt, kosten: MOTIV.gewicht * (1 - rel) + MOTIV.zoomKosten * (a.zoom - 1) };
-  });
+// Zuschnitt nur, wenn das Seitenverhältnis außerhalb von 0,7 bis 2:1 liegt, und dann um das Motiv herum.
+// pw/ph: Maße des Fotos (beliebige Einheit), karte: Motivkarte desselben Fotos oder null.
+// Liefert das Rechteck in Foto-Koordinaten und ob beschnitten wurde.
+export function zuschnitt(pw, ph, karte = null) {
+  const seite = pw / ph;
+  if (seite >= SEITE_MIN - 1e-9 && seite <= SEITE_MAX + 1e-9) return { x: 0, y: 0, w: pw, h: ph, beschnitten: false };
+  const quer = seite > SEITE_MAX;
+  const w = quer ? ph * SEITE_MAX : pw;
+  const h = quer ? ph : pw / SEITE_MIN;
+  const spiel = quer ? pw - w : ph - h;
+  let best = 0.5;
+  if (karte) {
+    let bestWert = -1;
+    for (let k = 0; k <= 100; k++) {
+      const u = k / 100;
+      const r = quer ? { x: u * spiel, y: 0, w, h } : { x: 0, y: u * spiel, w, h };
+      // bei gleichem Anteil gewinnt die Mitte
+      const e = erhalt(karte, r, { w: pw, h: ph }) - 1e-6 * Math.abs(u - 0.5);
+      if (e > bestWert) { bestWert = e; best = u; }
+    }
+  }
+  return quer ? { x: best * spiel, y: 0, w, h, beschnitten: true } : { x: 0, y: best * spiel, w, h, beschnitten: true };
+}
+
+// Wie viel Motiv steckt in jeder Spalte? Für die Grenzen der Karussellbilder.
+export function spaltenProfil(karte) {
+  const { w, h, sal } = karte;
+  const p = new Float32Array(w);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) p[x] += sal[y * w + x];
+  return p;
 }
 
 // --- Kantenmerkmale eines Ausschnitts (kleine Fassung KB × KH) ---
@@ -245,15 +309,6 @@ export function paarWert(A, B) {
   const linien = 0.5 * e.t + 0.5 * w.t;
   const struktur = klemme(e.staerke / 20, 0, 1);
   return Math.round((1 - struktur) * 82 * farbe + struktur * 100 * (0.3 * farbe + 0.7 * linien));
-}
-
-// Alle Kandidaten eines Fotos: Ausschnitt, Motivschutz-Kosten und Kantenmerkmale.
-// motivBild: kleine Fassung des ganzen Fotos; klein(a): Ausschnitt a als KB × KH-Bild.
-export function fotoKandidaten(pw, ph, motivBild, klein) {
-  const liste = ausschnitte(pw, ph);
-  const karte = motivKarte(motivBild);
-  const kost = ausschnittKosten(karte, liste, { w: pw, h: ph });
-  return liste.map((a, i) => ({ ...a, ...kost[i], ...kantenMerkmale(klein(a)) }));
 }
 
 // --- Held-Karp: beste Reihenfolge, exakt. W[i][j] = Gewinn, wenn j direkt auf i folgt. ---
@@ -457,23 +512,5 @@ export class SerienPlaner {
       return this.wert(ordnung[k - 1], wahlIdx[k - 1], id, wahlIdx[k]);
     });
     return { wahl, werte, summe };
-  }
-
-  // Beste Alternativen für ein Foto bei gegebenen Nachbarn, für die Auswahl per Antippen.
-  alternativen(ordnung, wahl, id, anzahl = 8) {
-    const k = ordnung.indexOf(id);
-    const vor = k > 0 ? ordnung[k - 1] : (this.start ? 'start' : null);
-    const nach = k < ordnung.length - 1 ? ordnung[k + 1] : null;
-    const kand = this.fotos.get(id).kandidaten;
-    const l = kand.map((c, i) => i).filter((i) => kand[i].erlaubt).map((i) => {
-      const w1 = vor ? this.wert(vor, vor === 'start' ? 0 : wahl[vor], id, i) : null;
-      const w2 = nach ? this.wert(id, i, nach, wahl[nach]) : null;
-      const punkte = (w1 ?? 0) + (w2 ?? 0) - kand[i].kosten;
-      return { index: i, punkte, wert: w1 };
-    });
-    l.sort((a, b) => b.punkte - a.punkte);
-    const aktuell = l.findIndex((x) => x.index === wahl[id]);
-    if (aktuell > 0) l.unshift(l.splice(aktuell, 1)[0]);
-    return l.slice(0, anzahl);
   }
 }

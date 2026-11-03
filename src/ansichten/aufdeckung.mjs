@@ -6,7 +6,7 @@ import { bewertung } from '../kern.mjs';
 import { rendere, ctx2d, ladeBitmap, freigeben } from '../bild.mjs';
 import { fertigstellen } from '../naehwerk.mjs';
 import { STANDARD } from '../geometrie.mjs';
-import { HALT_B, HALT_H, UEBER, SCHRITT } from '../masse.mjs';
+import { HALT_B, HALT_H, UEBER, breiteVon } from '../masse.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
 import { kameraAus } from './sucher.mjs';
@@ -135,6 +135,12 @@ async function betreten(daten) {
   }
 
   // Streifen aufbauen: vorheriger Halt | Naht | neuer Halt, Ursprung = Anfang des neuen Halts.
+  // Beide können verschieden breit sein (Serienhalte behalten ihr Seitenverhältnis).
+  const vorB = breiteVon(vor);
+  const neuB = breiteVon(h);
+  sVor.style.width = vorB + 'px';
+  sVor.style.left = -(vorB - UEBER) + 'px';
+  sNeu.style.width = neuB + 'px';
   const vorSx = vor.index > 0 ? UEBER : 0;
   sVor.style.clipPath = vorSx ? `inset(0 0 0 ${UEBER}px)` : 'none';
   sVor.style.webkitClipPath = sVor.style.clipPath;
@@ -154,8 +160,8 @@ async function betreten(daten) {
 
   const k = g.fw / HALT_B;
   const start = `translate(${g.off}px, 0px) scale(${k})`;
-  const links = -SCHRITT + vorSx;
-  const breite = HALT_B - links;
+  const links = -(vorB - UEBER) + vorSx;
+  const breite = neuB - links;
   const k2 = Math.min((g.W * 0.94) / breite, g.H / HALT_H);
   const ende = `translate(${(g.W - breite * k2) / 2 - links * k2}px, ${(g.H - HALT_H * k2) / 2}px) scale(${k2})`;
   streifen.style.transform = start;

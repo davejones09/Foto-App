@@ -1,16 +1,18 @@
 // Ausgaben: Karussell, Gesamtbild, Reel (und Fahrt fürs Finale), Sicherung. Alles über den LRU-Lader, mit Fortschritt.
 import { Kachellager, zeichneBand } from './band.mjs';
-import { stuecke, stueckeIm, bandBreite, HALT_B, HALT_H, UEBER } from './masse.mjs';
+import { stuecke, stueckeIm, bandBreite, breiteVon, lagen, HALT_B, HALT_H, UEBER } from './masse.mjs';
 import {
-  kennzahlen, karussellAnzahl, KARUSSELL_B, KARUSSELL_H,
+  kennzahlen, karussellPlan, bandProfil, KARUSSELL_B, KARUSSELL_H,
   fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse, endstationLayout,
 } from './kennzahlen.mjs';
-import { leinwand, ctx2d, alsBlob, freigeben } from './bild.mjs';
+import { leinwand, ctx2d, alsBlob, freigeben, ladeBitmap, verkleinere, pixel } from './bild.mjs';
 import { T, f } from './texte.mjs';
 import { datumKurz } from './ui.mjs';
 import { packe, entpacke, pruefe } from './zip.mjs';
 import * as db from './speicher.mjs';
 import { APP_VERSION } from './version.mjs';
+import { auftrag } from './rechner.mjs';
+import { MOTIV } from './serie.mjs';
 
 export class Abgebrochen extends Error {}
 
@@ -28,8 +30,7 @@ const kurz = () => new Promise((ok) => setTimeout(ok, 0));
 
 // Lädt alle Bitmaps eines Bandbereichs und zeichnet ihn dann.
 async function zeichneBereich(ctx, halte, lager, { s, x0, w, h }) {
-  const n = halte.length;
-  const noetig = stueckeIm(n, x0, x0 + w / s);
+  const noetig = stueckeIm(halte, x0, x0 + w / s);
   await Promise.all(noetig.map((st) => lager.hole(halte[st.halt], st.art)));
   zeichneBand(ctx, halte, lager, { s, x0, y0: 0, w, h });
 }
@@ -63,10 +64,73 @@ function zeichneEndstation(ctx, zeilen, x, mitteY, groesse, maxBreite = groesse 
 }
 
 // --- Karussell: 1296×1620-Ausschnitte des Bands als 1080×1350 JPEG ---
-export async function karussell(strecke, halte, { fortschritt, waechter } = {}) {
-  const n = halte.length;
-  const breite = bandBreite(n);
-  const anzahl = karussellAnzahl(n);
+
+// Motivprofil des Bands: je Halt die Motivkarte (Schärfe) auf 640 Pixeln, im Worker, zwischengespeichert.
+const profilCache = new Map();
+export async function motivProfil(halte, { fortschritt } = {}) {
+  const profile = [];
+  for (let i = 0; i < halte.length; i++) {
+    const h = halte[i];
+    const sch = `${h.id}:${h.bild?.laenge}:${h.motiv ? `${h.motiv.x},${h.motiv.y}` : ''}`;
+    if (!profilCache.has(sch)) {
+      const b = h.bild ? await db.blob(h, 'bild').catch(() => null) : null;
+      if (!b) { profile.push(null); continue; }
+      const bm = await ladeBitmap(b);
+      const f = MOTIV.lang / Math.max(bm.width, bm.height);
+      const c = verkleinere(bm, bm.width, bm.height, Math.max(1, Math.round(bm.width * f)), Math.max(1, Math.round(bm.height * f)));
+      freigeben(bm);
+      const px = pixel(c);
+      freigeben(c);
+      const r = await auftrag('motivprofil', { bild: px, motiv: h.motiv || null }, [px.d.buffer]);
+      profilCache.set(sch, r.profil);
+    }
+    profile.push(profilCache.get(sch));
+    fortschritt?.((i + 1) / halte.length);
+  }
+  return bandProfil(halte, profile);
+}
+
+let letzterPlan = null;
+export const letzterKarussellPlan = () => letzterPlan;
+
+// Versatz und Grenzen, so dass möglichst keine Grenze durchs Motiv läuft.
+export async function karussellPlanen(halte) {
+  return karussellPlan(halte, await motivProfil(halte));
+}
+
+// Vorschau für den Hinweis: eine Slide-Breite Band um die Grenze x, die Grenze gelb.
+export async function grenzVorschau(canvas, halte, x) {
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const r = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round((r.width || 300) * dpr));
+  const h = Math.max(1, Math.round((r.height || 120) * dpr));
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = ctx2d(canvas);
+  ctx.fillStyle = '#0e0f10';
+  ctx.fillRect(0, 0, w, h);
+  const s = h / HALT_H;
+  const x0 = x - w / s / 2;
+  const lager = new Kachellager(4);
+  try {
+    await zeichneBereich(ctx, halte, lager, { s, x0, w, h });
+  } finally {
+    lager.leeren();
+  }
+  ctx.strokeStyle = '#ffd400';
+  ctx.lineWidth = 2 * dpr;
+  ctx.setLineDash([6 * dpr, 4 * dpr]);
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);
+  ctx.lineTo(w / 2, h);
+  ctx.stroke();
+}
+
+export async function karussell(strecke, halte, { fortschritt, waechter, plan = null } = {}) {
+  plan = plan || (await karussellPlanen(halte));
+  letzterPlan = plan;
+  const breite = bandBreite(halte);
+  const anzahl = plan.anzahl;
   const s = KARUSSELL_B / HALT_B;
   const lager = new Kachellager(6);
   const c = leinwand(KARUSSELL_B, KARUSSELL_H);
@@ -76,7 +140,7 @@ export async function karussell(strecke, halte, { fortschritt, waechter } = {}) 
   try {
     for (let k = 0; k < anzahl; k++) {
       waechter?.pruefe();
-      const x0 = k * HALT_B;
+      const x0 = plan.versatz + k * HALT_B;
       ctx.fillStyle = '#0e0f10';
       ctx.fillRect(0, 0, KARUSSELL_B, KARUSSELL_H);
       await zeichneBereich(ctx, halte, lager, { s, x0, w: KARUSSELL_B, h: KARUSSELL_H });
@@ -131,13 +195,13 @@ export function canvasGrenze(bedarf) {
   return SICHER;
 }
 
-export function gesamtPlan(n) {
-  const voll = bandBreite(n) * HALT_H;
-  return gesamtGroesse(n, canvasGrenze(voll));
+export function gesamtPlan(halte) {
+  const voll = bandBreite(halte) * HALT_H;
+  return gesamtGroesse(halte, canvasGrenze(voll));
 }
 
 export async function gesamtbild(halte, { fortschritt, waechter } = {}) {
-  const plan = gesamtPlan(halte.length);
+  const plan = gesamtPlan(halte);
   const c = leinwand(plan.b, plan.h);
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
@@ -146,12 +210,12 @@ export async function gesamtbild(halte, { fortschritt, waechter } = {}) {
   const lager = new Kachellager(2);
   const s = plan.h / HALT_H;
   try {
-    const teile = stuecke(halte.length);
+    const teile = stuecke(halte);
     for (let i = 0; i < teile.length; i++) {
       waechter?.pruefe();
       const st = teile[i];
       const bm = await lager.hole(halte[st.halt], st.art);
-      const f = bm.width / (st.art === 'naht' ? UEBER : HALT_B);
+      const f = bm.width / (st.art === 'naht' ? UEBER : breiteVon(halte[st.halt]));
       const links = Math.round(st.x * s);
       const rechts = Math.round((st.x + st.sw) * s);
       ctx.drawImage(bm, st.sx * f, 0, st.sw * f, bm.height, links, 0, rechts - links, plan.h);
@@ -185,10 +249,10 @@ export async function fahrtWeg() {
 }
 
 function fahrtBildMaler(strecke, halte, tempo) {
-  const plan = fahrtPlan(halte.length, tempo);
+  const plan = fahrtPlan(halte, tempo);
   const lager = new Kachellager(6);
   const zeilen = endstationText(strecke, halte);
-  const breite = bandBreite(halte.length) * plan.f;
+  const breite = bandBreite(halte) * plan.f;
   const endeStart = plan.dauer - 2.4;
   async function male(ctx, t) {
     const x = plan.x(t);
@@ -325,8 +389,9 @@ export function titelAusschnitt(halte, plan) {
   const sicht = FAHRT_B / s;
   let mitte = (plan.x0 + plan.x1) / 2;
   let bester = -1;
+  const anf = lagen(halte);
   for (const h of abschnittHalte(halte, plan)) {
-    if (h.index > plan.von && h.wert != null && h.wert > bester) { bester = h.wert; mitte = h.index * (HALT_B - UEBER) + UEBER / 2; }
+    if (h.index > plan.von && h.wert != null && h.wert > bester) { bester = h.wert; mitte = anf[h.index] + UEBER / 2; }
   }
   const x0 = Math.max(plan.x0, Math.min(plan.x1 - sicht, mitte - sicht / 2));
   return { s, x0, y: (FAHRT_H - TITEL_MITTE) / 2 };
@@ -391,7 +456,7 @@ export async function sicherung(strecke, halte, { fortschritt } = {}) {
   };
   for (const h of halte) {
     const ordner = `halte/${String(h.index).padStart(4, '0')}`;
-    const eintrag = { index: h.index, zeit: h.zeit, quelle: h.quelle, rohB: h.rohB, rohH: h.rohH, transform: h.transform, pfad: h.pfad, wert: h.wert, teile: h.teile, name: h.name, dateien: {} };
+    const eintrag = { index: h.index, zeit: h.zeit, quelle: h.quelle, rohB: h.rohB, rohH: h.rohH, breite: breiteVon(h), uebergang: h.uebergang || null, motiv: h.motiv || null, transform: h.transform, pfad: h.pfad, wert: h.wert, teile: h.teile, name: h.name, dateien: {} };
     for (const feld of FELDER) {
       if (!h[feld]) continue;
       // Bilddaten einzeln aus der Datenbank. Unlesbares fehlt in der Sicherung und steht im Manifest.
@@ -423,7 +488,8 @@ export async function einspielen(datei, { fortschritt } = {}) {
       const e = l[i];
       const h = {
         id: db.neueId(), streckeId: s.id, index: e.index, zeit: e.zeit, quelle: e.quelle,
-        rohB: e.rohB, rohH: e.rohH, transform: e.transform, pfad: e.pfad ?? null,
+        rohB: e.rohB, rohH: e.rohH, breite: e.breite || HALT_B, uebergang: e.uebergang || null, motiv: e.motiv || null,
+        transform: e.transform, pfad: e.pfad ?? null,
         wert: e.wert ?? null, teile: e.teile ?? null, name: e.name || '',
       };
       const bilder = {};

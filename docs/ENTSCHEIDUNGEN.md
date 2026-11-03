@@ -100,3 +100,14 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Sicherung im Arbeitsspeicher:** Da die Daten jetzt als ArrayBuffer aus der Datenbank kommen, entsteht die ZIP-Datei im Arbeitsspeicher. Bei sehr langen Strecken (viele Rohbilder von der Lumix) kann das auf dem iPhone knapp werden. Unlesbare Dateien fehlen in der Sicherung und stehen im Manifest unter `fehlt`.
 - **Auslöser** ist beim Betreten des Suchers gesperrt, bis die Kamera Bilder liefert. Vorher verpuffte ein Tipp still.
 - **WebKit-Tests:** Playwright WebKit ist in dieser Umgebung nicht installiert, und Browser dürfen hier nicht nachinstalliert werden. Getestet ist in Chromium. Der eigentliche Fehler steckt ohnehin im iOS-Speicher von WebKit, das lässt sich nur am iPhone prüfen.
+
+## Serie ganz lassen (0.11.0)
+
+- **Ausgangspunkt:** Tests an echten Fotos. Das Zuschneiden auf 4:5 mit automatischem Zoom kostete zu viel Bild, die Laplace-Überblendung wirkte zwischen verschiedenen Fotos verwaschen. Deshalb weicht der Serien-Übergang hier bewusst vom Bildkern ab. Der Kern selbst ist unverändert und näht weiter die Kamerahalte.
+- **Eigene Breite je Halt** (Format 4). Alte Halte bekommen 1296. Die Migration läuft nach dem Blob-Umzug in normalen Transaktionen, nie im Upgrade selbst: Datensätze mit alten Blobs dürfen auf dem iPhone nicht noch einmal geschrieben werden.
+- **Biegen statt Schieben:** Die Spalten des neuen Fotos werden senkrecht verschoben, aber oben und unten verankert (stückweise lineare Verzerrung). So wandert die Linie genau um den gewünschten Betrag, ohne dass am oberen oder unteren Rand ein Streifen verschmiert oder leer bleibt.
+- **Harter Schnitt mit 2 Pixeln Kante:** kein Weichzeichnen, nur gegen sichtbare Treppchen an schrägen Fäden. Drei Pixel neben dem Faden ist es im Test schon exakt das reine Foto.
+- **Median der Umgebung über Blockmittel:** Mittel je 32er-Block, davon der Median über 5 × 5 Blöcke (160 Pixel). Ein echter gleitender Median wäre auf dem iPhone zu langsam, und ein kleines Motiv beeinflusst den Median der Blöcke kaum. Im Test: Motiv 93 % der Karte, unscharfer Vordergrund 0 %, Textur 3 %.
+- **Motiv antippen:** Der Punkt wird im Rahmen gespeichert (`motiv` am Halt) und zählt für die Karussellgrenzen. Muss ein Foto beschnitten werden (außerhalb 0,7 bis 2:1), rückt der Zuschnitt um diesen Punkt.
+- **Karussell, Ende:** Nach dem Versatz läuft das letzte Bild wie bisher in die Endstation aus. Abgeschnitten wird nur am Anfang. Am Ende wird nichts extra weggenommen, weil dort ohnehin die Endstation steht und die Anzahl nicht steigen kann.
+- **Einzelnes Foto aus der Mediathek** bleibt wie bisher 4:5 mit Feinjustieren. Ganze Fotos gibt es nur in der Serie, wie gewünscht.

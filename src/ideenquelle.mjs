@@ -3,7 +3,7 @@
 // Wert holen sich ihre Sätze beide von hier.
 import { restMerkmale, monotonie, tageszeit, waehleIdee, ORTE } from './ideen.mjs';
 import { ladeBitmap, freigeben, verkleinere, pixel } from './bild.mjs';
-import { HALT_B, UEBER } from './masse.mjs';
+import { HALT_H, UEBER } from './masse.mjs';
 import * as db from './speicher.mjs';
 import { protokolliere } from './diagnose.mjs';
 
@@ -15,7 +15,7 @@ export function setzeRest(bildLeinwand) {
   if (!bildLeinwand) { merkmale = null; return; }
   const w = bildLeinwand.width;
   const h = bildLeinwand.height;
-  const rw = (UEBER / HALT_B) * w;
+  const rw = (UEBER * h) / HALT_H; // der Rest ist immer 363 Pixel breit, egal wie breit der Halt ist
   const c = verkleinere(bildLeinwand, w, h, 91, 405, w - rw, 0, rw, h);
   merkmale = restMerkmale(pixel(c));
   freigeben(c);

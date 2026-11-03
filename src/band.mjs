@@ -1,5 +1,5 @@
 // Strecke anzeigen: nur sichtbare Stücke laden, höchstens etwa 6 große Bilder im Speicher (LRU).
-import { stuecke, bandBreite, HALT_B, HALT_H, UEBER } from './masse.mjs';
+import { stuecke, bandBreite, breiteVon, HALT_H, UEBER } from './masse.mjs';
 import { ladeBitmap, freigeben } from './bild.mjs';
 import { protokolliere } from './diagnose.mjs';
 import { blobPflicht } from './speicher.mjs';
@@ -69,10 +69,9 @@ export class Kachellager {
 // Zeichnet einen Bereich des Bands. ziel: Kontext, Maßstab s in Zielpixeln je Bandpixel,
 // x0/y0 = Bandkoordinate an der linken oberen Ecke. Liefert true, wenn alles in voller Auflösung da war.
 export function zeichneBand(ctx, halte, lager, { s, x0, y0 = 0, w, h, klein = false, fertig }) {
-  const n = halte.length;
   const xEnde = x0 + w / s;
   let komplett = true;
-  for (const st of stuecke(n)) {
+  for (const st of stuecke(halte)) {
     if (st.x >= xEnde || st.x + st.sw <= x0) continue;
     const halt = halte[st.halt];
     const links = Math.round((st.x - x0) * s);
@@ -80,7 +79,7 @@ export function zeichneBand(ctx, halte, lager, { s, x0, y0 = 0, w, h, klein = fa
     const oben = Math.round(-y0 * s);
     const unten = Math.round((HALT_H - y0) * s);
     let bm = klein ? null : lager.sofort(halt, st.art, fertig);
-    let breiteQuelle = st.art === 'naht' ? UEBER : HALT_B;
+    const breiteQuelle = st.art === 'naht' ? UEBER : breiteVon(halt);
     if (!bm) {
       if (!klein) komplett = false;
       bm = lager.sofort(halt, KLEIN[st.art], fertig);
@@ -111,7 +110,7 @@ export class BandAnsicht {
     this.#gesten();
   }
 
-  get breite() { return bandBreite(this.halte.length); }
+  get breite() { return bandBreite(this.halte); }
 
   setze(halte) {
     const alt = this.halte;

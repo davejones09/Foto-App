@@ -65,8 +65,10 @@ export function begrenze(t, rw, rh, B = HALT_B, H = HALT_H) {
 }
 
 // Zeichnet die Quelle mit Transformation in einen Kontext der Größe B×H (beliebig skaliert).
-export function zeichneTransformiert(ctx, quelle, rw, rh, t, B, H) {
-  const f = B / HALT_B;
+// dx und dy sind in Pixeln eines Rahmens der Breite bezugB angegeben (1296 bei Kamerahalten,
+// die eigene Breite bei Serienhalten).
+export function zeichneTransformiert(ctx, quelle, rw, rh, t, B, H, bezugB = HALT_B) {
+  const f = B / bezugB;
   const s = fuellmass(rw, rh, B, H) * t.zoom;
   ctx.save();
   ctx.translate(B / 2 + t.dx * f, H / 2 + t.dy * f);

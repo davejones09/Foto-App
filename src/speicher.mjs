@@ -7,7 +7,8 @@
 // { schluessel, laenge, typ } oder null. Gelesen wird über blob(meta, feld), das einen frischen Blob baut.
 
 export const DB_NAME = 'nahtlos';
-export const FORMAT = 3;
+export const FORMAT = 4;
+const KAMERA_BREITE = 1296; // Breite eines 4:5-Halts, so waren alle Halte bis Format 3
 export const BILDFELDER = ['roh', 'bild', 'naht', 'vorschau', 'nahtVorschau'];
 
 // Migrationen je Ziel-Version. Bekommen die Upgrade-Transaktion. Der Umzug der Blobs aus Format 1 und 2
@@ -29,6 +30,10 @@ const MIGRATIONEN = {
     const d = db.createObjectStore('dateien', { keyPath: 'schluessel' });
     d.createIndex('laenge', 'laenge');
   },
+  // 4: Halte haben eine eigene Breite. Nichts am Aufbau ändert sich; alte Halte bekommen die Breite
+  // 1296 in migriereBreiten(), nach dem Blob-Umzug. Im Upgrade selbst nichts umschreiben: Datensätze
+  // mit alten Blobs dürfen auf dem iPhone nicht noch einmal geschrieben werden.
+  4() {},
 };
 
 export class SpeicherVoll extends Error {}
@@ -188,7 +193,7 @@ export function loescheStrecke(id) {
 
 // --- Halte (nur Metadaten) ---
 
-const LEER = { roh: null, bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '', beschaedigt: null };
+const LEER = { breite: KAMERA_BREITE, uebergang: null, motiv: null, roh: null, bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '', beschaedigt: null };
 
 export function halte(streckeId) {
   return tx('halte', 'readonly', (t) => anfrage(t.objectStore('halte').index('strecke').getAll(streckeId)))
@@ -410,6 +415,24 @@ export async function migriereBlobs({ fortschritt } = {}) {
     fortschritt?.((i + 1) / liste.length);
   }
   return { umgezogen: liste.length, beschaedigt };
+}
+
+// Format 4: Halte ohne Breite waren alle 4:5, also 1296 breit.
+export async function migriereBreiten() {
+  const keys = await tx('halte', 'readonly', (t) => anfrage(t.objectStore('halte').getAllKeys()));
+  let n = 0;
+  for (const k of keys) {
+    const geaendert = await tx('halte', 'readwrite', async (t) => {
+      const st = t.objectStore('halte');
+      const r = await anfrage(st.get(k));
+      if (!r || r.breite || hatBlobs(r)) return false;
+      r.breite = KAMERA_BREITE;
+      await anfrage(st.put(r));
+      return true;
+    });
+    if (geaendert) n++;
+  }
+  return n;
 }
 
 // --- Diagnose ---

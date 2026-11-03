@@ -166,10 +166,15 @@
 </section>
 
 <div id="se-wahl" class="schicht" hidden>
-  <div class="karte breit">
-    <h2 data-t="serieAusschnitt"></h2>
-    <div class="se-raster"></div>
-    <div class="d-knoepfe"><button class="neben2" id="se-wahl-zu" data-t="schliessen"></button></div>
+  <div class="karte breit se-fein">
+    <h2 data-t="feinjustieren"></h2>
+    <div class="se-fein-flaeche"><canvas class="se-fein-bild"></canvas></div>
+    <p class="se-fein-hinweis" data-t="serieFeinHinweis"></p>
+    <div class="d-knoepfe">
+      <button class="neben2" id="se-fein-ganz" data-t="serieGanz"></button>
+      <button class="neben2" id="se-wahl-zu" data-t="abbrechen"></button>
+      <button class="haupt" id="se-fein-ok" data-t="uebernehmen"></button>
+    </div>
   </div>
 </div>
 

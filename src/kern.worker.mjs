@@ -1,6 +1,7 @@
 // Live-Analyse und Nähen im Worker. Bilder kommen als { w, h, d } mit übertragenem Puffer.
 import { analysiere, anschliessen, hauptlinien } from './kern.mjs';
-import { SerienPlaner } from './serie.mjs';
+import { SerienPlaner, motivKarte, motivSetzen, spaltenProfil } from './serie.mjs';
+import { anschliessenSerie } from './uebergang.mjs';
 
 let rest = null;
 let restLinien = [];
@@ -30,11 +31,18 @@ self.onmessage = (e) => {
       self.postMessage({ id, ok: true, wert: r.wert, teile: r.teile, pfad: Array.from(r.pfad), linien, ms: performance.now() - t0 });
     } else if (typ === 'anschliessen') {
       const t0 = performance.now();
-      const { naht, neu, pfad } = anschliessen(bild(e.data.letztes), bild(e.data.neues), e.data.ueberlappung);
+      // Serienfotos: harter Schnitt, weiter Farbverlauf, Linien verbiegen. Kamerahalte: Bildkern wie bisher.
+      const verfahren = e.data.serie ? anschliessenSerie : anschliessen;
+      const { naht, neu, pfad } = verfahren(bild(e.data.letztes), bild(e.data.neues), e.data.ueberlappung);
       self.postMessage(
         { id, ok: true, naht, neu, pfad: Array.from(pfad), ms: performance.now() - t0 },
         [naht.d.buffer, neu.d.buffer],
       );
+    } else if (typ === 'motivprofil') {
+      let karte = motivKarte(bild(e.data.bild));
+      if (e.data.motiv) karte = motivSetzen(karte, e.data.motiv);
+      const profil = spaltenProfil(karte);
+      self.postMessage({ id, ok: true, profil }, [profil.buffer]);
     } else if (typ === 'serie-neu') {
       planer = new SerienPlaner();
       self.postMessage({ id, ok: true });
@@ -51,8 +59,6 @@ self.onmessage = (e) => {
       const t0 = performance.now();
       const plan = planer.plane(e.data);
       self.postMessage({ id, ok: true, plan, ms: performance.now() - t0 });
-    } else if (typ === 'serie-alternativen') {
-      self.postMessage({ id, ok: true, liste: planer.alternativen(e.data.ordnung, e.data.wahl, e.data.fotoId, e.data.anzahl) });
     } else {
       throw new Error(`Unbekannter Auftrag ${typ}`);
     }

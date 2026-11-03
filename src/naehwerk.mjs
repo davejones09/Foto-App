@@ -3,7 +3,7 @@ import * as db from './speicher.mjs';
 import { auftrag } from './rechner.mjs';
 import { STANDARD } from './geometrie.mjs';
 import { leinwand, ctx2d, pixel, ausPixel, alsBlob, ladeBitmap, freigeben, verkleinere, rendere } from './bild.mjs';
-import { HALT_B, HALT_H, UEBER, KLEIN_B, KLEIN_H, KLEIN_UE, VORSCHAU_H, ROH_MAX } from './masse.mjs';
+import { HALT_B, HALT_H, UEBER, KLEIN_H, KLEIN_UE, VORSCHAU_H, ROH_MAX, breiteVon } from './masse.mjs';
 import { messung, protokolliere } from './diagnose.mjs';
 
 // Volles Videobild (längste Seite höchstens ROH_MAX) als JPEG.
@@ -24,7 +24,7 @@ export async function rohAusVideo(video) {
 export async function sichereRoh({ streckeId, index, quelle, roh, rohB, rohH }) {
   return db.neuerHalt({
     id: db.neueId(), streckeId, index, zeit: Date.now(), quelle,
-    rohB, rohH, transform: { ...STANDARD },
+    rohB, rohH, breite: HALT_B, transform: { ...STANDARD },
   }, { roh });
 }
 
@@ -42,24 +42,22 @@ async function blobZuLeinwand(blob) {
   }
 }
 
-// Kleine Fassungen für den angezeigten Wert und den Sucher-Rest.
-export function kleinRest(bildLeinwand) {
-  const k = verkleinere(bildLeinwand, bildLeinwand.width, bildLeinwand.height, KLEIN_B, KLEIN_H);
+// Kleine Fassungen für den angezeigten Wert und den Sucher-Rest: der 363 Pixel breite Streifen
+// am rechten bzw. linken Rand, auf 27 × 120. Gilt für jede Halt-Breite.
+function kleinStreifen(bildLeinwand, rechts) {
+  const w = bildLeinwand.width;
+  const h = bildLeinwand.height;
+  const sw = (UEBER * h) / HALT_H;
+  const k = verkleinere(bildLeinwand, w, h, KLEIN_UE, KLEIN_H, rechts ? w - sw : 0, 0, sw, h);
   try {
-    return pixel(k, KLEIN_B - KLEIN_UE, 0, KLEIN_UE, KLEIN_H);
+    return pixel(k);
   } finally {
     freigeben(k);
   }
 }
 
-export function kleinAnfang(bildLeinwand) {
-  const k = verkleinere(bildLeinwand, bildLeinwand.width, bildLeinwand.height, KLEIN_B, KLEIN_H);
-  try {
-    return pixel(k, 0, 0, KLEIN_UE, KLEIN_H);
-  } finally {
-    freigeben(k);
-  }
-}
+export const kleinRest = (bildLeinwand) => kleinStreifen(bildLeinwand, true);
+export const kleinAnfang = (bildLeinwand) => kleinStreifen(bildLeinwand, false);
 
 // Rechnet einen Halt fertig: Rahmen, Angleichung, Naht, Vorschauen, Wert.
 // rohQuelle optional (schon dekodiertes Rohbild), spart Zeit direkt nach der Aufnahme. Sie gehört dem
@@ -73,7 +71,8 @@ export async function fertigstellen(halt, vorgaenger, { rohQuelle = null } = {})
     const roh = rohQuelle || merke(await ladeBitmap(await db.blobPflicht(halt, 'roh')));
     const rw = halt.rohB || roh.width;
     const rh = halt.rohH || roh.height;
-    const neuC = merke(rendere(roh, rw, rh, halt.transform || STANDARD, HALT_B, HALT_H));
+    const breite = breiteVon(halt);
+    const neuC = merke(rendere(roh, rw, rh, halt.transform || STANDARD, breite, HALT_H, breite));
     if (!rohQuelle) freigeben(roh); // früh freigeben, das Rohbild ist das größte Stück
     const felder = { pfad: null, wert: null, teile: null, beschaedigt: null };
     const dateien = { naht: null, nahtVorschau: null };
@@ -83,7 +82,7 @@ export async function fertigstellen(halt, vorgaenger, { rohQuelle = null } = {})
       const letztes = pixel(letztesC);
       const neues = pixel(neuC);
       freigeben(neuC);
-      const r = await auftrag('anschliessen', { letztes, neues, ueberlappung: UEBER }, [letztes.d.buffer, neues.d.buffer]);
+      const r = await auftrag('anschliessen', { letztes, neues, ueberlappung: UEBER, serie: halt.uebergang === 'serie' }, [letztes.d.buffer, neues.d.buffer]);
       bildC = merke(ausPixel(r.neu));
       const nahtC = merke(ausPixel(r.naht));
       dateien.naht = await alsBlob(nahtC, 'image/jpeg', 0.95);
@@ -97,7 +96,7 @@ export async function fertigstellen(halt, vorgaenger, { rohQuelle = null } = {})
       felder.teile = w.teile;
     }
     dateien.bild = await alsBlob(bildC, 'image/jpeg', 0.92);
-    const v = merke(verkleinere(bildC, HALT_B, HALT_H, Math.round((HALT_B * VORSCHAU_H) / HALT_H), VORSCHAU_H));
+    const v = merke(verkleinere(bildC, bildC.width, HALT_H, Math.round((bildC.width * VORSCHAU_H) / HALT_H), VORSCHAU_H));
     dateien.vorschau = await alsBlob(v, 'image/jpeg', 0.85);
     const fertig = await db.aendereHalt(halt.id, felder, dateien);
     messung('naehen', performance.now() - t0);
@@ -144,14 +143,14 @@ async function ausBildNachrechnen(halt, vor) {
     const felder = {};
     const dateien = {};
     if (!halt.vorschau) {
-      const v = merke(verkleinere(bildC, bildC.width, bildC.height, Math.round((HALT_B * VORSCHAU_H) / HALT_H), VORSCHAU_H));
+      const v = merke(verkleinere(bildC, bildC.width, bildC.height, Math.round((bildC.width * VORSCHAU_H) / bildC.height), VORSCHAU_H));
       dateien.vorschau = await alsBlob(v, 'image/jpeg', 0.85);
     }
     if (halt.index > 0 && !halt.naht && vor?.bild) {
       const letztesC = merke(await blobZuLeinwand(await db.blobPflicht(vor, 'bild')));
       const letztes = pixel(letztesC);
       const neues = pixel(bildC);
-      const r = await auftrag('anschliessen', { letztes, neues, ueberlappung: UEBER }, [letztes.d.buffer, neues.d.buffer]);
+      const r = await auftrag('anschliessen', { letztes, neues, ueberlappung: UEBER, serie: halt.uebergang === 'serie' }, [letztes.d.buffer, neues.d.buffer]);
       const nahtC = merke(ausPixel(r.naht));
       dateien.naht = await alsBlob(nahtC, 'image/jpeg', 0.95);
       const nv = merke(verkleinere(nahtC, UEBER, HALT_H, Math.round((UEBER * VORSCHAU_H) / HALT_H), VORSCHAU_H));

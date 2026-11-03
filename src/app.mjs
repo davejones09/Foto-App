@@ -144,6 +144,7 @@ async function start() {
       meldungWeg();
     }
   } catch (e) { protokolliere('umzug', e); }
+  try { await db.migriereBreiten(); } catch (e) { protokolliere('umzug', e); }
   await ladeAktive();
   // Unterbrochenes Nähen fertigstellen und Fehlendes nachrechnen, in allen Strecken.
   for (const s of await db.strecken()) {
