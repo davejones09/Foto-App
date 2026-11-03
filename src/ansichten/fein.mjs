@@ -4,7 +4,7 @@ import { T } from '../texte.mjs';
 import { $, melde } from '../ui.mjs';
 import { bewertung } from '../kern.mjs';
 import { auftrag, beschaeftigt } from '../rechner.mjs';
-import { leinwand, ctx2d, pixel, ladeBitmap, freigeben, verkleinere } from '../bild.mjs';
+import { leinwand, ctx2d, pixel, ladeBitmap, ladeBild, freigeben, verkleinere } from '../bild.mjs';
 import { begrenze, zeichneTransformiert, STANDARD } from '../geometrie.mjs';
 import { kleinRest } from '../naehwerk.mjs';
 import { HALT_B, KLEIN_B, KLEIN_H, KLEIN_UE } from '../masse.mjs';
@@ -155,7 +155,8 @@ async function betreten(d) {
   ladenEl.hidden = false;
   const { halt } = d;
   try {
-    roh = d.rohQuelle || (await ladeBitmap(await db.blobPflicht(halt, 'roh')));
+    // Im Farbraum des Fotos laden: Dieses Rohbild geht danach ins Fertigstellen.
+    roh = d.rohQuelle || (await ladeBild(await db.blobPflicht(halt, 'roh'), halt.farbraum || 'srgb'));
     rw = roh.width;
     rh = roh.height;
     anzeige = proxy(roh, rw, rh, 1800);

@@ -1,10 +1,13 @@
 // Strecke anzeigen: nur sichtbare Stücke laden, höchstens etwa 6 große Bilder im Speicher (LRU).
 import { stuecke, bandBreite, breiteVon, HALT_H, UEBER } from './masse.mjs';
-import { ladeBitmap, freigeben } from './bild.mjs';
+import { ladeBild, freigeben } from './bild.mjs';
 import { protokolliere } from './diagnose.mjs';
 import { blobPflicht } from './speicher.mjs';
 
 const KLEIN = { bild: 'vorschau', naht: 'nahtVorschau' };
+
+// Farbraum, in dem ein gespeichertes Stück vorliegt. Die Ausgaben rechnen es beim Zeichnen sauber nach sRGB.
+const raumFuer = (halt, art) => (art === 'naht' || art === 'nahtVorschau' ? halt.nahtFarbraum || halt.farbraum : halt.farbraum) || 'srgb';
 
 export class Kachellager {
   constructor(max = 6) {
@@ -39,7 +42,7 @@ export class Kachellager {
     }
     const eintrag = { bm: null, p: null };
     // Bilddaten erst jetzt aus der Datenbank: nur das, was gerade gezeichnet wird.
-    eintrag.p = (halt[art] ? blobPflicht(halt, art).then(ladeBitmap) : Promise.reject(new Error('fehlt ' + art))).then((bm) => {
+    eintrag.p = (halt[art] ? blobPflicht(halt, art).then((b) => ladeBild(b, raumFuer(halt, art))) : Promise.reject(new Error('fehlt ' + art))).then((bm) => {
       if (k.get(sch) !== eintrag) { freigeben(bm); return null; }
       eintrag.bm = bm;
       return bm;

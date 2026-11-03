@@ -1,7 +1,9 @@
 // Strecke: das ganze Band zum Durchwischen, darunter die Leiste mit allen Halten.
 import { Z, registriere, zeige, neuLaden } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
-import { $, el, frage, tagSchluessel } from '../ui.mjs';
+import { $, el, frage, tagSchluessel, melde, meldungWeg } from '../ui.mjs';
+import { altGenaeht, neuNaehen } from '../naehwerk.mjs';
+import { protokolliere } from '../diagnose.mjs';
 import { BandAnsicht } from '../band.mjs';
 import { bandBreite, lagen, breiteVon } from '../masse.mjs';
 import * as db from '../speicher.mjs';
@@ -70,6 +72,35 @@ async function betreten() {
   if (blind || !halte.length) { band.setze([]); return; }
   leisteBauen(halte);
   band.setze(halte);
+  altAnbieten();
+}
+
+// Strecken von früher (mit Farbangleichung) werden nie still neu gerechnet. Die App fragt einmal je Start.
+const gefragt = new Set();
+function altAnbieten() {
+  const s = Z.strecke;
+  const alt = altGenaeht(Z.halte);
+  if (!alt.length || gefragt.has(s.id)) return;
+  gefragt.add(s.id);
+  melde(T.altGenaeht, [{ text: T.spaeter, haupt: false }, { text: T.neuNaehen, aktion: () => neuNaehenFragen(s, alt.length) }], 15000);
+}
+
+async function neuNaehenFragen(s, n) {
+  const r = await frage(f(T.neuNaehenFrage, { n }), [
+    { text: T.abbrechen, wert: false },
+    { text: T.neuNaehen, wert: true, haupt: true },
+  ]);
+  if (!r.wert) return;
+  try {
+    melde(f(T.neuNaehenLaeuft, { p: 0 }), [], 0);
+    const e = await neuNaehen(s.id, { fortschritt: (p) => melde(f(T.neuNaehenLaeuft, { p: Math.round(p * 100) }), [], 0) });
+    meldungWeg();
+    melde(e.gescheitert ? f(T.neuNaehenTeils, { n: e.gescheitert }) : T.neuNaehenFertig);
+  } catch (err) {
+    protokolliere('neu-naehen', err);
+    melde(T.allgemein);
+  }
+  if (Z.ansicht === 'strecke' && Z.strecke?.id === s.id) await betreten();
 }
 
 $('#zum-sucher').addEventListener('click', () => zeige('sucher'));

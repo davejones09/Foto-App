@@ -1,8 +1,8 @@
 // Tests für den Bildkern. Start: npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
-import { analysiere, anschliessen, ausschnitt, zeilenGain, angleichen, naehen, bewertung, hauptlinien } from '../src/kern.mjs';
+import { analysiere, ausschnitt, bewertung, hauptlinien } from '../src/kern.mjs';
+// Die Naht selbst testet uebergang.test.mjs. Eine Farbangleichung gibt es nicht mehr.
 
 function zufall(seed) {
   let s = seed >>> 0;
@@ -101,58 +101,6 @@ test('bewertung liefert die vier Texte', () => {
   assert.equal(bewertung(10), 'Anschluss verpasst');
 });
 
-test('Nähen: am Faden entsteht keine sichtbare Stufe, Maße stimmen', () => {
-  const FW = 1296;
-  const FH = 1620;
-  const FU = 363;
-  const a = szene(FW, FH, { oben: [135, 175, 215], unten: [30, 75, 110], linieY: 0.55, wellig: 0.03, seed: 51, koernung: 4 });
-  const b = szene(FW, FH, { oben: [205, 190, 165], unten: [90, 55, 35], linieY: 0.55, wellig: 0.03, seed: 57, koernung: 4 });
-  const ra = ausschnitt(a, FW - FU, FU);
-  const rb0 = ausschnitt(b, 0, FU);
-  const gain = zeilenGain(ra, rb0);
-  const b2 = angleichen(b, gain, FW * 0.6);
-  const rb = ausschnitt(b2, 0, FU);
-  const t0 = performance.now();
-  const { pfad } = analysiere(ra, rb);
-  const genaeht = naehen(ra, rb, pfad);
-  const ms = performance.now() - t0;
-  console.log(`Faden + Nähen bei ${FU}x${FH}: ${ms.toFixed(0)} ms`);
-  assert.equal(genaeht.w, FU);
-  assert.equal(genaeht.h, FH);
-
-  // Stufe am Faden messen: größte mittlere Spaltendifferenz in der Himmelszone.
-  let hart = 0;
-  let weich = 0;
-  const yZone = [100, 700];
-  for (let y = yZone[0]; y < yZone[1]; y++) {
-    const x = pfad[y];
-    for (let c = 0; c < 3; c++) {
-      hart += Math.abs(ra.d[(y * FU + x) * 4 + c] - rb.d[(y * FU + x) * 4 + c]);
-      weich += Math.abs(genaeht.d[(y * FU + x - 1) * 4 + c] - genaeht.d[(y * FU + x + 1) * 4 + c]);
-    }
-  }
-  const n = (yZone[1] - yZone[0]) * 3;
-  console.log(`Stufe am Faden: hart ${(hart / n).toFixed(1)}, genäht ${(weich / n).toFixed(1)}`);
-  assert.ok(weich / n < 8, `genäht ${weich / n}`);
-
-  // Für die Sichtprüfung: Gesamtbild als PPM ablegen.
-  const breite = FW * 2 - FU;
-  const ppm = new Uint8Array(breite * FH * 3);
-  for (let y = 0; y < FH; y++) {
-    for (let x = 0; x < breite; x++) {
-      let quelle;
-      let i;
-      if (x < FW - FU) { quelle = a.d; i = (y * FW + x) * 4; }
-      else if (x < FW) { quelle = genaeht.d; i = (y * FU + (x - (FW - FU))) * 4; }
-      else { quelle = b2.d; i = (y * FW + (x - (FW - FU))) * 4; }
-      const o = (y * breite + x) * 3;
-      ppm[o] = quelle[i]; ppm[o + 1] = quelle[i + 1]; ppm[o + 2] = quelle[i + 2];
-    }
-  }
-  const kopf = Buffer.from(`P6\n${breite} ${FH}\n255\n`);
-  if (process.env.SICHTPRUEFUNG) writeFileSync(process.env.SICHTPRUEFUNG, Buffer.concat([kopf, Buffer.from(ppm)]));
-});
-
 test('Identische Überlappung ergibt 100', () => {
   const r = analysiere(rest, rest);
   assert.equal(r.wert, 100);
@@ -172,44 +120,4 @@ test('Einfahrhilfe findet die Linie am Bildrand', () => {
   assert.ok(Math.abs(linien[0].y - 0.55) < 0.03, `y ${linien[0].y}`);
   const flach = szene(W, H, { oben: [135, 175, 215], unten: [135, 175, 215], linieY: 0.5, seed: 31, koernung: 2 });
   for (const l of hauptlinien(ausschnitt(flach, W - UE, UE))) assert.ok(l.staerke <= 1);
-});
-
-test('Anschließen: Naht geht an beiden Rändern ohne Stufe in die Nachbarstücke über', () => {
-  const FW = 648;
-  const FH = 810;
-  const FU = 181;
-  const a = szene(FW, FH, { oben: [135, 175, 215], unten: [30, 75, 110], linieY: 0.5, wellig: 0.03, seed: 61 });
-  const b = szene(FW, FH, { oben: [205, 190, 165], unten: [90, 55, 35], linieY: 0.5, wellig: 0.03, seed: 67 });
-  const { naht, neu, pfad } = anschliessen(a, b, FU);
-  assert.equal(naht.w, FU);
-  assert.equal(naht.h, FH);
-  assert.equal(neu.w, FW);
-  assert.equal(pfad.length, FH);
-  let links = 0;
-  let rechts = 0;
-  for (let y = 0; y < FH; y++) {
-    for (let c = 0; c < 3; c++) {
-      links += Math.abs(naht.d[y * FU * 4 + c] - a.d[(y * FW + FW - FU - 1) * 4 + c]);
-      rechts += Math.abs(naht.d[(y * FU + FU - 1) * 4 + c] - neu.d[(y * FW + FU) * 4 + c]);
-    }
-  }
-  const n = FH * 3;
-  console.log(`Stufe am Nahtrand: links ${(links / n).toFixed(2)}, rechts ${(rechts / n).toFixed(2)}`);
-  assert.ok(links / n < 4, `links ${links / n}`);
-  assert.ok(rechts / n < 4, `rechts ${rechts / n}`);
-});
-
-test('Anschließen lässt den rechten Rand des neuen Bildes unberührt', () => {
-  const FW = 324;
-  const FH = 405;
-  const FU = 91;
-  const a = szene(FW, FH, { oben: [135, 175, 215], unten: [30, 75, 110], linieY: 0.5, seed: 71 });
-  const b = szene(FW, FH, { oben: [205, 190, 165], unten: [90, 55, 35], linieY: 0.5, seed: 73 });
-  const { neu } = anschliessen(a, b, FU);
-  for (let y = 0; y < FH; y += 7) {
-    for (let x = FW - FU; x < FW; x += 5) {
-      const i = (y * FW + x) * 4;
-      assert.equal(neu.d[i], b.d[i]);
-    }
-  }
 });

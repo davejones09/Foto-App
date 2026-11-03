@@ -193,7 +193,7 @@ export function loescheStrecke(id) {
 
 // --- Halte (nur Metadaten) ---
 
-const LEER = { breite: KAMERA_BREITE, uebergang: null, motiv: null, roh: null, bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '', beschaedigt: null };
+const LEER = { breite: KAMERA_BREITE, uebergang: null, motiv: null, farbraum: 'srgb', profil: null, nahtFarbraum: null, verfahren: null, biegung: null, roh: null, bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '', beschaedigt: null };
 
 export function halte(streckeId) {
   return tx('halte', 'readonly', (t) => anfrage(t.objectStore('halte').index('strecke').getAll(streckeId)))
@@ -341,7 +341,7 @@ export function serienFotoZuHalt(fotoId, halt) {
   return tx(['serie', 'halte'], 'readwrite', async (t) => {
     const f = await anfrage(t.objectStore('serie').get(fotoId));
     if (!f) throw new Error('Serienfoto fehlt');
-    const h = { ...LEER, ...halt, roh: f.roh, rohB: f.rohB, rohH: f.rohH };
+    const h = { ...LEER, ...halt, roh: f.roh, rohB: f.rohB, rohH: f.rohH, farbraum: f.farbraum || 'srgb', profil: f.profil || null };
     await anfrage(t.objectStore('halte').add(h));
     t.objectStore('serie').delete(fotoId);
     return h;

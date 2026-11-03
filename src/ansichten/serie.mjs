@@ -5,8 +5,8 @@ import { Z, registriere, zeige, neuLaden } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
 import { $, $$, el, frage, melde, meldungWeg, warte, datumKurz, uhrzeit } from '../ui.mjs';
 import { auftrag, generation, WorkerFehler } from '../rechner.mjs';
-import { alsBlob, freigeben } from '../bild.mjs';
-import { dekodiere } from '../einfuhr.mjs';
+import { alsBlob, freigeben, raumVon, HALT_Q } from '../bild.mjs';
+import { dekodiere, raumName } from '../einfuhr.mjs';
 import { aufnahmezeitAusDatei } from '../exif.mjs';
 import { SERIE_MAX } from '../serie.mjs';
 import { vorbereiten, vorbereitenAusDb, startMerkmale, rahmen, merkmale, zeichneRahmen, rahmenZuFoto, imRahmen } from '../serienwerk.mjs';
@@ -108,6 +108,9 @@ async function einlesen(dateien) {
   const serieId = db.neueId();
   let kaputt = 0;
   let nichtGesichert = 0;
+  let umgerechnet = 0;
+  let profilName = '?';
+  let zielRaum = 'srgb';
   const pause = vorhanden.length + auswahl.length >= 12 ? 500 : 100;
   for (let k = 0; k < auswahl.length; k++) {
     if (k) await warte(pause); // dem Browser Zeit zum Aufräumen geben
@@ -124,7 +127,7 @@ async function einlesen(dateien) {
       continue;
     }
     try {
-      const roh = await alsBlob(c, 'image/jpeg', 0.92);
+      const roh = await alsBlob(c, 'image/jpeg', HALT_Q);
       const aufnahme = await aufnahmezeitAusDatei(datei);
       let rec;
       try {
@@ -132,7 +135,9 @@ async function einlesen(dateien) {
         rec = await db.neuesSerienFoto({
           id: db.neueId(), streckeId: Z.strecke.id, serieId, reihe: reihe++, rohB: c.width, rohH: c.height,
           aufnahme, zeit: aufnahme ?? datei.lastModified ?? Date.now(), name: datei.name || '', plan: null,
+          farbraum: raumVon(c), profil: c.profil,
         }, { roh });
+        if (c.umgerechnet) { umgerechnet++; profilName = c.profil?.name || profilName; zielRaum = raumVon(c); }
       } catch (err) {
         if (!(err instanceof db.NichtGesichert)) throw err;
         protokolliere('serie', err);
@@ -149,6 +154,7 @@ async function einlesen(dateien) {
   if (nichtGesichert) melde(f(T.serieNichtGesichert, { n: nichtGesichert }), [], 8000);
   else if (zuViele) melde(T.serieZuViele);
   else if (kaputt) melde(f(T.serieKaputt, { n: kaputt }));
+  else if (umgerechnet) melde(f(T.serieFarbUmgerechnet, { n: umgerechnet, profil: profilName, raum: raumName(zielRaum) }), [], 6000);
 }
 
 // Stand aus der Datenbank: wartende Fotos, fester Start, gespeicherter Plan.
@@ -430,7 +436,7 @@ async function bauen() {
       const t0 = performance.now();
       const id = ordnung[k];
       const c = cache.get(id);
-      // Das Foto bleibt ganz: eigene Breite, Übergang für Serien (harter Schnitt, Farbverlauf, Biegung)
+      // Das Foto bleibt ganz: eigene Breite. Der Übergang ist derselbe wie bei jedem Halt (uebergang.mjs).
       const halt = await db.serienFotoZuHalt(id, {
         id: db.neueId(), streckeId: Z.strecke.id, index: Z.halte.length, zeit: c.rec.aufnahme ?? Date.now(), quelle: 'import',
         breite: c.breite, transform: c.transform, uebergang: 'serie', motiv: c.motiv,
