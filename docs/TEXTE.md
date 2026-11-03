@@ -170,6 +170,12 @@ Endstation
 
 ## Fehler
 
+- **Nicht gesichert:** Das Foto ließ sich nicht sichern. Bitte nochmal.
+- **Serie nicht gesichert:** {n} Fotos ließen sich nicht sichern und sind nicht dabei.
+- **Umzug beim Start:** Speicher wird umgestellt … {p} %
+- **Beschädigt, Hinweis:** {n} Halte sind beschädigt. Im Fahrplan kannst du sie löschen, der Rest bleibt. · Später · Fahrplan
+- **Beschädigt, Fahrplan:** Halt {n} · Beschädigt · Löschen
+- **Beschädigt, Rückfrage:** Beschädigten Halt {n} löschen? Die Strecke schließt danach an den vorherigen an. · Löschen · Behalten
 - **Speicher voll:** Der Speicher ist voll. Sichere die Strecke und lösche eine alte.
 - **Kamera weg:** Die Kamera antwortet nicht. · Neu starten
 - **Import scheitert:** Dieses Foto lässt sich nicht öffnen. Versuch ein anderes.

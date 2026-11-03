@@ -377,7 +377,7 @@ export function fahrtAbspielen(canvas, strecke, halte, tempo, { fertig } = {}) {
 }
 
 // --- Sicherung ---
-const FELDER = ['roh', 'bild', 'naht', 'vorschau', 'nahtVorschau'];
+const FELDER = db.BILDFELDER;
 
 export async function sicherung(strecke, halte, { fortschritt } = {}) {
   const dateien = [];
@@ -393,11 +393,13 @@ export async function sicherung(strecke, halte, { fortschritt } = {}) {
     const ordner = `halte/${String(h.index).padStart(4, '0')}`;
     const eintrag = { index: h.index, zeit: h.zeit, quelle: h.quelle, rohB: h.rohB, rohH: h.rohH, transform: h.transform, pfad: h.pfad, wert: h.wert, teile: h.teile, name: h.name, dateien: {} };
     for (const feld of FELDER) {
-      if (h[feld]) {
-        const name = `${ordner}/${feld}.jpg`;
-        eintrag.dateien[feld] = name;
-        dateien.push({ name, inhalt: h[feld] });
-      }
+      if (!h[feld]) continue;
+      // Bilddaten einzeln aus der Datenbank. Unlesbares fehlt in der Sicherung und steht im Manifest.
+      const b = await db.blob(h, feld).catch(() => null);
+      if (!b) { (eintrag.fehlt ||= []).push(feld); continue; }
+      const name = `${ordner}/${feld}.jpg`;
+      eintrag.dateien[feld] = name;
+      dateien.push({ name, inhalt: new Uint8Array(await b.arrayBuffer()) });
     }
     manifest.halte.push(eintrag);
   }
@@ -424,16 +426,16 @@ export async function einspielen(datei, { fortschritt } = {}) {
         rohB: e.rohB, rohH: e.rohH, transform: e.transform, pfad: e.pfad ?? null,
         wert: e.wert ?? null, teile: e.teile ?? null, name: e.name || '',
       };
+      const bilder = {};
       for (const feld of FELDER) {
         const name = e.dateien?.[feld];
         const z = name && eintraege.get(name);
-        if (z) {
-          if (!(await pruefe(z))) throw new Error(`Beschädigt: ${name}`);
-          h[feld] = new Blob([await z.blob.arrayBuffer()], { type: 'image/jpeg' });
-        } else h[feld] = null;
+        if (!z) continue;
+        if (!(await pruefe(z))) throw new Error(`Beschädigt: ${name}`);
+        bilder[feld] = { daten: await z.blob.arrayBuffer(), typ: 'image/jpeg' };
       }
-      if (!h.roh && !h.bild) throw new Error('Halt ohne Bild');
-      await db.neuerHalt(h);
+      if (!bilder.roh && !bilder.bild) throw new Error('Halt ohne Bild');
+      await db.neuerHalt(h, bilder);
       fortschritt?.((i + 1) / l.length);
     }
   } catch (err) {

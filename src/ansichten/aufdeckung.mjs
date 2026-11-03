@@ -43,7 +43,8 @@ function geometrie() {
   return { W: r.width, H, fw, off: (r.width - fw) / 2 };
 }
 
-const ladeImg = (img, blob) => {
+const ladeImg = async (img, meta, feld) => {
+  const blob = await db.blobPflicht(meta, feld);
   img.src = urls.von(blob);
   return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
 };
@@ -104,7 +105,7 @@ async function betreten(daten) {
     if (vor?.bild) {
       sRest.style.left = g.off + 'px';
       sRest.style.width = (g.fw * UEBER) / HALT_B + 'px';
-      await ladeImg(sRestImg, vor.bild);
+      await ladeImg(sRestImg, vor, 'bild').catch((e) => protokolliere('aufdeckung', e));
       sRest.hidden = false;
       animiere(sRest, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 * tempo, delay: 80, easing: 'ease-out' });
     }
@@ -137,7 +138,13 @@ async function betreten(daten) {
   const vorSx = vor.index > 0 ? UEBER : 0;
   sVor.style.clipPath = vorSx ? `inset(0 0 0 ${UEBER}px)` : 'none';
   sVor.style.webkitClipPath = sVor.style.clipPath;
-  await Promise.all([ladeImg(sVor, vor.bild), ladeImg(sNeu, h.bild), ladeImg(sNahtImg, h.naht)]);
+  try {
+    await Promise.all([ladeImg(sVor, vor, 'bild'), ladeImg(sNeu, h, 'bild'), ladeImg(sNahtImg, h, 'naht')]);
+  } catch (err) {
+    protokolliere('aufdeckung', err);
+    if (meinLauf === lauf) { naehfehler.hidden = false; aktionen.hidden = false; }
+    return;
+  }
   if (meinLauf !== lauf) return;
   const pfad = h.pfad || [];
   const pkt = [];

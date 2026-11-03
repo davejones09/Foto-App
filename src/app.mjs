@@ -3,11 +3,11 @@ import { installiereHandler, protokolliere, alleFehler, werte, serienProtokoll }
 installiereHandler();
 
 import { APP_VERSION } from './version.mjs';
-import { T } from './texte.mjs';
-import { $, texteEinsetzen, melde } from './ui.mjs';
+import { T, f } from './texte.mjs';
+import { $, texteEinsetzen, melde, meldungWeg } from './ui.mjs';
 import { Z, zeige, ladeAktive, neuLaden } from './zustand.mjs';
 import * as db from './speicher.mjs';
-import { offeneFertigstellen } from './naehwerk.mjs';
+import { ausbessern, unrettbar } from './naehwerk.mjs';
 import { auftrag } from './rechner.mjs';
 import { setzeTeilwerte, teilwerteSichtbar } from './ansichten/sucher.mjs';
 import './ansichten/aufdeckung.mjs';
@@ -51,6 +51,28 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Speicher "dateien", beschädigte Halte und Lesetest der aktiven Strecke für den Bericht.
+async function speicherBericht() {
+  const zeilen = [];
+  try {
+    const st = await db.dateienStatistik();
+    zeilen.push(`Dateien: ${st.anzahl} Einträge, ${(st.bytes / 1048576).toFixed(1)} MB`);
+  } catch (e) { zeilen.push(`Dateien: Fehler ${e.message}`); }
+  try {
+    const b = await db.beschaedigteHalte();
+    zeilen.push(`Beschädigte Halte: ${b.length}${b.length ? ` (${b.map((h) => `Halt ${h.index + 1}: ${(h.beschaedigt?.felder || ['bild', 'roh']).join(', ')}${h.beschaedigt?.grund ? ` – ${h.beschaedigt.grund}` : ''}`).join('; ')})` : ''}`);
+  } catch (e) { zeilen.push(`Beschädigte Halte: Fehler ${e.message}`); }
+  if (Z.strecke) {
+    try {
+      const t = await db.lesetest(Z.strecke.id);
+      const gut = t.filter((x) => !x.fehlt.length).length;
+      zeilen.push(`Lesetest: ${gut} von ${t.length} Halten vollständig lesbar`);
+      for (const x of t) zeilen.push(`  Halt ${x.index + 1}: ${x.ok} Dateien ok${x.fehlt.length ? `, unlesbar: ${x.fehlt.join(', ')}` : ''}${x.beschaedigt.length ? `, beim Umzug verloren: ${x.beschaedigt.join(', ')}` : ''}`);
+    } catch (e) { zeilen.push(`Lesetest: Fehler ${e.message}`); }
+  }
+  return zeilen;
+}
+
 async function bericht() {
   const s = await db.schaetzung();
   const mb = (b) => (b == null ? '?' : (b / 1048576).toFixed(1) + ' MB');
@@ -67,6 +89,7 @@ async function bericht() {
     `Nähen: ${werte.naehenMs ? werte.naehenMs.toFixed(0) + ' ms' : '-'}`,
     `Speicher: ${mb(s.belegt)} von ${mb(s.frei)}, dauerhaft: ${s.dauerhaft}`,
     `Strecken: ${strecken.length}, aktiv: ${Z.halte.length} Halte`,
+    ...(await speicherBericht()),
     `Ansicht: ${Z.ansicht}`,
     '',
     `Fehler (${alleFehler().length}):`,
@@ -80,6 +103,8 @@ async function bericht() {
 
 async function diagnoseOeffnen() {
   const d = $('#diagnose');
+  $('.dg-text', d).textContent = 'Diagnose läuft …';
+  d.hidden = false;
   $('.dg-text', d).textContent = await bericht();
   $('#dg-faden').checked = teilwerteSichtbar();
   d.hidden = false;
@@ -109,16 +134,28 @@ $('#dg-kopieren').addEventListener('click', async () => {
 async function start() {
   try { navigator.storage?.persist?.().catch(() => {}); } catch {}
   if (localStorage.getItem('nahtlos-test-haenger') === '1') await auftrag('test-haenger', { an: true });
+  // Umzug aus Format 1 und 2: Blobs in den Speicher "dateien". Unlesbare markieren den Halt als beschädigt.
+  try {
+    const alt = await db.alteBlobs();
+    if (alt.length) {
+      melde(f(T.umzug, { p: 0 }), [], 0);
+      const r = await db.migriereBlobs({ fortschritt: (p) => melde(f(T.umzug, { p: Math.round(p * 100) }), [], 0) });
+      protokolliere('umzug', `${r.umgezogen} Datensätze umgezogen, ${r.beschaedigt} mit unlesbaren Bildern`);
+      meldungWeg();
+    }
+  } catch (e) { protokolliere('umzug', e); }
   await ladeAktive();
-  // Unterbrochenes Nähen fertigstellen, in allen Strecken.
+  // Unterbrochenes Nähen fertigstellen und Fehlendes nachrechnen, in allen Strecken.
   for (const s of await db.strecken()) {
-    try { await offeneFertigstellen(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
+    try { await ausbessern(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
   }
   await neuLaden();
   // Beim allerersten Start kommt vor der Kamera-Freigabe die Einführung.
   if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'sucher' });
   else await zeige('sucher');
-  serieErinnern();
+  const kaputt = Z.halte.filter((h) => h.beschaedigt || unrettbar(h)).length;
+  if (kaputt) melde(f(T.beschaedigtHinweis, { n: kaputt }), [{ text: T.spaeter, haupt: false }, { text: T.fahrplan, aktion: () => zeige('fahrplan') }], 15000);
+  else serieErinnern();
 }
 
 function weiterNachHinweis() {

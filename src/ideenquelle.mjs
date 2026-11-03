@@ -25,7 +25,7 @@ export const restBekannt = () => !!merkmale;
 
 async function mittelfarbe(halt) {
   if (farbCache.has(halt.id)) return farbCache.get(halt.id);
-  const blob = halt.vorschau || halt.bild;
+  const blob = (await db.blob(halt, 'vorschau').catch(() => null)) || (await db.blob(halt, 'bild').catch(() => null));
   if (!blob) return null;
   const bm = await ladeBitmap(blob);
   const c = verkleinere(bm, bm.width, bm.height, 8, 10);

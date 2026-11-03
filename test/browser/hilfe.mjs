@@ -76,9 +76,46 @@ export async function browser() {
   return chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
 }
 
+// Hülle um IDBObjectStore.put und add: Steckt ein Blob oder File im Wert, scheitert der Aufruf und der
+// Test (beim Schließen des Kontexts). WebKit verliert Blobs in IndexedDB, deshalb dürfen dort keine liegen.
+// Für das Anlegen alter Testdaten (Format 1 und 2) gibt es die Originale unter __putOriginal und __addOriginal.
+export const KEINE_BLOBS = `
+(() => {
+  if (!self.IDBObjectStore || IDBObjectStore.prototype.__putOriginal) return;
+  self.__blobFehler = [];
+  const findeBlob = (v, pfad, tiefe) => {
+    if (v instanceof Blob) return pfad;
+    if (!v || typeof v !== 'object' || tiefe > 6 || ArrayBuffer.isView(v) || v instanceof ArrayBuffer) return null;
+    for (const k of Object.keys(v)) { const t = findeBlob(v[k], pfad + '.' + k, tiefe + 1); if (t) return t; }
+    return null;
+  };
+  for (const name of ['put', 'add']) {
+    const original = IDBObjectStore.prototype[name];
+    IDBObjectStore.prototype['__' + name + 'Original'] = original;
+    IDBObjectStore.prototype[name] = function (wert, ...rest) {
+      const pfad = findeBlob(wert, this.name, 0);
+      if (pfad) {
+        self.__blobFehler.push(name + ': ' + pfad);
+        throw new TypeError('Test: Blob in IndexedDB bei ' + pfad);
+      }
+      return original.call(this, wert, ...rest);
+    };
+  }
+})();
+`;
+
 export async function neueSeite(b, { kontext = null } = {}) {
   const ctx = kontext || (await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: false }));
+  await ctx.addInitScript(KEINE_BLOBS);
   await ctx.addInitScript(KAMERA);
+  // Vor dem Schließen prüfen, ob irgendwo ein Blob in IndexedDB geschrieben werden sollte.
+  const schliessen = ctx.close.bind(ctx);
+  ctx.close = async () => {
+    const funde = [];
+    for (const p of ctx.pages()) funde.push(...(await p.evaluate(() => self.__blobFehler || []).catch(() => [])));
+    await schliessen();
+    if (funde.length) throw new Error(`Blob in IndexedDB geschrieben: ${funde.join(', ')}`);
+  };
   const page = await ctx.newPage();
   const fehler = [];
   page.on('pageerror', (e) => fehler.push(String(e)));

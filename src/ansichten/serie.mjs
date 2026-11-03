@@ -9,8 +9,8 @@ import { alsBlob, freigeben } from '../bild.mjs';
 import { dekodiere } from '../einfuhr.mjs';
 import { aufnahmezeitAusDatei } from '../exif.mjs';
 import { SERIE_MAX } from '../serie.mjs';
-import { vorbereiten, vorbereitenAusBlob, startMerkmale, transformFuer, zeichneAusschnitt } from '../serienwerk.mjs';
-import { offeneFertigstellen, fertigstellenMitWiederholung } from '../naehwerk.mjs';
+import { vorbereiten, vorbereitenAusDb, startMerkmale, transformFuer, zeichneAusschnitt } from '../serienwerk.mjs';
+import { offeneFertigstellen, fertigstellenMitWiederholung, unrettbar } from '../naehwerk.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere, serienEintrag } from '../diagnose.mjs';
 
@@ -82,7 +82,7 @@ function knoepfe() {
 }
 
 async function fotoAufnehmen(rec, quelle) {
-  const vorb = quelle ? vorbereiten(quelle) : await vorbereitenAusBlob(rec.roh);
+  const vorb = quelle ? vorbereiten(quelle) : await vorbereitenAusDb(rec);
   cache.set(rec.id, { rec, ...vorb });
   await planer('serie-foto', { foto: { id: rec.id, zeit: rec.zeit, kandidaten: vorb.kandidaten } });
 }
@@ -95,6 +95,7 @@ async function einlesen(dateien) {
   let reihe = vorhanden.reduce((m, x) => Math.max(m, x.reihe + 1), 0);
   const serieId = db.neueId();
   let kaputt = 0;
+  let nichtGesichert = 0;
   const pause = vorhanden.length + auswahl.length >= 12 ? 500 : 100;
   for (let k = 0; k < auswahl.length; k++) {
     if (k) await warte(pause); // dem Browser Zeit zum Aufräumen geben
@@ -113,18 +114,28 @@ async function einlesen(dateien) {
     try {
       const roh = await alsBlob(c, 'image/jpeg', 0.92);
       const aufnahme = await aufnahmezeitAusDatei(datei);
-      const rec = {
-        id: db.neueId(), streckeId: Z.strecke.id, serieId, reihe: reihe++, roh, rohB: c.width, rohH: c.height,
-        aufnahme, zeit: aufnahme ?? datei.lastModified ?? Date.now(), name: datei.name || '', plan: null,
-      };
-      await db.neuesSerienFoto(rec);
+      let rec;
+      try {
+        // Rohbild zuerst: geschrieben und zurückgelesen, sonst gilt das Foto nicht als gesichert.
+        rec = await db.neuesSerienFoto({
+          id: db.neueId(), streckeId: Z.strecke.id, serieId, reihe: reihe++, rohB: c.width, rohH: c.height,
+          aufnahme, zeit: aufnahme ?? datei.lastModified ?? Date.now(), name: datei.name || '', plan: null,
+        }, { roh });
+      } catch (err) {
+        if (!(err instanceof db.NichtGesichert)) throw err;
+        protokolliere('serie', err);
+        serienEintrag(`Einlesen ${k + 1}/${auswahl.length}: nicht gesichert: ${fehlerText(err)}`);
+        nichtGesichert++;
+        continue;
+      }
       await fotoAufnehmen(rec, c);
       serienEintrag(`Einlesen ${k + 1}/${auswahl.length}: ${c.width}x${c.height}, ${Math.round(performance.now() - t0)} ms`);
     } finally {
       freigeben(c);
     }
   }
-  if (zuViele) melde(T.serieZuViele);
+  if (nichtGesichert) melde(f(T.serieNichtGesichert, { n: nichtGesichert }), [], 8000);
+  else if (zuViele) melde(T.serieZuViele);
   else if (kaputt) melde(f(T.serieKaputt, { n: kaputt }));
 }
 
@@ -285,7 +296,8 @@ for (const b of modusKnoepfe) {
 }
 
 // --- Bauen: volle Auflösung, Foto für Foto ---
-const offeneHalte = () => Z.halte.some((h) => !h.bild);
+class Unrettbar extends Error {}
+const offeneHalte = () => Z.halte.some((h) => !h.bild && h.roh);
 
 async function bauen() {
   if (baut || (!plan && !offeneHalte())) return;
@@ -298,9 +310,12 @@ async function bauen() {
   const pause = n >= 12 ? 500 : 150;
   let fehler = null;
   try {
+    // 0. Ein unrettbarer Halt (weder Bild noch Rohbild) muss erst weg: Nichts kann an ihn anschließen.
+    const kaputt = Z.halte.filter(unrettbar).length;
+    if (kaputt) throw new Unrettbar(f(T.beschaedigtHinweis, { n: kaputt }));
     // 1. Was ein früherer Fehler halbfertig zurückließ, zuerst fertigstellen. Scheitert das,
     //    bricht der Bau hier ab und fasst kein weiteres Foto an.
-    const offen = Z.halte.filter((h) => !h.bild).length;
+    const offen = Z.halte.filter((h) => !h.bild && h.roh).length;
     if (offen) {
       zeigeStatus(f(T.wirdGebaut, { p: 0 }), 0);
       const t0 = performance.now();
@@ -350,7 +365,7 @@ async function bauen() {
     baut = false;
   }
   await neuLaden();
-  const meldung = fehler instanceof db.SpeicherVoll ? T.speicherVoll : T.serieNaehFehler;
+  const meldung = fehler instanceof db.SpeicherVoll ? T.speicherVoll : fehler instanceof Unrettbar ? fehler.message : T.serieNaehFehler;
   if (fehler) melde(meldung);
   const rest = await db.serienFotos(Z.strecke.id);
   if (!rest.length && !fehler) { zeige('strecke'); return; }

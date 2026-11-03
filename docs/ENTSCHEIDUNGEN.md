@@ -89,3 +89,14 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Worker mit Zeitgrenze und Neustart**, Planer und Sucher-Rest bauen sich danach selbst wieder auf. In Tests lässt sich die Zeitgrenze über `localStorage` (`nahtlos-test-zeitgrenze`) verkürzen.
 - **Die Erinnerung an eine wartende Serie** kommt beim Start und beim Verlassen der Serien-Ansicht. Sie hat „Später“ und verschwindet nach 10 s, damit sie Auslöser und Versionsnummer nicht verdeckt.
 - **Mehr als 10 Fotos** entstehen, wenn man zu einer wartenden Serie nachlegt. Bis 12 Fotos bleibt die Reihenfolge exakt, darüber rechnet eine Näherung, weil Held-Karp sonst zu viel Speicher braucht.
+
+## Speicherformat 3: keine Blobs in IndexedDB (0.10.0)
+
+- **Befund vom iPhone (iOS 18.7):** „Error preparing Blob/File data to be stored in object store“ und „An error occured reading the Blob argument to createImageBitmap“, 0,9 MB belegt bei 5 Halten. WebKit macht Blobs in IndexedDB unlesbar. Eine Wiederholung hilft nicht, betroffen war auch jedes Kamerafoto.
+- **Bilddaten als ArrayBuffer** in einem eigenen Speicher `dateien`. Die Bildfelder der Halte heißen gleich, halten aber nur einen Verweis. So bleiben alle Prüfungen wie `if (h.bild)` gültig, und jede Lesestelle geht über `blob()`. Der Test-Wächter in den Browser-Tests lässt jeden Test scheitern, der einen Blob schreiben will.
+- **Verweis statt Umschreiben:** Ein Serienfoto wird zum Halt, indem der Halt den Schlüssel `<fotoId>/roh` übernimmt. Die Schlüssel tragen deshalb nicht immer die ID ihres Halts. Wer Daten löscht, folgt immer dem Verweis.
+- **Prüfung nach dem Schreiben** gilt für alle Bilddaten, nicht nur fürs Rohbild. Sie kostet ein Zurücklesen (einige hundert Kilobyte je Halt) und deckt genau den Fehler auf, den das iPhone hatte.
+- **Beschädigt heißt zweierlei:** Fehlt nur Abgeleitetes, wird es still nachgerechnet und der Halt ist wieder heil. Fehlt das Rohbild, bleibt der Halt nutzbar, aber mit „Beschädigt“ markiert (kein Feinjustieren, kein Neunähen). Fehlen Rohbild und Bild, ist er unrettbar und blockiert das Weiterbauen, bis er gelöscht ist.
+- **Sicherung im Arbeitsspeicher:** Da die Daten jetzt als ArrayBuffer aus der Datenbank kommen, entsteht die ZIP-Datei im Arbeitsspeicher. Bei sehr langen Strecken (viele Rohbilder von der Lumix) kann das auf dem iPhone knapp werden. Unlesbare Dateien fehlen in der Sicherung und stehen im Manifest unter `fehlt`.
+- **Auslöser** ist beim Betreten des Suchers gesperrt, bis die Kamera Bilder liefert. Vorher verpuffte ein Tipp still.
+- **WebKit-Tests:** Playwright WebKit ist in dieser Umgebung nicht installiert, und Browser dürfen hier nicht nachinstalliert werden. Getestet ist in Chromium. Der eigentliche Fehler steckt ohnehin im iOS-Speicher von WebKit, das lässt sich nur am iPhone prüfen.

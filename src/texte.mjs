@@ -139,6 +139,12 @@ export const T = {
   endHalte: '{n} Halte · Pünktlichkeit {p} %',
   endZeitraum: '{von} bis {bis}',
 
+  nichtGesichert: 'Das Foto ließ sich nicht sichern. Bitte nochmal.',
+  serieNichtGesichert: '{n} Fotos ließen sich nicht sichern und sind nicht dabei.',
+  beschaedigt: 'Beschädigt',
+  beschaedigtHinweis: '{n} Halte sind beschädigt. Im Fahrplan kannst du sie löschen, der Rest bleibt.',
+  beschaedigtLoeschen: 'Beschädigten Halt {n} löschen? Die Strecke schließt danach an den vorherigen an.',
+  umzug: 'Speicher wird umgestellt … {p} %',
   speicherVoll: 'Der Speicher ist voll. Sichere die Strecke und lösche eine alte.',
   kameraWeg: 'Die Kamera antwortet nicht.',
   neuStarten: 'Neu starten',

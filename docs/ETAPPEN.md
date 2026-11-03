@@ -111,6 +111,7 @@ Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest 
 - Eine Serie aus 3 bis 10 Fotos aus der Mediathek holen, auch von der Lumix: Reihenfolge, Werte und Ausschnitte in der Vorschau ansehen, eins umsortieren, bauen.
 - Ein Reel mit 15 Sekunden bauen, „In Fotos speichern“, in Instagram als Reel anlegen (nicht veröffentlichen müssen) und das Titelbild als Cover wählen.
 - Im Sucher „Idee“ antippen, einen Ort wählen, ein paar Ideen durchgehen. Das iPhone so halten, dass eine Linie knapp neben der Marke liegt, und prüfen, ob der Richtungshinweis stimmt.
+- Nach einem Update mit neuem Speicherformat: In der Diagnose müssen „Dateien“ mit plausibler Größe, „Beschädigte Halte: 0“ (oder die erwarteten) und „Lesetest: n von n Halten vollständig lesbar“ stehen. Danach ein Kamerafoto, einen Import und eine Serie bauen, die App ganz schließen, neu öffnen und die Strecke ansehen.
 - Fünfmal auf die Versionsnummer tippen und den Bericht kopieren. Er sollte in Claude Code einfügbar sein.
 
 ## Unterwegs
