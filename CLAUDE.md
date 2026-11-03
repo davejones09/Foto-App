@@ -8,13 +8,14 @@ Lies vor der ersten Änderung in dieser Reihenfolge:
 2. `docs/ETAPPEN.md`: was in welcher Reihenfolge gebaut wird und wann es fertig ist
 3. `docs/TECHNIK.md`: Aufbau, iOS-Fallen, Speicher, Ausgaben
 4. `docs/TEXTE.md`: alle Texte der App
-5. `src/kern.mjs` und `test/kern.test.mjs`: der fertige, getestete Bildkern
+5. `src/kern.mjs`, `src/uebergang.mjs` und ihre Tests: Bildkern und Übergang
 6. `docs/ENTSCHEIDUNGEN.md`: was vom Konzept abweicht und warum
 
 ## So arbeitest du
 
 - Leg direkt los und warte nicht auf Freigaben. Baue die Etappen der Reihe nach.
 - Mach nach jeder Etappe: Tests laufen lassen, committen, pushen.
+- Leg den PR nach `main` immer selbst an (über die GitHub-Werkzeuge), sobald gepusht ist. Ist schon einer offen, reicht der Push. David mergt nur noch.
 - Antworte David locker, kurz und auf Deutsch, per Du.
 - Nenne am Ende jeder Sitzung nur: welche Etappen fertig sind, was du nicht testen konntest und was David jetzt tun muss.
 - Wichtige Entscheidungen, die vom Konzept abweichen, gehören in `docs/ENTSCHEIDUNGEN.md`.
@@ -27,12 +28,13 @@ Die hochgeladenen Dateien liegen inzwischen an ihrem Platz: Bildkern in `src/ker
 
 ## Tests
 
-- `npm test`: Bildkern, Geometrie, ZIP, Ausgaben und Reel, Serie, Ideen, Auslieferung (Node, ohne Browser)
+- `npm test`: Bildkern, Übergang, Farbprofil, Geometrie, ZIP, Ausgaben und Reel, Serie, Ideen, Auslieferung (Node, ohne Browser)
 - `npm run test:browser`: Ende-zu-Ende in Chromium mit Kamera-Ersatz, Screenshots landen in `test/ergebnisse/`
 - `npm run icons`: Icons und Startbilder neu erzeugen
 
 ## Feste Regeln
 
+- **Fotos bleiben unverändert:** Fotos dürfen außerhalb des Übergangs nicht verändert werden. Fotografen stecken Stunden in die Bearbeitung. Ein Halt ist außerhalb der 363 Pixel breiten Überlappung das unveränderte Original, nur gerahmt: keine Farbangleichung (auch nicht als Option), kein Verbiegen, kein stilles Umrechnen des Farbprofils. Gerechnet wird nur in der Überlappung, und auch dort gehen beide Ränder exakt ins Original über. Halte werden in hoher JPEG-Qualität gespeichert (0,95 oder besser), Ausgaben für Instagram sauber nach sRGB umgerechnet.
 - **Plattform:** PWA, ausgeliefert über GitHub Pages aus `main`, Ordner `/` (Root). Kein Mac, kein App Store, kein Server.
 - **Kein Build-Schritt:** natives HTML, CSS und ES-Module. Fremdbibliotheken liegen als einzelne Datei in `vendor/`. Pakete dürfen per npm geholt und dorthin kopiert werden. Testwerkzeuge dürfen npm nutzen.
 - **Relative Pfade überall:** Die App läuft unter `https://<name>.github.io/<repo>/`.

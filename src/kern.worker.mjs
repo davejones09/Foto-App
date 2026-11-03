@@ -1,7 +1,7 @@
 // Live-Analyse und Nähen im Worker. Bilder kommen als { w, h, d } mit übertragenem Puffer.
-import { analysiere, anschliessen, hauptlinien } from './kern.mjs';
+import { analysiere, hauptlinien } from './kern.mjs';
 import { SerienPlaner, motivKarte, motivSetzen, spaltenProfil } from './serie.mjs';
-import { anschliessenSerie } from './uebergang.mjs';
+import { anschliessen } from './uebergang.mjs';
 
 let rest = null;
 let restLinien = [];
@@ -31,12 +31,11 @@ self.onmessage = (e) => {
       self.postMessage({ id, ok: true, wert: r.wert, teile: r.teile, pfad: Array.from(r.pfad), linien, ms: performance.now() - t0 });
     } else if (typ === 'anschliessen') {
       const t0 = performance.now();
-      // Serienfotos: harter Schnitt, weiter Farbverlauf, Linien verbiegen. Kamerahalte: Bildkern wie bisher.
-      const verfahren = e.data.serie ? anschliessenSerie : anschliessen;
-      const { naht, neu, pfad } = verfahren(bild(e.data.letztes), bild(e.data.neues), e.data.ueberlappung);
+      // Ein Übergang für alle Halte. Kommt zurück: nur die Naht. Die Fotos selbst bleiben unverändert.
+      const { naht, pfad, biegung } = anschliessen(bild(e.data.letztes), bild(e.data.neues), e.data.ueberlappung);
       self.postMessage(
-        { id, ok: true, naht, neu, pfad: Array.from(pfad), ms: performance.now() - t0 },
-        [naht.d.buffer, neu.d.buffer],
+        { id, ok: true, naht, pfad: Array.from(pfad), biegung, ms: performance.now() - t0 },
+        [naht.d.buffer],
       );
     } else if (typ === 'motivprofil') {
       let karte = motivKarte(bild(e.data.bild));

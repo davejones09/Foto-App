@@ -9,7 +9,10 @@ index.html            einzige Seite, alle Ansichten als DOM-Bereiche
 manifest.webmanifest  standalone, Hochformat, relative Pfade
 sw.js                 Offline-Cache, Name enthält APP_VERSION
 src/
-  kern.mjs            Bildkern
+  kern.mjs            Bildkern: Anschlusswert, Faden, Einfahrhilfe
+  uebergang.mjs       Übergang: weiche Naht in der Überlappung, Linien biegen (reine Rechnung)
+  farbe.mjs           Farbprofile lesen, Display-P3-Profil erzeugen und einsetzen, toBlob-Prüfung
+  vergleich.mjs       Diagnose: Foto vor und nach dem Bauen vergleichen
   serie.mjs           Serie: Ausschnitte, Motivschutz, Paarwerte, Held-Karp, Viterbi (reine Rechnung)
   serienwerk.mjs      Serie: kleine Fassungen per Canvas, Ausschnitt in Transformation umrechnen
   exif.mjs            Aufnahmezeit aus EXIF
@@ -41,7 +44,9 @@ App-Icon und Splash werden per Skript als PNG erzeugt und eingecheckt: gelber Fa
 
 ## 3. Bildkern
 
-`src/kern.mjs` ist reine Rechnung ohne Browser-APIs und läuft im Worker.
+**Grundregel: Fotos werden außerhalb des Übergangs nicht verändert.** Ein Halt ist außerhalb der Überlappung das unveränderte Original, nur gerahmt (Ausschnitt und Maßstab). Keine Farbangleichung, keine Option dafür. Gerechnet wird nur in der 363 Pixel breiten Überlappung, und auch dort gehen beide Ränder exakt ins Original über.
+
+`src/kern.mjs` ist reine Rechnung ohne Browser-APIs und läuft im Worker. Er liefert Anschlusswert, Faden und Einfahrhilfe. Die Naht selbst rechnet `src/uebergang.mjs`.
 
 | Größe | Volle Auflösung | Live-Analyse |
 |---|---|---|
@@ -53,8 +58,21 @@ App-Icon und Splash werden per Skript als PNG erzeugt und eingecheckt: gelber Fa
 - `analysiere(a, b)`: Rest gegen Kamera-Überlappung. Liefert `{ pfad, zeilen, wert, teile }`.
 - `hauptlinien(bild, n)`: Höhe der stärksten Linien am rechten Bildrand, für die Marken.
 - `bewertung(wert)`: Text zum Wert.
-- `anschliessen(letztes, neues, ueberlappung)`: Liefert `{ naht, neu, pfad }`.
-- `ausschnitt`, `zeilenGain`, `angleichen`, `naehen`, `fadenFinden`: Bausteine.
+- `ausschnitt`, `zeilenGain`, `fadenFinden`: Bausteine. `zeilenGain` rechnet nur für die Bewertung (und damit die Lage des Fadens) und färbt kein Foto um.
+
+### Übergang (`src/uebergang.mjs`)
+
+Gilt für jeden Halt, ob Kamera, Import oder Serie. `anschliessen(letztes, neues, 363)` bekommt nur die beiden Randstreifen und liefert `{ naht, pfad, biegung }`. Ein verändertes neues Bild gibt es nicht mehr.
+
+1. **Linien biegen:** Hauptlinien beider Streifen suchen (`randLinien`). Liegt das beste Paar gleicher Richtung höchstens 3 % der Höhe auseinander, werden beide Streifen spaltenweise senkrecht gebogen, oben und unten verankert, sodass die Linie in jeder Spalte auf `ya + (yb − ya) · smoothstep(x / (Breite − 1))` liegt. A bleibt am linken Rand, B am rechten Rand unverändert. Darüber wird nicht gebogen. Außerhalb der Überlappung wird nie gebogen.
+2. **Faden:** `analysiere` auf den (gebogenen) Streifen.
+3. **Weicher Übergang** (`ueberblenden`), je Farbkanal:
+   - r = max(4, runde(Breite / 16)), la und lb = A und B, dreimal mit Box-Radius r weichgezeichnet
+   - t = smoothstep(x / (Breite − 1)), tief = la × (1 − t) + lb × t
+   - feder = max(6, runde(Breite × 0,03)), m = smoothstep((x − pfad[y] + feder) / (2 × feder)), fein = (A − la) × (1 − m) + (B − lb) × m
+   - rand = min(1, min(x, Breite − 1 − x) / (2 × r)), Ergebnis = Original × (1 − rand) + (tief + fein) × rand, Original links der Mitte A, rechts B
+
+   Bei 363 Pixeln: r = 23, feder = 11. Am Rand ist rand = 0, dort steht exakt das Original.
 
 ### Live-Schleife
 
@@ -67,19 +85,18 @@ Läuft ein Analysejob noch, wird das nächste Kamerabild verworfen, nicht einger
 
 ### Aufnahme
 
-1. Volles Videobild als Rohbild in die Datenbank schreiben. Erst danach weiter.
-2. Der Worker erzeugt mit dem Transformationswert (Abschnitt 4) den Halt in 1296 × 1620.
-3. `anschliessen(letzter, neuer, 363)`, Ergebnisse speichern, Aufdeckung zeigen.
+1. Volles Videobild als Rohbild in die Datenbank schreiben (JPEG 0,95). Erst danach weiter.
+2. Mit dem Transformationswert (Abschnitt 4) den Halt in 1296 × 1620 rendern. Dieses Bild wird unverändert als JPEG 0,95 gespeichert.
+3. Nur die beiden 363er-Randstreifen gehen an den Worker, `anschliessen` liefert die Naht. Ergebnisse speichern, Aufdeckung zeigen.
 4. Der angezeigte Wert stammt von `analysiere` auf der 96×120-Fassung der fertig ausgerichteten Bilder. Die Einstellungen in `KONFIG` sind auf diese Größe abgestimmt. Der Faden wird auf voller Auflösung gesucht.
 
 ### Stand der Prüfung
 
-- 12 Tests grün mit `npm test` (Datei `test/kern.test.mjs`).
+- Kern: 9 Tests in `test/kern.test.mjs`. Übergang: 6 Tests in `test/uebergang.test.mjs` (Original verlustfrei unverändert, Ränder exakt, kein Sprung, Biegen bis 3 %, keine Stelle ruft `angleichen` auf).
 - Zusätzlich mit fünf echten Beispielfotos von Hand geprüft: Eine Kette aus völlig verschiedenen Motiven ergibt ein durchgehendes Bild. Gleiche Überlappung ergibt 100, nicht passende Paare meist unter 40.
-- Messwerte auf einem Linux-Server: Analyse rund 0,5 ms, Faden und Nähen bei voller Auflösung rund 0,5 Sekunden je Anschluss.
+- Messwerte auf einem Linux-Server: Analyse rund 0,5 ms, Faden und weicher Übergang bei voller Auflösung rund 0,3 Sekunden je Anschluss.
 - **Nicht geprüft:** auf einem iPhone und mit bewusst gesuchten Anschlüssen aus der echten Welt. Der Wert reagiert bei sehr feinen Details empfindlich und schwankt dort auch leicht. Die Schwellen sind mit echten Testfotos nachzujustieren.
 
-Die Tests liefern mit der Umgebungsvariable `SICHTPRUEFUNG=<datei.ppm>` ein Bild zum Ansehen.
 
 ## 4. Speicher
 
@@ -91,9 +108,11 @@ IndexedDB mit eigener kleiner Hülle, keine Bibliothek. Beim Start `navigator.st
 strecken: { id, name, erstellt, blind, ziel, formatVersion, gesichertBei }
 halte:    { id, streckeId, index, zeit, quelle: 'kamera'|'import', rohB, rohH,
             transform: { dx, dy, zoom, drehung }, pfad, wert, teile, name,
+            farbraum: 'srgb'|'display-p3', profil: { name, art } | null,
+            nahtFarbraum, verfahren: 2 | null, biegung,
             roh, bild, naht, vorschau, nahtVorschau,   // je { schluessel, laenge, typ } oder null
             beschaedigt: null | { felder, grund, zeit } }
-serie:    { id, streckeId, serieId, reihe, rohB, rohH, zeit, aufnahme, name, plan, roh: Verweis }
+serie:    { id, streckeId, serieId, reihe, rohB, rohH, zeit, aufnahme, name, plan, farbraum, profil, roh: Verweis }
 dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }   // Index auf laenge
 ```
 
@@ -104,7 +123,17 @@ dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }
 - **Beschädigte Halte** stehen im Fahrplan mit „Beschädigt“ und „Löschen“, beim Start erscheint ein Hinweis. `loescheHalt()` lässt die späteren aufrücken. Der Nachfolger verliert seine Naht (und, falls sein Rohbild da ist, Bild und Vorschau) und wird an seinen neuen Vorgänger genäht. Ein unrettbarer Halt blockiert das Weiterbauen, bis er gelöscht ist.
 - **Diagnose:** Anzahl und Größe der Einträge in `dateien` (über den Index, ohne Daten zu laden), Zahl beschädigter Halte mit Grund, Lesetest je Halt der aktiven Strecke.
 
-- **Rest für den Sucher:** rechte 363 Pixel von `bild`. Der Rest ist nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
+- **Rest für den Sucher:** rechte 363 Pixel von `bild`. Halte sind nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
+- **Neue Felder ohne Migration:** `farbraum` fehlt bei alten Halten und gilt dann als `srgb` (so wurden sie gerechnet). `verfahren` fehlt bei Halten, die noch mit Farbangleichung genäht sind. Die App rechnet sie nie still neu: Die Strecken-Ansicht bietet einmal je Start „Neu nähen“ an, erst nach Rückfrage rechnet `neuNaehen()` Bild und Naht aus dem Rohbild neu.
+
+### Farbprofil
+
+- **Erkennen** (`profilAusDatei`): JPEG über die APP2-Abschnitte `ICC_PROFILE`, PNG über `iCCP` oder `sRGB`, HEIC und andere über die Kennung `acsp`. Eingeordnet wird nach den Primärfarben (`rXYZ`, `gXYZ`, `bXYZ`): `srgb`, `display-p3`, `weit` (etwa Adobe RGB) oder `anders`. Ohne Profil gilt sRGB.
+- **Arbeitsfarbraum:** sRGB-Fotos bleiben sRGB, Display-P3-Fotos werden in Leinwänden mit `colorSpace: 'display-p3'` gerechnet, wenn das Gerät das kann und P3 auch speichern kann. Nur `weit` und `anders` werden umgerechnet (nach P3 bzw. sRGB), und dann sagt die App es. Jede Leinwand trägt ihren Farbraum (`c.farbraum`), alle Zwischenstufen laufen darin. P3-Bilder werden über ein Bild-Element dekodiert, weil `createImageBitmap` P3 nicht überall sicher erhält.
+- **Naht:** in P3, sobald einer der beiden Halte P3 ist (`nahtFarbraum`).
+- **toBlob:** `farbTest()` prüft beim ersten Gebrauch mit zwei Farbfeldern (eines auch in sRGB darstellbar, eines reines P3-Rot), ob ein P3-JPEG beim Zurücklesen gleich bleibt. `nativ`: toBlob schreibt das Profil selbst (Chromium tut das). `nachgesetzt`: Die App setzt ihr eigenes Display-P3-Profil (ICC v4, sRGB-Kurve) ins JPEG. `nein`: P3 geht verloren, dann rechnet die App in sRGB und sagt das beim Import. Am iPhone zeigt die Diagnose, welcher Fall gilt.
+- **Qualität:** Rohbild und Bild als JPEG 0,95, Naht 0,95, Vorschauen 0,85.
+- **Ausgaben:** Karussell, Reel, Titelbild und Gesamtbild entstehen auf sRGB-Leinwänden. Der Browser rechnet P3 beim Zeichnen sauber nach sRGB um. Die Sicherung enthält die gespeicherten Dateien unverändert.
 - **Wiederaufnahme:** iOS beendet Apps im Hintergrund jederzeit. Alles muss aus der Datenbank wiederherstellbar sein, ohne Zustand im Speicher vorauszusetzen.
 - **Unterbrochenes Nähen:** Ein Halt mit `roh`, aber ohne `bild` wird beim Start automatisch fertiggestellt.
 - **Letzten Halt streichen:** löscht nur den letzten Datensatz. Der vorherige Halt ist davon nicht betroffen.
@@ -173,6 +202,7 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 ### Import
 
 - `<input type="file" accept="image/*">` ohne `capture`.
+- Erst das eingebettete Profil lesen, dann im passenden Farbraum dekodieren (Abschnitt Farbprofil). Das Rohbild wird als JPEG 0,95 gesichert.
 - Lumix-Fotos haben rund 25 MP. Mit `createImageBitmap(datei, { resizeWidth oder resizeHeight })` direkt beim Dekodieren auf höchstens 4000 Pixel lange Seite begrenzen, sonst droht auf dem iPhone der Speichertod. Ignoriert Safari die Option, nach dem Dekodieren die Größe prüfen und per Canvas verkleinern.
 - Quer- und Hochformat funktionieren, gefüllt wird immer der 4:5-Rahmen. Danach direkt ins Feinjustieren.
 
@@ -183,7 +213,7 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 3. **Motivkarte** (`motivKarte`, auf der 640er-Fassung): Detail = |L − L mit Sigma 1 weichgezeichnet|, über 9 × 9 Pixel gemittelt. Davon 1,5 × den Median der Umgebung (Mittel je 32er-Block, Median über 5 × 5 Blöcke) und 0,3 abziehen, dann mit Sigma 6 glätten, Mittengewicht mit Sigma 0,4. Ein per Antippen gesetztes Motiv kommt als kräftige Glocke dazu (`motivSetzen`).
 4. **Paarwert:** Nachbildung von `analysiere` über Profile der 363er-Ränder, auf einer Fassung mit 120 Zeilen: Zeilenfarben nach Angleichung, Linientreffer eng und weit, Struktur. Im Worker zwischengespeichert.
 5. **Reihenfolge:** Held-Karp exakt über die vollen Fotos (bei 10 Fotos rund 100 000 Schritte). Hat die Strecke Halte, ist die rechte Kante des letzten Halts der feste Start. Feinjustieren in der Vorschau ändert Zoom und Verschiebung eines Fotos, danach wird neu bewertet.
-6. **Übergang** (`src/uebergang.mjs`, nur für Serienhalte, `uebergang: 'serie'`): Hauptlinien beider Ränder suchen. Liegt das beste Paar (gleiche Richtung) höchstens 8 % auseinander, wird das neue Foto spaltenweise senkrecht verbogen: voll am Übergang, auslaufend bis 45 % der Breite, oben und unten verankert. Dann `zeilenGain` mit `gainMin` 0,2, `gainMax` 3,5, `zeilenSigmaAnteil` 0,14 und `angleichen` über 85 % der Breite. Der Faden wie im Kern, aber ein harter Schnitt statt Laplace-Überblendung (2 Pixel Kante gegen Treppchen). Kamerahalte nähen weiter mit dem Bildkern.
+6. **Übergang:** derselbe wie für jeden Halt (Abschnitt 3, `src/uebergang.mjs`). Das Feld `uebergang: 'serie'` bleibt als Herkunftsangabe, wählt aber kein eigenes Verfahren mehr.
 7. **Bauen:** erst alle offenen Halte der Strecke fertigstellen (scheitert das, bricht der Bau ab und fasst kein Foto an), dann den Plan je Foto sichern, dann Foto für Foto `serienFotoZuHalt` und `fertigstellenMitWiederholung`. Nach einem Abbruch geht die wartende Serie mit derselben Reihenfolge weiter.
 8. **Fehler:** `fertigstellenMitWiederholung` liest Halt und Vorgänger bei jedem Versuch frisch aus der Datenbank (nie Blobs aus der Übergabe-Transaktion) und versucht es höchstens zweimal. `fertigstellen` gibt Leinwände und Bitmaps im `finally` frei. Zwischen den Fotos wartet der Bau 150 ms, ab 12 Fotos 500 ms. Dauer und Fehler je Foto stehen im Serienprotokoll der Diagnose (`localStorage`, übersteht Abstürze).
 9. **Ab 13 Fotos** (durch Nachlegen möglich) rechnet die Reihenfolge nicht mehr Held-Karp, sondern eine Näherung: gierig von jedem Anfang, dann Teilstücke verschieben und umdrehen.
@@ -210,6 +240,8 @@ Fünfmal auf die Versionsnummer tippen. Das Fenster zeigt:
 - Browser-Kennung, Stream-Auflösung, Bilder pro Sekunde, Analyse- und Nähzeit
 - Speicherverbrauch aus `navigator.storage.estimate()`, Status von `persist`
 - die letzten 50 Fehler (globale Handler für `error` und `unhandledrejection`)
+- Farbe: ob die Leinwand Display P3 kann, ob P3 gespeichert werden kann (`nativ`, `nachgesetzt`, `nein`) und das Ergebnis der Probe
+- „Foto vergleichen“: Ein Foto aus der Mediathek läuft wie beim Import und Bauen durch die App, nur im Speicher. Verglichen wird außerhalb der Überlappung mit dem Foto, wie der Browser es direkt aus der Datei zeigt: mittlere und größte Abweichung je Kanal, dazu Profil der Datei und des gespeicherten Bilds, ob das Nähen das Bild verändert hat (muss 0 sein) und die Nahtränder. Grenze: im Mittel höchstens 3 Stufen.
 - „Bericht kopieren“: Text für die Zwischenablage, den David in Claude Code einfügen kann
 
 Zum Nachjustieren auf der Reise zusätzlich der Schalter „Faden und Teilwerte zeigen“. Er zeigt `farbe`, `linien` und `struktur` live im Sucher.

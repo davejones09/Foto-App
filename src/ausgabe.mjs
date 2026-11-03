@@ -1,4 +1,7 @@
 // Ausgaben: Karussell, Gesamtbild, Reel (und Fahrt fürs Finale), Sicherung. Alles über den LRU-Lader, mit Fortschritt.
+// Farben: Alle Bild- und Videoausgaben entstehen auf sRGB-Leinwänden. Display-P3-Halte rechnet der Browser
+// beim Zeichnen sauber nach sRGB um, so sehen sie bei Instagram richtig aus. Die Sicherung enthält die
+// gespeicherten Dateien unverändert, mit ihrem Profil.
 import { Kachellager, zeichneBand } from './band.mjs';
 import { stuecke, stueckeIm, bandBreite, breiteVon, lagen, HALT_B, HALT_H, UEBER } from './masse.mjs';
 import {
@@ -133,7 +136,7 @@ export async function karussell(strecke, halte, { fortschritt, waechter, plan = 
   const anzahl = plan.anzahl;
   const s = KARUSSELL_B / HALT_B;
   const lager = new Kachellager(6);
-  const c = leinwand(KARUSSELL_B, KARUSSELL_H);
+  const c = leinwand(KARUSSELL_B, KARUSSELL_H, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
   const bilder = [];
@@ -202,7 +205,7 @@ export function gesamtPlan(halte) {
 
 export async function gesamtbild(halte, { fortschritt, waechter } = {}) {
   const plan = gesamtPlan(halte);
-  const c = leinwand(plan.b, plan.h);
+  const c = leinwand(plan.b, plan.h, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle = '#0e0f10';
@@ -275,7 +278,7 @@ function fahrtBildMaler(strecke, halte, tempo) {
 
 // Kodiert Bilder zu einem Video. male(ctx, t) zeichnet das Bild zur Zeit t.
 async function videoBauen(weg, male, bilder, { fortschritt, waechter } = {}) {
-  const c = leinwand(FAHRT_B, FAHRT_H);
+  const c = leinwand(FAHRT_B, FAHRT_H, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
   try {
@@ -398,7 +401,7 @@ export function titelAusschnitt(halte, plan) {
 }
 
 export async function titelbild(halte, plan) {
-  const c = leinwand(FAHRT_B, FAHRT_H);
+  const c = leinwand(FAHRT_B, FAHRT_H, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
   const lager = new Kachellager(4);
@@ -456,7 +459,7 @@ export async function sicherung(strecke, halte, { fortschritt } = {}) {
   };
   for (const h of halte) {
     const ordner = `halte/${String(h.index).padStart(4, '0')}`;
-    const eintrag = { index: h.index, zeit: h.zeit, quelle: h.quelle, rohB: h.rohB, rohH: h.rohH, breite: breiteVon(h), uebergang: h.uebergang || null, motiv: h.motiv || null, transform: h.transform, pfad: h.pfad, wert: h.wert, teile: h.teile, name: h.name, dateien: {} };
+    const eintrag = { index: h.index, zeit: h.zeit, quelle: h.quelle, rohB: h.rohB, rohH: h.rohH, breite: breiteVon(h), uebergang: h.uebergang || null, motiv: h.motiv || null, farbraum: h.farbraum || 'srgb', nahtFarbraum: h.nahtFarbraum || null, profil: h.profil || null, verfahren: h.verfahren || null, transform: h.transform, pfad: h.pfad, wert: h.wert, teile: h.teile, name: h.name, dateien: {} };
     for (const feld of FELDER) {
       if (!h[feld]) continue;
       // Bilddaten einzeln aus der Datenbank. Unlesbares fehlt in der Sicherung und steht im Manifest.
@@ -489,6 +492,7 @@ export async function einspielen(datei, { fortschritt } = {}) {
       const h = {
         id: db.neueId(), streckeId: s.id, index: e.index, zeit: e.zeit, quelle: e.quelle,
         rohB: e.rohB, rohH: e.rohH, breite: e.breite || HALT_B, uebergang: e.uebergang || null, motiv: e.motiv || null,
+        farbraum: e.farbraum || 'srgb', nahtFarbraum: e.nahtFarbraum || null, profil: e.profil || null, verfahren: e.verfahren || null,
         transform: e.transform, pfad: e.pfad ?? null,
         wert: e.wert ?? null, teile: e.teile ?? null, name: e.name || '',
       };

@@ -18,6 +18,7 @@ import './ansichten/ausfahrt.mjs';
 import './ansichten/fahrplan.mjs';
 import { serieErinnern } from './ansichten/serie.mjs';
 import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
+import { fotoVergleich, farbBericht } from './vergleich.mjs';
 
 texteEinsetzen();
 $('#version').textContent = 'v' + APP_VERSION;
@@ -88,9 +89,11 @@ async function bericht() {
     `Analyse: ${werte.fps} Bilder/s, ${werte.analyseMs.toFixed(1)} ms`,
     `Nähen: ${werte.naehenMs ? werte.naehenMs.toFixed(0) + ' ms' : '-'}`,
     `Speicher: ${mb(s.belegt)} von ${mb(s.frei)}, dauerhaft: ${s.dauerhaft}`,
+    await farbBericht().catch((e) => `Farbe: Fehler ${e.message}`),
     `Strecken: ${strecken.length}, aktiv: ${Z.halte.length} Halte`,
     ...(await speicherBericht()),
     `Ansicht: ${Z.ansicht}`,
+    ...(vergleiche.length ? ['', ...vergleiche] : []),
     '',
     `Fehler (${alleFehler().length}):`,
     ...alleFehler().slice().reverse().map((f) => `${f.zeit} [${f.art}] ${f.text}`),
@@ -110,6 +113,27 @@ async function diagnoseOeffnen() {
   d.hidden = false;
 }
 $('#dg-schliessen').addEventListener('click', () => ($('#diagnose').hidden = true));
+
+// Fotovergleich: ein Foto aus der Mediathek wie beim Bauen durchrechnen, ohne etwas zu speichern.
+const vergleiche = [];
+$('#dg-vergleich').addEventListener('click', () => $('#dg-datei').click());
+$('#dg-datei').addEventListener('change', async (e) => {
+  const datei = e.target.files?.[0];
+  e.target.value = '';
+  if (!datei) return;
+  const feld = $('.dg-text', $('#diagnose'));
+  feld.textContent = T.vergleichLaeuft;
+  try {
+    const r = await fotoVergleich(datei);
+    vergleiche.push(r.text);
+    if (vergleiche.length > 4) vergleiche.shift();
+  } catch (err) {
+    protokolliere('vergleich', err);
+    vergleiche.push(`Fotovergleich: Fehler ${err && err.message || err}`);
+  }
+  feld.textContent = await bericht();
+  feld.scrollTop = feld.scrollHeight;
+});
 $('#dg-faden').addEventListener('change', (e) => setzeTeilwerte(e.target.checked));
 $('#dg-kopieren').addEventListener('click', async () => {
   const text = await bericht();

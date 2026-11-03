@@ -1,5 +1,6 @@
-// kern.mjs – getesteter Bildkern (siehe TECHNIK.md, Abschnitt 3).
+// kern.mjs – getesteter Bildkern (siehe TECHNIK.md, Abschnitt 3): Anschlusswert, Faden, Einfahrhilfe.
 // Rein rechnerisch, ohne Browser-APIs: läuft in Node, im Worker und im Hauptthread.
+// Der Übergang selbst (Naht) steht in uebergang.mjs. Eine Farbangleichung gibt es nicht mehr.
 // Bild-Typ überall: { w, h, d } mit d = Uint8ClampedArray (RGBA, Zeile für Zeile).
 
 export const KONFIG = {
@@ -44,6 +45,7 @@ function gauss1D(werte, sigma) {
 
 // Verstärkung je Zeile und Farbkanal, damit B an der Überlappung zu A passt.
 // Sorgt dafür, dass der Wert Linien belohnt und nicht nur zufällig gleiche Farben.
+// Nur für die Bewertung (und damit die Lage des Fadens). Kein Foto wird damit umgefärbt.
 export function zeilenGain(a, b, cfg = KONFIG) {
   const { w, h } = a;
   const gain = [new Float32Array(h), new Float32Array(h), new Float32Array(h)];
@@ -263,173 +265,6 @@ export function bewertung(wert) {
   if (wert >= 70) return 'Anschluss erreicht';
   if (wert >= 40) return 'Knapp, läuft aber';
   return 'Anschluss verpasst';
-}
-
-// Finale Angleichung des neuen Bildes: Korrektur je Zeile, die nach rechts ausläuft.
-// Der rechte Rand bleibt original, deshalb driften die Farben über das Band nicht weg.
-export function angleichen(bild, gain, ausblendBreite) {
-  const { w, h, d } = bild;
-  const aus = new Uint8ClampedArray(d);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const t = clamp(1 - x / ausblendBreite, 0, 1);
-      const f = t * t * (3 - 2 * t);
-      const i = (y * w + x) * 4;
-      for (let c = 0; c < 3; c++) {
-        aus[i + c] = d[i + c] * (1 + (gain[c][y] - 1) * f);
-      }
-    }
-  }
-  return { w, h, d: aus };
-}
-
-// --- Mehrband-Überblendung entlang des Fadens (Laplace-Pyramide) ---
-
-function zuKanaelen(bild) {
-  const n = bild.w * bild.h;
-  const k = [new Float32Array(n), new Float32Array(n), new Float32Array(n)];
-  for (let p = 0; p < n; p++) {
-    k[0][p] = bild.d[p * 4];
-    k[1][p] = bild.d[p * 4 + 1];
-    k[2][p] = bild.d[p * 4 + 2];
-  }
-  return k;
-}
-
-const BINOM = [1 / 16, 4 / 16, 6 / 16, 4 / 16, 1 / 16];
-
-function falte(src, w, h) {
-  const t = new Float32Array(w * h);
-  const o = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let i = -2; i <= 2; i++) s += src[y * w + clamp(x + i, 0, w - 1)] * BINOM[i + 2];
-      t[y * w + x] = s;
-    }
-  }
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let i = -2; i <= 2; i++) s += t[clamp(y + i, 0, h - 1) * w + x] * BINOM[i + 2];
-      o[y * w + x] = s;
-    }
-  }
-  return o;
-}
-
-function runter(src, w, h) {
-  const g = falte(src, w, h);
-  const nw = Math.max(1, Math.floor(w / 2));
-  const nh = Math.max(1, Math.floor(h / 2));
-  const o = new Float32Array(nw * nh);
-  for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) o[y * nw + x] = g[y * 2 * w + x * 2];
-  return { d: o, w: nw, h: nh };
-}
-
-function hoch(src, sw, sh, w, h) {
-  const o = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) {
-    const fy = Math.min(sh - 1, y / 2);
-    const y0 = Math.floor(fy);
-    const y1 = Math.min(sh - 1, y0 + 1);
-    const ty = fy - y0;
-    for (let x = 0; x < w; x++) {
-      const fx = Math.min(sw - 1, x / 2);
-      const x0 = Math.floor(fx);
-      const x1 = Math.min(sw - 1, x0 + 1);
-      const tx = fx - x0;
-      o[y * w + x] =
-        src[y0 * sw + x0] * (1 - tx) * (1 - ty) +
-        src[y0 * sw + x1] * tx * (1 - ty) +
-        src[y1 * sw + x0] * (1 - tx) * ty +
-        src[y1 * sw + x1] * tx * ty;
-    }
-  }
-  return o;
-}
-
-function pyramide(kanal, w, h, stufen) {
-  const gauss = [{ d: kanal, w, h }];
-  for (let i = 1; i < stufen; i++) {
-    const v = gauss[i - 1];
-    gauss.push(runter(v.d, v.w, v.h));
-  }
-  const lap = [];
-  for (let i = 0; i < stufen - 1; i++) {
-    const v = gauss[i];
-    const n = gauss[i + 1];
-    const up = hoch(n.d, n.w, n.h, v.w, v.h);
-    const l = new Float32Array(v.w * v.h);
-    for (let p = 0; p < l.length; p++) l[p] = v.d[p] - up[p];
-    lap.push({ d: l, w: v.w, h: v.h });
-  }
-  lap.push(gauss[stufen - 1]);
-  return lap;
-}
-
-// a und b: Überlappung gleicher Größe. pfad[y] = x-Position des Fadens.
-export function naehen(a, b, pfad, stufen = 6, cfg = KONFIG) {
-  const { w, h } = a;
-  const maskeVoll = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) maskeVoll[y * w + x] = x < pfad[y] ? 1 : 0;
-  }
-  const maske = [{ d: maskeVoll, w, h }];
-  for (let i = 1; i < stufen; i++) {
-    const v = maske[i - 1];
-    maske.push(runter(v.d, v.w, v.h));
-  }
-  const ka = zuKanaelen(a);
-  const kb = zuKanaelen(b);
-  const aus = new Uint8ClampedArray(w * h * 4);
-  for (let c = 0; c < 3; c++) {
-    const la = pyramide(ka[c], w, h, stufen);
-    const lb = pyramide(kb[c], w, h, stufen);
-    let bau = null;
-    for (let s = stufen - 1; s >= 0; s--) {
-      const ms = maske[s].d;
-      const st = la[s];
-      const misch = new Float32Array(st.w * st.h);
-      for (let p = 0; p < misch.length; p++) misch[p] = la[s].d[p] * ms[p] + lb[s].d[p] * (1 - ms[p]);
-      if (bau) {
-        const up = hoch(bau.d, bau.w, bau.h, st.w, st.h);
-        for (let p = 0; p < misch.length; p++) misch[p] += up[p];
-      }
-      bau = { d: misch, w: st.w, h: st.h };
-    }
-    for (let p = 0; p < w * h; p++) aus[p * 4 + c] = bau.d[p];
-  }
-  for (let p = 0; p < w * h; p++) aus[p * 4 + 3] = 255;
-  // Ränder festnageln: außen muss die Naht exakt in die Nachbarstücke übergehen. Der Bereich
-  // ist so breit wie der Abstand des Fadens zum Rand, er berührt den Faden also nie.
-  const m = Math.max(1, Math.round(w * cfg.randAnteil));
-  for (let y = 0; y < h; y++) {
-    for (let i = 0; i < m; i++) {
-      const t = i / m;
-      const f = t * t * (3 - 2 * t);
-      const li = (y * w + i) * 4;
-      const re = (y * w + w - 1 - i) * 4;
-      for (let c = 0; c < 3; c++) {
-        aus[li + c] = a.d[li + c] * (1 - f) + aus[li + c] * f;
-        aus[re + c] = b.d[re + c] * (1 - f) + aus[re + c] * f;
-      }
-    }
-  }
-  return { w, h, d: aus };
-}
-
-// Ein neues Bild an das letzte anschließen. Beide Bilder gleich groß, überlappung in Pixeln.
-// Ergebnis: naht = die fertige Überlappung; neu = das angeglichene neue Bild.
-// Das Band setzt sich so zusammen: ... | naht | neu ab x = überlappung | naht | ...
-export function anschliessen(letztes, neues, ueberlappung, cfg = KONFIG) {
-  const x0 = letztes.w - ueberlappung;
-  const ra = ausschnitt(letztes, x0, ueberlappung);
-  const gain = zeilenGain(ra, ausschnitt(neues, 0, ueberlappung), cfg);
-  const neu = angleichen(neues, gain, neues.w * 0.6);
-  const rb = ausschnitt(neu, 0, ueberlappung);
-  const { pfad } = analysiere(ra, rb, cfg);
-  return { naht: naehen(ra, rb, pfad, 6, cfg), neu, pfad };
 }
 
 // Hilfsfunktion: Ausschnitt aus einem Bild.

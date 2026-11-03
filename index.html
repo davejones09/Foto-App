@@ -262,6 +262,7 @@
     <pre class="dg-text"></pre>
     <div class="d-knoepfe senkrecht">
       <button class="haupt" id="dg-kopieren" data-t="berichtKopieren"></button>
+      <button class="neben2" id="dg-vergleich" data-t="fotoVergleichen"></button>
       <label class="schalter"><input type="checkbox" id="dg-faden"><span data-t="fadenZeigen"></span></label>
       <button class="neben2" id="dg-schliessen" data-t="schliessen"></button>
     </div>
@@ -275,6 +276,7 @@
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
+<input type="file" id="dg-datei" accept="image/*" hidden>
 <input type="file" id="datei-sicherung" accept=".zip,application/zip" hidden>
 
 <script type="module" src="src/app.mjs"></script>
