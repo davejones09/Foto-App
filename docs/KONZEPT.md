@@ -44,9 +44,9 @@ Die App nutzt Bahnsprache, weil David vom Fach ist. Sie bleibt dabei trocken und
 
 Drei kurze Bildschirme vor der Kamera-Freigabe, jeder mit einem gezeichneten, animierten Beispiel und zwei Sätzen. Keine fremden Fotos.
 
-1. **Was die App macht:** Drei einzelne Fotos rücken zusammen und verschmelzen zu einer Strecke, die dann weiterfährt.
+1. **Was die App macht:** Drei Fotos liegen durcheinander, sortieren sich, rücken zusammen und verschmelzen zu einer Strecke, die dann weiterfährt. Der Text nennt auch die Serie aus der Mediathek.
 2. **Wie ein Anschluss funktioniert:** Ein Sucher mit Rest. Die Linie im Kamerabild wandert, Wert und Signal steigen, die Marke wird grün, dann Auslösen, Faden und Stempel.
-3. **Was am Ende rauskommt:** Die ganze Strecke, in 4:5-Bilder geschnitten, daneben das Karussell und die Fahrt.
+3. **Was am Ende rauskommt:** Die ganze Strecke, in 4:5-Bilder geschnitten, daneben das Karussell und das Reel.
 
 „Überspringen“ ist immer da, Wischen wechselt die Bildschirme. Später lässt sich die Einführung in den Strecken über „So funktioniert's“ wieder öffnen.
 

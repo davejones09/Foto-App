@@ -197,7 +197,7 @@ function rundRechteck(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// --- Bildschirm 1: einzelne Fotos rücken zusammen und werden eine Strecke ---
+// --- Bildschirm 1: Fotos liegen durcheinander, sortieren sich und werden eine Strecke ---
 const DAUER1 = 8.5;
 function bild1(ctx, cw, ch, t) {
   const ws = Math.min(cw * 0.39, ch * 0.7 * 0.8);
@@ -213,9 +213,10 @@ function bild1(ctx, cw, ch, t) {
   const pan = -fahrt * (streifenB - (cw - 2 * x0));
 
   if (verschmelzen < 1) {
-    const lage = [[-0.62, 12, -9], [0, -14, 4], [0.62, 8, 11]];
-    for (let i = 0; i < 3; i++) {
-      const auf = klemme((t - i * 0.3) / 0.35);
+    // Lage im Stapel je Szene: erst durcheinander, beim Zusammenrücken in der richtigen Reihenfolge
+    const lage = [[0, -14, 4], [0.62, 8, 11], [-0.62, 12, -9]];
+    for (const i of [2, 0, 1]) {
+      const auf = klemme((t - [0.3, 0.6, 0][i]) / 0.35);
       if (auf <= 0) continue;
       const [ox, oy, rot] = lage[i];
       const x = misch(cw / 2 + ox * ws, x0 + i * sd + ws / 2, zusammen);
@@ -502,7 +503,7 @@ function bild3(ctx, cw, ch, t) {
   ctx.font = `13px ${SANS}`;
   ctx.textAlign = 'center';
   ctx.fillText(T.einfKarussell, kx + kw / 2, oben + kh + 28);
-  ctx.fillText(T.einfFahrt, vx + vw / 2, oben + kh + 28);
+  ctx.fillText(T.einfReel, vx + vw / 2, oben + kh + 28);
   ctx.restore();
   abblenden(ctx, cw, ch, phase(t, DAUER3 - 0.7, 0.7));
 }

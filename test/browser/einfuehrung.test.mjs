@@ -47,6 +47,10 @@ test('Kommt beim ersten Start vor der Kamera, animiert, wischbar, überspringbar
   assert.equal(await seite(page), '1');
   await page.locator('.einf-punkte button').nth(2).click();
   assert.equal(await page.textContent('#einf-weiter'), 'Einsteigen');
+  assert.match(await page.textContent('.einf-absatz'), /Reel/);
+  await page.locator('.einf-punkte button').nth(0).click();
+  assert.match(await page.textContent('.einf-absatz'), /10 Fotos aus der Mediathek/);
+  await page.locator('.einf-punkte button').nth(2).click();
   // Überspringen führt zur Kamera-Freigabe
   await page.click('#einf-ueberspringen');
   await page.waitForSelector('.freigabe:not([hidden])');

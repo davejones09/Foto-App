@@ -8,7 +8,7 @@ export const T = {
   einfuehrung: [
     {
       titel: 'Eine Reise, ein Bild.',
-      text: 'Jedes Foto beginnt genau dort, wo das letzte aufhört. So wird aus deinem Urlaub eine einzige Strecke ohne Schnitt.',
+      text: 'Jedes Foto beginnt genau dort, wo das letzte aufhört. Fotografier unterwegs oder hol bis zu 10 Fotos aus der Mediathek: Die App sucht die Reihenfolge, die am besten passt.',
     },
     {
       titel: 'Anschluss suchen.',
@@ -16,14 +16,14 @@ export const T = {
     },
     {
       titel: 'Endstation: eine lange Strecke.',
-      text: 'Am Ende fährst du durch alles durch. Als Karussell für Instagram, als Video oder als ein langes Bild.',
+      text: 'Am Ende fährst du durch alles durch: als Reel für Instagram, als Karussell oder als ein langes Bild.',
     },
   ],
   einfUeberspringen: 'Überspringen',
   einfLos: 'Einsteigen',
   einfOeffnen: 'So funktioniert\'s',
   einfKarussell: 'Karussell',
-  einfFahrt: 'Fahrt',
+  einfReel: 'Reel',
 
   kameraText: 'Hier geht\'s nur mit Kamera. Deine Fotos bleiben auf deinem iPhone.',
   kameraKnopf: 'Kamera freigeben',
