@@ -91,7 +91,7 @@ Für Fotos, die schon gemacht sind, etwa mit der Lumix.
 - Jedes Foto wird einzeln geöffnet und sofort gesichert.
 - **Fotos bleiben ganz.** Ein Serienhalt behält sein Seitenverhältnis (feste Höhe 1620, eigene Breite) und wird nicht gezoomt. Nur was schmaler als 0,7 oder breiter als 2:1 ist, wird beschnitten, und zwar um das Motiv herum. Das Motiv findet eine Karte über Schärfe: Ein unscharfer Vordergrund oder gleichmäßige Textur wie Meer zählt nicht.
 - Die App sucht die beste Reihenfolge, bewertet nach den vollen Fotos. Hat die Strecke schon Halte, schließt die Serie an den letzten an. Alternativ „Nach Aufnahmezeit“: Die Reihenfolge folgt dem Aufnahmedatum.
-- **Übergang zwischen Serienfotos:** kein weiches Überblenden, sondern ein harter Schnitt am Faden. Dafür ein weiter Farbverlauf über 85 % des neuen Fotos. Treffen zwei Linien fast aufeinander (höchstens 8 % der Höhe auseinander), wird das neue Foto sanft verbogen, voll am Übergang und auslaufend bis 45 % seiner Breite. Der vorherige Halt bleibt unangetastet.
+- **Übergang zwischen Serienfotos:** derselbe wie bei jedem Halt (siehe Gestaltung, Grundregel). Weich, aber nur in der Überlappung. Treffen zwei Linien fast aufeinander (höchstens 3 % der Höhe auseinander), werden sie innerhalb der Überlappung sanft zueinander gebogen. Beide Fotos bleiben außerhalb der Überlappung, wie sie sind.
 - Vorschau vor dem Bauen: Vorschaubilder mit Werten, Ziehen sortiert um, × entfernt. Antippen öffnet das Feinjustieren: optional zoomen und verschieben, Standard ist das ganze Foto, Antippen setzt das Motiv. Erst „Bauen“ rechnet die volle Auflösung, mit Fortschritt. Ein Abbruch verliert kein Foto.
 - In der Blindfahrt bleibt es beim einzelnen Foto.
 
@@ -143,6 +143,7 @@ Wer nach Einführung und Schritt 3 die Idee nicht verstanden hat, dem hat der Er
 ## Gestaltung
 
 - **Das Foto ist der Held.** Die Oberfläche tritt zurück und verfälscht die Farbwahrnehmung nicht.
+- **Grundregel: Fotos werden außerhalb des Übergangs nicht verändert.** Fotografen stecken Stunden in die Bearbeitung. Ein Halt ist außerhalb der Überlappung das unveränderte Original: keine Farbangleichung, kein Verbiegen, keine Option dafür. Nur in der Überlappung wird weich überblendet, und auch dort gehen beide Ränder exakt ins Original über. Fotos in Display P3 bleiben P3, nichts wird beim Import still umgerechnet. Für Instagram werden die Ausgaben sauber nach sRGB umgerechnet.
 - **Farben:** fast schwarzer Grund (`#0E0F10`), Signalgelb (`#FFD400`) als einziger Akzent, helles Grau für Text. Signalrot und Signalgrün nur für Signal und Marken. Der Fahrplan ist die einzige große gelbe Fläche.
 - **Schrift:** Systemschrift. Ziffern in `ui-monospace` mit Tabellenziffern, damit der Wert beim Rechnen nicht springt.
 - **Bedienung:** einhändig, unter Sonne lesbar, Trefferflächen mindestens 44 pt, sichere Bereiche (`safe-area-inset`) beachten. Im Querformat erscheint ein kurzer Hinweis zum Drehen.
@@ -151,4 +152,4 @@ Wer nach Einführung und Schritt 3 die Idee nicht verstanden hat, dem hat der Er
 
 ## Bewusst nicht drin
 
-Konten, Cloud, Filter, KI-Bildgenerierung, soziale Funktionen. Die Linien sollen echt sein: Es wird nichts erfunden oder dazugemalt, nur angeglichen und entlang des Fadens überblendet.
+Konten, Cloud, Filter, KI-Bildgenerierung, soziale Funktionen. Die Linien sollen echt sein: Es wird nichts erfunden oder dazugemalt, nur in der Überlappung entlang des Fadens überblendet. Eine Farbangleichung der Fotos gibt es nicht, auch nicht als Option.

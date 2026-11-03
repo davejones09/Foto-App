@@ -99,6 +99,7 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Angehalten:** Angehalten. {n} Fotos warten noch.
 - **Beim Start und nach dem Verlassen der Serie:** Eine Serie aus der Mediathek wartet noch. · Später · Weiter
 - **Fehler beim Bauen:** Das Nähen hat nicht geklappt. Tippe nochmal auf Bauen.
+- **Farbprofil umgerechnet (selten, etwa Adobe RGB):** {n} Fotos haben das Farbprofil {profil}. Nahtlos rechnet sie nach {raum} um.
 
 ## Feinjustieren
 
@@ -110,6 +111,10 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Leer:** Noch kein Halt. Zeit für die Abfahrt.
 - **Kopfzeile:** {name} · {n} Halte
 - **Knöpfe:** Fahrplan · Ausfahrt · Zum Sucher
+- **Alte Strecke (einmal je Start):** Diese Strecke ist noch mit Farbangleichung genäht. Neu nähen lässt deine Fotos unverändert und rechnet nur die Übergänge neu. · Später · Neu nähen
+- **Neu nähen, Rückfrage:** {n} Übergänge neu rechnen? Deine Fotos bleiben erhalten. Die Fotos sehen danach aus wie das Original, nur in den Übergängen wird überblendet. · Abbrechen · Neu nähen
+- **Während:** Übergänge werden neu gerechnet … {p} %
+- **Fertig:** Fertig. Die Strecke ist neu genäht. · mit Fehlern: Fertig. {n} Halte ließen sich nicht neu rechnen und bleiben, wie sie waren.
 
 ## Strecken
 
@@ -180,6 +185,7 @@ Endstation
 - **Speicher voll:** Der Speicher ist voll. Sichere die Strecke und lösche eine alte.
 - **Kamera weg:** Die Kamera antwortet nicht. · Neu starten
 - **Import scheitert:** Dieses Foto lässt sich nicht öffnen. Versuch ein anderes.
+- **Farbprofil umgerechnet (selten, etwa Adobe RGB):** Das Foto hat das Farbprofil {profil}. Nahtlos rechnet es nach {raum} um.
 - **Teilen scheitert:** Teilen hat nicht geklappt. · Stattdessen speichern
 - **Querformat:** Bitte hochkant halten.
 - **Allgemein:** Da ist was schiefgelaufen. Deine Fotos sind sicher. · Neu laden
@@ -187,5 +193,6 @@ Endstation
 ## Diagnose
 
 - **Titel:** Diagnose
-- **Knöpfe:** Bericht kopieren · Faden und Teilwerte zeigen · Schließen
+- **Knöpfe:** Bericht kopieren · Foto vergleichen · Faden und Teilwerte zeigen · Schließen
+- **Während des Vergleichs:** Foto wird wie beim Bauen durchgerechnet …
 - **Nach dem Kopieren:** Kopiert. In Claude Code einfügen.

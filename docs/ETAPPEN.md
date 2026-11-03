@@ -81,11 +81,23 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 - Halte mit eigener Breite, Serienfotos ganz (nur außerhalb 0,7 bis 2:1 um das Motiv beschnitten), Format 4 mit Breite 1296 für alte Halte
 - Motivkarte über Schärfe, Motiv per Antippen
-- Serien-Übergang ohne Blur: harter Schnitt, weiter Farbverlauf, Linien verbiegen
+- Serien-Übergang mit Linien verbiegen (abgelöst durch „Fotos unverändert“)
 - Reihenfolge nach vollen Fotos, Feinjustieren statt Ausschnittwahl
 - Karussell mit Versatz gegen Grenzen im Motiv
 
-**Fertig, wenn:** Node-Tests Bandbreiten, Motivkarte (scharf gegen unscharf), Zuschnitt, Übergang (Biegung bis 8 %, harter Schnitt, Farbverlauf) und Karussell-Versatz prüfen und der Browser-Test eine Serie mit ganzen Fotos, Panorama-Zuschnitt und Feinjustieren baut.
+**Fertig, wenn:** Node-Tests Bandbreiten, Motivkarte (scharf gegen unscharf), Zuschnitt, Übergang und Karussell-Versatz prüfen und der Browser-Test eine Serie mit ganzen Fotos, Panorama-Zuschnitt und Feinjustieren baut.
+
+## Nachtrag: Fotos unverändert
+
+- Grundregel: Fotos werden außerhalb des Übergangs nicht verändert (CLAUDE.md, Feste Regeln)
+- Keine Farbangleichung mehr, weder Kamera noch Import noch Serie, auch keine Option
+- Neuer weicher Übergang statt Laplace-Naht, für alle Halte, Ränder exakt im Original
+- Linien biegen nur in der Überlappung und nur bis 3 % der Höhe
+- Farbprofil: erkennen, in Display P3 rechnen, toBlob prüfen und notfalls Profil einsetzen, JPEG 0,95, Ausgaben in sRGB
+- Diagnose „Foto vergleichen“: vorher gegen nachher außerhalb der Überlappung, mittlere und größte Abweichung je Kanal
+- Alte Strecken: nichts wird still neu gerechnet, „Neu nähen“ nur nach Rückfrage
+
+**Fertig, wenn:** Node-Tests zeigen, dass ein Halt außerhalb der Überlappung verlustfrei exakt das Original ist, die Naht an beiden Rändern ohne Stufe ins Original übergeht, nur bis 3 % gebogen wird und keine Stelle `angleichen` aufruft. Die Browser-Tests bauen eine P3-Serie (Profil bleibt, nach JPEG im Mittel höchstens 3 Stufen Abweichung, Karussell in sRGB), führen den Fotovergleich der Diagnose aus und zeigen, dass alte Strecken nur nach Rückfrage neu genäht werden.
 
 ## Streichliste, falls es knapp wird
 
@@ -122,6 +134,8 @@ Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest 
 - Ein Reel mit 15 Sekunden bauen, „In Fotos speichern“, in Instagram als Reel anlegen (nicht veröffentlichen müssen) und das Titelbild als Cover wählen.
 - Im Sucher „Idee“ antippen, einen Ort wählen, ein paar Ideen durchgehen. Das iPhone so halten, dass eine Linie knapp neben der Marke liegt, und prüfen, ob der Richtungshinweis stimmt.
 - Nach einem Update mit neuem Speicherformat: In der Diagnose müssen „Dateien“ mit plausibler Größe, „Beschädigte Halte: 0“ (oder die erwarteten) und „Lesetest: n von n Halten vollständig lesbar“ stehen. Danach ein Kamerafoto, einen Import und eine Serie bauen, die App ganz schließen, neu öffnen und die Strecke ansehen.
+- Fotos unverändert: Fünfmal auf die Versionsnummer tippen, „Foto vergleichen“, ein iPhone-Foto (Display P3) wählen, danach eins von der Lumix. Bei beiden muss „Ergebnis: in Ordnung“ stehen. In der Zeile „Farbe“ steht, ob P3 am iPhone nativ gespeichert wird. Bericht kopieren und an Claude geben.
+- Eine alte Strecke öffnen: Die App fragt „Neu nähen“. Erst „Später“, dann bei einer Teststrecke „Neu nähen“ und die Übergänge ansehen.
 - Fünfmal auf die Versionsnummer tippen und den Bericht kopieren. Er sollte in Claude Code einfügbar sein.
 
 ## Unterwegs
