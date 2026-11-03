@@ -46,6 +46,14 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Alles aus `KONZEPT.md` gebaut oder in `docs/ENTSCHEIDUNGEN.md` begründet gestrichen ist.
 
+## Nachtrag: Einführung
+
+- Drei Bildschirme vor der Kamera-Freigabe: was die App macht, wie ein Anschluss funktioniert, was am Ende rauskommt
+- Gezeichnete, animierte Beispiele, keine fremden Fotos, bei reduzierter Bewegung als Standbild
+- Überspringbar, nur beim ersten Start, in den Strecken wieder aufrufbar
+
+**Fertig, wenn:** Die Einführung im Browser-Test vor jeder Kamera-Anfrage erscheint, sich überspringen und wieder öffnen lässt und nach dem ersten Mal nicht mehr von selbst kommt. Geprüft an Screenshots jedes Bildschirms.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:
@@ -61,7 +69,7 @@ Nie streichen: Rohbild zuerst speichern, Offline-Betrieb, Diagnose, Sicherung, K
 
 ## Was David am Ende tun muss
 
-Schreibe David nach dem ersten Merge genau das, ohne das Konzept zu verraten:
+Schreibe David nach dem ersten Merge genau das:
 
 1. PR über „Create PR“ anlegen und auf GitHub mergen.
 2. Im Repository unter **Settings → Pages** als Quelle `Deploy from a branch`, Branch `main`, Ordner `/ (root)` wählen. Das ist nur einmal nötig.
@@ -70,9 +78,9 @@ Schreibe David nach dem ersten Merge genau das, ohne das Konzept zu verraten:
 
 ## Abnahme am iPhone
 
-Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest in etwa 15 Minuten durchgehen kann, ohne dass die Liste das Konzept verrät:
+Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest in etwa 15 Minuten durchgehen kann:
 
-- Einmal den Erstlauf der App durchspielen, ohne vorher etwas darüber zu lesen.
+- Die Einführung ansehen und den Erstlauf einmal durchspielen. Liegen schon Strecken auf dem iPhone, kommt die Einführung nicht von selbst: Strecken → „So funktioniert's“.
 - Flugmodus an, App aus dem App-Umschalter schließen, neu öffnen: Alles ist noch da und die Kamera läuft.
 - Während der Nutzung auf den Home-Bildschirm wechseln und zurück: Die Kamera kommt wieder.
 - Ein Foto aus der Mediathek holen, auch eines von der Lumix.

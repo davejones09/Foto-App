@@ -41,3 +41,12 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Pünktlichkeit** zählt nur Anschlüsse (ab dem zweiten Halt). Ohne Anschluss steht „–“ und kein Spruch.
 - **Blindfahrt:** Die Aufdeckung zeigt nur den Faden und den Stempel, kein Herauszoomen. Strecke, Leiste, Streckenvorschau und Ausfahrt bleiben bis „Ziel erreichen“ verdeckt. Das Finale spielt die Fahrt im Tempo Regionalexpress im Vollbild, Antippen überspringt.
 - **Linsenwechsel:** erscheint nur, wenn `enumerateDevices` nach der Freigabe mindestens zwei Kameras liefert, deren Name nicht nach Frontkamera klingt. Der Knopf zeigt „1/3“ usw. Nur am iPhone prüfbar.
+
+## Einführung (0.5.0)
+
+- **Die Überraschung ist vorbei.** Statt die Idee erst beim zweiten Foto zu zeigen, erklärt eine Einführung sie vorab in drei Bildschirmen. Die Spoiler-Regel ist aus `CLAUDE.md` gestrichen.
+- **Nur beim ersten Start** heißt: Die Einführung wurde noch nie gesehen oder übersprungen, und es liegt noch kein einziger Halt in der Datenbank. Wer die App schon benutzt hat, bekommt sie nach dem Update nicht ungefragt, kann sie aber in den Strecken über „So funktioniert's“ öffnen. Gemerkt wird das in `localStorage` und zusätzlich in der Datenbank.
+- **Reihenfolge beim ersten Start:** Installationshinweis (nur im Browser), Einführung, dann der Sucher mit der Kamera-Freigabe. Die Kamera wird erst nach der Einführung angefragt.
+- **Beispiele sind gezeichnet** (`src/ansichten/einfuehrung.mjs`): fünf einfache Szenen mit einer Linie auf gleicher Höhe (Meer, Café, Hafengeländer, Berg, Straße), weich verschmolzen wie im echten Band. Keine Fotos, keine Dateien, nichts aus dem Netz. Wert und Signal im Beispiel sind gespielt, nicht vom Bildkern gerechnet.
+- **Reduzierte Bewegung:** Ist sie im System eingestellt, zeigt jeder Bildschirm ein aussagekräftiges Standbild.
+- **Der geführte Erstlauf bleibt** wie gehabt. Seine Hinweise im Sucher passen auch nach der Einführung und helfen beim ersten echten Anschluss.

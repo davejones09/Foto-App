@@ -11,23 +11,15 @@ Lies vor der ersten Änderung in dieser Reihenfolge:
 5. `src/kern.mjs` und `test/kern.test.mjs`: der fertige, getestete Bildkern
 6. `docs/ENTSCHEIDUNGEN.md`: was vom Konzept abweicht und warum
 
-## Überraschung: nichts verraten
-
-David hat die Idee bewusst nicht erklärt bekommen. Er soll sie in der App selbst entdecken.
-
-- Erkläre ihm in deinen Antworten nicht, was die App macht oder wie sie funktioniert.
-- Halte Commit-Nachrichten, Branch-Namen und PR-Titel neutral, zum Beispiel „Etappe 1“. Die PR-Beschreibung nennt nur Tests und offene Punkte, nicht das Konzept.
-- Stelle ihm keine Fragen, die das Konzept verraten. Entscheide selbst, was du selbst entscheiden kannst.
-- Der Erstlauf muss ohne jedes Vorwissen funktionieren. Das ist die wichtigste Anforderung an die Oberfläche.
-- Fragt David ausdrücklich nach oder braucht er die Erklärung zum Beheben eines Problems, antworte ehrlich. Die Überraschung ist danach vorbei, das ist in Ordnung.
-
 ## So arbeitest du
 
 - Leg direkt los und warte nicht auf Freigaben. Baue die Etappen der Reihe nach.
 - Mach nach jeder Etappe: Tests laufen lassen, committen, pushen.
 - Antworte David locker, kurz und auf Deutsch, per Du.
 - Nenne am Ende jeder Sitzung nur: welche Etappen fertig sind, was du nicht testen konntest und was David jetzt tun muss.
-- Wichtige Entscheidungen, die vom Konzept abweichen, gehören in `docs/ENTSCHEIDUNGEN.md`. Diese Datei darf das Konzept verraten, weil David sie nicht lesen muss.
+- Wichtige Entscheidungen, die vom Konzept abweichen, gehören in `docs/ENTSCHEIDUNGEN.md`.
+- Einführung und Erstlauf müssen ohne jedes Vorwissen funktionieren. Das ist die wichtigste Anforderung an die Oberfläche.
+- Halte Commit-Nachrichten und PR-Titel kurz, zum Beispiel „Etappe 1“ oder „Einführung“.
 
 ## Aufräumen (erledigt)
 

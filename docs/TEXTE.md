@@ -9,6 +9,18 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Schritte:** Tippe auf Teilen. Wähle „Zum Home-Bildschirm“. Starte die App über das neue Icon.
 - **Link:** Trotzdem im Browser testen
 
+## Einführung (nur beim ersten Start, vor der Kamera-Freigabe)
+
+| Bildschirm | Titel | Text |
+|---|---|---|
+| 1 | Eine Reise, ein Bild. | Jedes Foto beginnt genau dort, wo das letzte aufhört. So wird aus deinem Urlaub eine einzige Strecke ohne Schnitt. |
+| 2 | Anschluss suchen. | Links im Sucher liegt das Ende deines letzten Fotos. Such etwas, das dort weitergeht, egal wo: Horizont, Tischkante, Geländer. Grün heißt: Das passt. |
+| 3 | Endstation: eine lange Strecke. | Am Ende fährst du durch alles durch. Als Karussell für Instagram, als Video oder als ein langes Bild. |
+
+- **Knöpfe:** Überspringen · Weiter · auf dem letzten Bildschirm Einsteigen
+- **Beschriftung im Beispiel:** Karussell · Fahrt
+- **Wieder öffnen (in den Strecken):** So funktioniert's
+
 ## Kamera-Freigabe
 
 - **Text:** Hier geht's nur mit Kamera. Deine Fotos bleiben auf deinem iPhone.

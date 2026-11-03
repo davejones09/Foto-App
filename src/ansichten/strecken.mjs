@@ -78,6 +78,7 @@ export async function neueStreckeFragen() {
 
 $('#sl-neu').addEventListener('click', neueStreckeFragen);
 $('#sl-einspielen').addEventListener('click', einspielenWaehlen);
+$('#sl-einfuehrung').addEventListener('click', () => zeige('einfuehrung', { danach: 'strecken' }));
 $('#sl-zurueck').addEventListener('click', () => zeige('strecke'));
 
 registriere('strecken', {

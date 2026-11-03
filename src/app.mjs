@@ -16,6 +16,7 @@ import './ansichten/strecke.mjs';
 import './ansichten/strecken.mjs';
 import './ansichten/ausfahrt.mjs';
 import './ansichten/fahrplan.mjs';
+import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
 
 texteEinsetzen();
 $('#version').textContent = 'v' + APP_VERSION;
@@ -110,7 +111,9 @@ async function start() {
     try { await offeneFertigstellen(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
   }
   await neuLaden();
-  await zeige('sucher');
+  // Beim allerersten Start kommt vor der Kamera-Freigabe die Einführung.
+  if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'sucher' });
+  else await zeige('sucher');
 }
 
 function weiterNachHinweis() {

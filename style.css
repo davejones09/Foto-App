@@ -68,6 +68,20 @@ button:active { filter: brightness(0.85); }
 .schritte { margin: 0 0 20px; padding-left: 24px; }
 .schritte li { margin: 6px 0; }
 
+/* Einführung */
+.einf-flaeche { position: relative; flex: 1; min-height: 240px; touch-action: pan-y; }
+.einf-bild { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.einf-text { padding: 8px 24px 0; min-height: 9.5em; flex: none; }
+.einf-titel { font-size: 24px; margin: 0 0 8px; }
+.einf-absatz { margin: 0; color: var(--text); font-size: 17px; }
+.einf-punkte { display: flex; justify-content: center; gap: 4px; flex: none; }
+.einf-punkte button { min-width: 32px; padding: 0; display: grid; place-items: center; }
+.einf-punkte button::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--aus); transition: background .2s, width .2s; }
+.einf-punkte button[aria-current="true"]::after { background: var(--gelb); width: 22px; border-radius: 4px; }
+.einf-knoepfe { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px 12px; flex: none; }
+.einf-knoepfe .haupt { min-width: 140px; min-height: 52px; font-size: 17px; }
+.sl-hilfe { text-align: center; margin: 0; flex: none; }
+
 /* Kopf mit Signal und Wert */
 .kopf { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: none; }
 .signal { display: flex; gap: 10px; height: 14px; transition: transform .3s; }

@@ -62,7 +62,9 @@ export const KAMERA = `
   malen();
   setInterval(malen, 33);
   const md = navigator.mediaDevices || (navigator.mediaDevices = {});
+  window.__gumAufrufe = 0;
   md.getUserMedia = async () => {
+    window.__gumAufrufe++;
     if (window.__kameraVerweigert) { const e = new Error('nein'); e.name = 'NotAllowedError'; throw e; }
     return c.captureStream(30); // jedes Mal ein frischer Stream, wie bei einer echten Kamera
   };
@@ -92,11 +94,13 @@ export async function warteAuf(page, fn, arg, timeout = 20000) {
   await page.waitForFunction(fn, arg, { timeout, polling: 100 });
 }
 
-// Öffnet die App, wählt "im Browser testen" und gibt die Kamera frei.
+// Öffnet die App, wählt "im Browser testen", überspringt die Einführung und gibt die Kamera frei.
 export async function oeffne(page, url) {
   await page.goto(url);
   const trotzdem = page.locator('#trotzdem');
   if (await trotzdem.isVisible().catch(() => false)) await trotzdem.click();
+  await warteAuf(page, () => ['sucher', 'einfuehrung'].includes(document.body.dataset.ansicht));
+  if (await page.evaluate(() => document.body.dataset.ansicht === 'einfuehrung')) await page.click('#einf-ueberspringen');
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
   const frei = page.locator('#freigeben');
   try { await frei.waitFor({ state: 'visible', timeout: 1500 }); await frei.click(); } catch {}

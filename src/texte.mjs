@@ -5,6 +5,26 @@ export const T = {
   installSchritte: ['Tippe auf Teilen.', 'Wähle „Zum Home-Bildschirm“.', 'Starte die App über das neue Icon.'],
   installTrotzdem: 'Trotzdem im Browser testen',
 
+  einfuehrung: [
+    {
+      titel: 'Eine Reise, ein Bild.',
+      text: 'Jedes Foto beginnt genau dort, wo das letzte aufhört. So wird aus deinem Urlaub eine einzige Strecke ohne Schnitt.',
+    },
+    {
+      titel: 'Anschluss suchen.',
+      text: 'Links im Sucher liegt das Ende deines letzten Fotos. Such etwas, das dort weitergeht, egal wo: Horizont, Tischkante, Geländer. Grün heißt: Das passt.',
+    },
+    {
+      titel: 'Endstation: eine lange Strecke.',
+      text: 'Am Ende fährst du durch alles durch. Als Karussell für Instagram, als Video oder als ein langes Bild.',
+    },
+  ],
+  einfUeberspringen: 'Überspringen',
+  einfLos: 'Einsteigen',
+  einfOeffnen: 'So funktioniert\'s',
+  einfKarussell: 'Karussell',
+  einfFahrt: 'Fahrt',
+
   kameraText: 'Hier geht\'s nur mit Kamera. Deine Fotos bleiben auf deinem iPhone.',
   kameraKnopf: 'Kamera freigeben',
   kameraVerweigert: 'Ohne Kamera bleibt der Zug stehen. Erlaube den Kamerazugriff in den iPhone-Einstellungen bei Safari und öffne die App neu.',

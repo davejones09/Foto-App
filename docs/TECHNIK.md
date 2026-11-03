@@ -15,7 +15,7 @@ src/
   speicher.mjs        IndexedDB
   band.mjs            Strecke anzeigen, Kacheln laden
   ausgabe.mjs         Karussell, Fahrt, Gesamtbild, Sicherung
-  ansichten/          Sucher, Aufdeckung, Feinjustieren, Strecke, Fahrplan, Ausfahrt
+  ansichten/          Einführung, Sucher, Aufdeckung, Feinjustieren, Strecke, Fahrplan, Ausfahrt
 vendor/               mp4-muxer, fflate (je eine Datei)
 test/                 Kern- und Browser-Tests
 docs/                 Konzept, Technik, Etappen, Texte, Entscheidungen

@@ -38,6 +38,20 @@
   </div>
 </section>
 
+<!-- Einführung (erster Start, später über Strecken) -->
+<section id="v-einfuehrung" class="ansicht" hidden>
+  <div class="einf-flaeche"><canvas class="einf-bild" aria-hidden="true"></canvas></div>
+  <div class="einf-text" aria-live="polite">
+    <h1 class="einf-titel"></h1>
+    <p class="einf-absatz"></p>
+  </div>
+  <div class="einf-punkte"></div>
+  <footer class="einf-knoepfe">
+    <button class="link" id="einf-ueberspringen" data-t="einfUeberspringen"></button>
+    <button class="haupt" id="einf-weiter" data-t="weiter"></button>
+  </footer>
+</section>
+
 <!-- Sucher -->
 <section id="v-sucher" class="ansicht" hidden>
   <header class="kopf">
@@ -174,6 +188,7 @@
   </header>
   <p class="sl-leer" hidden data-t="streckenLeer"></p>
   <div class="sl-liste"></div>
+  <p class="sl-hilfe"><button class="link" id="sl-einfuehrung" data-t="einfOeffnen"></button></p>
   <footer class="knopfreihe">
     <button class="neben2" id="sl-einspielen" data-t="einspielen"></button>
     <button class="haupt" id="sl-neu" data-t="neueStrecke"></button>

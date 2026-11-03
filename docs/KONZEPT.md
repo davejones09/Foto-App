@@ -40,7 +40,17 @@ Die App nutzt Bahnsprache, weil David vom Fach ist. Sie bleibt dabei trocken und
 
 ## Bildschirme
 
-### 1. Sucher (Hauptbildschirm, immer der Einstieg)
+### 0. Einführung (nur beim ersten Start)
+
+Drei kurze Bildschirme vor der Kamera-Freigabe, jeder mit einem gezeichneten, animierten Beispiel und zwei Sätzen. Keine fremden Fotos.
+
+1. **Was die App macht:** Drei einzelne Fotos rücken zusammen und verschmelzen zu einer Strecke, die dann weiterfährt.
+2. **Wie ein Anschluss funktioniert:** Ein Sucher mit Rest. Die Linie im Kamerabild wandert, Wert und Signal steigen, die Marke wird grün, dann Auslösen, Faden und Stempel.
+3. **Was am Ende rauskommt:** Die ganze Strecke, in 4:5-Bilder geschnitten, daneben das Karussell und die Fahrt.
+
+„Überspringen“ ist immer da, Wischen wechselt die Bildschirme. Später lässt sich die Einführung in den Strecken über „So funktioniert's“ wieder öffnen.
+
+### 1. Sucher (Hauptbildschirm, danach immer der Einstieg)
 
 - Hochformat. Großer 4:5-Rahmen mit dem Kamerabild.
 - Beim ersten Halt ist der Sucher frei.
@@ -97,13 +107,13 @@ Eine Option pro Strecke für zwei Personen: Man sieht immer nur den Rest, nie di
 
 ## Erstlauf
 
-David weiß nicht, was die App macht. Es gibt deshalb keine Erklärseiten. Er lernt sie beim Benutzen, mit knappen Sätzen aus `TEXTE.md`:
+Die Einführung zeigt die Idee vorab in drei Bildschirmen. Danach lernt man die App beim Benutzen, mit knappen Sätzen aus `TEXTE.md`:
 
 1. **Foto 1:** Die App bittet nur um irgendein Foto.
 2. **Danach:** Der Rest erscheint im Sucher und wird in einem Satz erklärt. Die App fordert auf, etwas zu suchen, das hier weitergeht. Marken und Signal werden kurz hervorgehoben.
-3. **Foto 2:** Die erste Aufdeckung läuft langsam, etwa 3 Sekunden, und zeigt erstmals das durchgehende Bild. Erst jetzt fällt der Satz, der alles erklärt.
+3. **Foto 2:** Die erste Aufdeckung läuft langsam, etwa 3 Sekunden, und zeigt zum ersten Mal mit eigenen Fotos das durchgehende Bild. Danach kommt der Satz, der alles zusammenfasst.
 
-Wer nach Schritt 3 die Idee nicht verstanden hat, dem hat der Erstlauf nicht geholfen. Das ist das Abnahmekriterium.
+Wer nach Einführung und Schritt 3 die Idee nicht verstanden hat, dem hat der Erstlauf nicht geholfen. Das ist das Abnahmekriterium.
 
 ## Gestaltung
 

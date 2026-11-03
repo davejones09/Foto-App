@@ -16,7 +16,16 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   await page.waitForSelector('#v-install:not([hidden])');
   await bild(page, '01-installation');
   await page.click('#trotzdem');
+  // Einführung: drei Bildschirme, erst danach die Kamera
+  await page.waitForSelector('#v-einfuehrung:not([hidden])');
+  for (let i = 1; i <= 3; i++) {
+    await warteAuf(page, (n) => document.querySelector('#v-einfuehrung').dataset.seite === String(n), i);
+    await page.waitForTimeout(i === 2 ? 3300 : 3000);
+    await bild(page, `01-einfuehrung-${i}`);
+    await page.click('#einf-weiter');
+  }
   await page.waitForSelector('.freigabe:not([hidden])');
+  assert.equal(await page.evaluate(() => window.__gumAufrufe), 0, 'Kamera erst nach der Einführung');
   await bild(page, '02-freigabe');
   await page.click('#freigeben');
   await warteAuf(page, () => !document.querySelector('#ausloeser').disabled);
