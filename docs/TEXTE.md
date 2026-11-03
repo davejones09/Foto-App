@@ -115,8 +115,15 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Titel:** Ausfahrt
 - **Karussell:** Karussell · {n} Bilder für Instagram
 - **Mehrere Beiträge:** Passt nicht in einen Beitrag. Wird auf {t} Teile aufgeteilt.
-- **Fahrt:** Fahrt · Video · {Tempo} · {Dauer}
-- **Tempi:** Bummelzug · Regionalexpress · Sprinter
+- **Reel:** Reel · Video für Instagram · {Länge} s
+- **Längen:** 15 s · 30 s · 60 s · 90 s
+- **Abschnitt:** Von {Halt} bis {Halt}
+- **Tempo:** {n} Halte · Tempo {v} Pixel pro Sekunde
+- **Zu schnell:** Bei {Länge} s wird es zu schnell. Vorschlag: Halt {von} bis {bis}. · Übernehmen
+- **Schalter:** Endstation am Ende
+- **Nach dem Bauen:** Teilen · In Fotos speichern
+- **Hinweis:** In Instagram „Reel“ wählen. „In Fotos speichern“ legt Video und Titelbild ab, das Titelbild nimmst du als Cover.
+- **Kein MP4:** Dieses Gerät kann hier kein MP4 bauen.
 - **Gesamtbild:** Gesamtbild · {Breite} × {Höhe} Pixel
 - **Verkleinert:** Für das iPhone zu groß, deshalb auf {Breite} × {Höhe} verkleinert.
 - **Sicherung:** Sicherung · als Datei speichern
@@ -126,7 +133,7 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Fertig:** Teilen
 - **Abbruch:** Abgebrochen, weil die App in den Hintergrund ging. · Nochmal
 
-## Endstation (letztes Bild und Ende der Fahrt)
+## Endstation (letztes Karussellbild, Ende des Reels und des Finales)
 
 ```
 Endstation

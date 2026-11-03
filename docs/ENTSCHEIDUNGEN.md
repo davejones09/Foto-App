@@ -50,3 +50,13 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Beispiele sind gezeichnet** (`src/ansichten/einfuehrung.mjs`): fünf einfache Szenen mit einer Linie auf gleicher Höhe (Meer, Café, Hafengeländer, Berg, Straße), weich verschmolzen wie im echten Band. Keine Fotos, keine Dateien, nichts aus dem Netz. Wert und Signal im Beispiel sind gespielt, nicht vom Bildkern gerechnet.
 - **Reduzierte Bewegung:** Ist sie im System eingestellt, zeigt jeder Bildschirm ein aussagekräftiges Standbild.
 - **Der geführte Erstlauf bleibt** wie gehabt. Seine Hinweise im Sucher passen auch nach der Einführung und helfen beim ersten echten Anschluss.
+
+## Reel (0.7.0)
+
+- **Die Fahrt in der Ausfahrt heißt jetzt Reel.** Das Finale der Blindfahrt nutzt weiter die alte Fahrt mit Rampe und Regionalexpress-Tempo, unverändert.
+- **Tempo aus der Länge:** konstantes Tempo ab dem ersten Bild, am Ende 1,6 s gleichmäßiges Bremsen. So stimmt die Länge exakt und es gibt keinen Stillstand am Anfang. Bei eingeschalteter Endstation gehören deren 3 s zur gewählten Länge.
+- **Vorschlag bei zu hohem Tempo:** Der Anfang („Von“) bleibt, das Ende rückt vor. Es ist der längste Abschnitt, der unter 900 Pixeln pro Sekunde bleibt. Man kann trotzdem schneller bauen, der Vorschlag ist kein Zwang.
+- **Endstation im Reel** zeigt die Zahlen des gewählten Abschnitts, nicht der ganzen Strecke.
+- **Titelbild:** ohne Text. Mittig steht das Band in 1350 Pixeln Höhe, zentriert auf den Faden des besten Anschlusses im Abschnitt. Oben und unten bleibt dunkler Grund, damit Instagram es beliebig zuschneiden kann, ohne Bildinhalt zu verlieren.
+- **„In Fotos speichern“** öffnet das Teilen-Menü mit Video und Titelbild, dort „Sichern“ wählen. Einen direkten Weg in die Fotos-App gibt es für Web-Apps nicht. Scheitert das Teilen, gibt es den Download.
+- **Nur MP4:** Kann das Gerät weder per WebCodecs noch per `MediaRecorder` MP4 schreiben, ist das Reel ausgegraut, statt still ein WebM zu liefern.

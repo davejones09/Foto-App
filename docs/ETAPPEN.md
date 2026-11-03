@@ -54,6 +54,12 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Die Einführung im Browser-Test vor jeder Kamera-Anfrage erscheint, sich überspringen und wieder öffnen lässt und nach dem ersten Mal nicht mehr von selbst kommt. Geprüft an Screenshots jedes Bildschirms.
 
+## Nachtrag: Reel
+
+- Die Fahrt in der Ausfahrt wird zum Reel: Länge statt Tempo, Abschnitt von bis Halt, Vorschlag bei zu hohem Tempo, Start in Bewegung, weiches Ende, Endstation abwählbar, Titelbild, nur MP4, „Teilen“ und „In Fotos speichern“.
+
+**Fertig, wenn:** Ein 15-s-Reel eines Abschnitts im Browser-Test als MP4 mit 15 s Länge entsteht, sich ab dem ersten Bild bewegt, das Titelbild 1080 × 1920 misst und die Rechnung für Länge, Abschnitt, Vorschlag und Textränder in Node-Tests stimmt.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:

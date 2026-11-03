@@ -33,7 +33,8 @@ Die App nutzt Bahnsprache, weil David vom Fach ist. Sie bleibt dabei trocken und
 | Anschluss | die Bewertung von 0 bis 100, wie gut zwei Halte zusammenpassen |
 | Marken | kleine Dreiecke, die zeigen, auf welcher Höhe Linien aus dem Rest kommen |
 | Fahrplan | die Liste aller Halte |
-| Fahrt | das Video, das durch die Strecke fährt |
+| Reel | das Hochkant-Video, das durch die Strecke fährt |
+| Fahrt | das Finale der Blindfahrt, live abgespielt |
 | Ausfahrt | der Bereich zum Teilen und Sichern |
 
 „Anschluss“ ist nur Bewertungsbegriff, kein App-Name: International ist das Wort historisch belastet.
@@ -93,7 +94,7 @@ Sieht aus wie ein gelber Abfahrtsplan am Bahnsteig: schwarze Schrift auf Gelb, S
 ### 6. Ausfahrt
 
 - **Karussell:** Die Strecke in passgenau geschnittenen 4:5-Bildern für Instagram. Beim Wischen läuft das Bild nahtlos durch.
-- **Fahrt:** Hochkant-Video für Reels und Status, das durch die Strecke fährt. Tempo: Bummelzug, Regionalexpress, Sprinter. Die entstehende Länge steht direkt dabei.
+- **Reel:** Hochkant-Video (MP4) für Instagram, das durch die Strecke fährt. Man wählt die Länge (15, 30, 60 oder 90 Sekunden) und per Von-bis-Halt den Abschnitt, das Tempo ergibt sich. Über 900 Pixel pro Sekunde schlägt die App einen kürzeren Abschnitt vor. Das Reel ist ab dem ersten Bild in Bewegung, nur das Ende läuft weich aus. Die Endstation am Schluss ist per Schalter abwählbar. Dazu entsteht ein Titelbild in 1080 × 1920, dessen Wichtigstes in den mittleren 1080 × 1350 liegt. Danach: „Teilen“ und „In Fotos speichern“ mit dem Hinweis, es in Instagram als Reel auszuwählen.
 - **Gesamtbild:** Die ganze Strecke als ein langes Bild.
 - **Sicherung:** Die ganze Strecke als Datei fürs Backup und zum Wiedereinspielen.
 

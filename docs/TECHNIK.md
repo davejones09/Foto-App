@@ -14,7 +14,7 @@ src/
   kamera.mjs          Stream-Verwaltung
   speicher.mjs        IndexedDB
   band.mjs            Strecke anzeigen, Kacheln laden
-  ausgabe.mjs         Karussell, Fahrt, Gesamtbild, Sicherung
+  ausgabe.mjs         Karussell, Reel, Titelbild, Gesamtbild, Sicherung, Fahrt fürs Finale
   ansichten/          Einführung, Sucher, Aufdeckung, Feinjustieren, Strecke, Fahrplan, Ausfahrt
 vendor/               mp4-muxer, fflate (je eine Datei)
 test/                 Kern- und Browser-Tests
@@ -124,7 +124,16 @@ Jede Ausgabe läuft mit Fortschrittsanzeige und über den LRU-Lader. Geteilt wir
 - Das letzte Bild ist selten voll. Der Rest der Strecke läuft dort in den dunklen Grund aus und trägt die Endstation (`TEXTE.md`).
 - Schafft iOS das Teilen vieler Dateien nicht auf einmal, in Portionen zu je 10 anbieten.
 
-### Fahrt
+### Reel
+
+- 1080 × 1920, 30 Bilder pro Sekunde, H.264 als MP4. Ohne MP4-Weg (WebCodecs oder `MediaRecorder` mit `video/mp4`) gibt es kein Reel, nie WebM.
+- Länge 15, 30, 60 oder 90 s. Abschnitt von Halt a bis b: Bandbereich `a × 933` bis `b × 933 + 1296`. Weg = Bereich × 1920/1620 − 1080.
+- Bewegung: ab dem ersten Bild mit vollem Tempo, die letzten 1,6 s bremsen gleichmäßig auf null. Mit Endstation bleiben am Ende 3 s für die Einblendung. Tempo = Weg / (Bewegungszeit − 0,8 s).
+- Über 900 Pixel pro Sekunde: Vorschlag des längsten Abschnitts ab „Von“, der darunter bleibt.
+- Texte im Reel: oben und unten mindestens 250, links und rechts mindestens 60 Pixel Abstand (`endstationLayout`, Test).
+- Titelbild: Band in 1350 Pixel Höhe mittig, zentriert auf den besten Anschluss im Abschnitt, außen Grund.
+
+### Fahrt (Finale der Blindfahrt, unverändert)
 
 - 1080 × 1920, 30 Bilder pro Sekunde, H.264. Das Band wird auf die volle Höhe skaliert (Faktor 1920 / 1620). Weiche Beschleunigung am Anfang und Ende, je 1,5 Sekunden. Ganz am Ende die Endstation.
 - Tempo: Bummelzug 220, Regionalexpress 450, Sprinter 900 Pixel pro Sekunde. Länge vorab anzeigen.

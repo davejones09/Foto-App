@@ -124,6 +124,16 @@ test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', asy
   assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Karussell · 37 Bilder für Instagram');
   assert.match(await page.locator('.af-punkt').nth(0).textContent(), /Wird auf 2 Teile aufgeteilt\./);
   assert.match(await page.locator('.af-punkt').nth(2).textContent(), /Für das iPhone zu groß, deshalb auf \d+ × \d+ verkleinert\./);
+  // Reel über 50 Halte in 15 s wäre zu schnell: Vorschlag eines kürzeren Abschnitts
+  const reel = page.locator('.af-punkt').nth(1);
+  await reel.locator('.af-laengen button', { hasText: '15 s' }).click();
+  await reel.locator('.af-vorschlag').waitFor();
+  assert.match(await reel.locator('.af-vorschlag').textContent(), /^Bei 15 s wird es zu schnell\. Vorschlag: Halt 1 bis \d+\./);
+  await reel.locator('.af-vorschlag-ok').click();
+  assert.ok(await reel.locator('.af-vorschlag').isHidden());
+  const bis = Number(await reel.locator('select').nth(1).inputValue());
+  assert.ok(bis > 0 && bis < 49, `bis ${bis}`);
+  await page.screenshot({ path: `${ERGEBNISSE}/e4-reel-vorschlag.png` });
   await page.screenshot({ path: `${ERGEBNISSE}/e4-ausfahrt-50.png` });
   assert.deepEqual(fehler, []);
   await ctx.close();

@@ -230,6 +230,12 @@ button:active { filter: brightness(0.85); }
 .af-tempi { display: flex; border: 1px solid var(--linie); border-radius: 12px; overflow: hidden; }
 .af-tempi button { flex: 1; border-radius: 0; padding: 0 6px; font-size: 14px; }
 .af-tempi button[aria-pressed="true"] { background: var(--text); color: #0e0f10; }
+.af-reel { display: flex; flex-direction: column; gap: 10px; }
+.af-abschnitt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 14px; color: var(--text2); }
+.af-wahl { font: inherit; font-size: 15px; color: var(--text); background: var(--grund); border: 1px solid var(--linie); border-radius: 10px; min-height: 44px; padding: 0 8px; min-width: 0; width: 100%; }
+.af-tempo { font: 13px var(--mono); }
+.af-vorschlag { color: var(--gelb) !important; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.af-hinweis { color: var(--text2) !important; font-size: 13px !important; }
 .balken { height: 6px; background: var(--linie); border-radius: 3px; overflow: hidden; }
 .balken i { display: block; height: 100%; width: 0; background: var(--gelb); }
 
