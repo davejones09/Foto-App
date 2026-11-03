@@ -292,6 +292,50 @@ export function heldKarp(W, WS = null) {
   return weg.reverse();
 }
 
+// Ab 13 Fotos wird Held-Karp zu groß (2^n · n Zustände). Dann eine Näherung: gierig von jedem
+// möglichen Anfang aus, danach Teilstücke verschieben und umdrehen, solange es besser wird.
+export const EXAKT_BIS = 12;
+
+export function naeherung(W, WS = null) {
+  const n = W.length;
+  const summe = (p) => p.reduce((s, x, k) => s + (k ? W[p[k - 1]][x] : WS ? WS[x] : 0), 0);
+  let best = null;
+  let bestWert = -Infinity;
+  for (let a = 0; a < n; a++) {
+    const weg = [a];
+    const frei = new Set([...Array(n).keys()].filter((x) => x !== a));
+    while (frei.size) {
+      const j = weg[weg.length - 1];
+      let k = -1;
+      for (const x of frei) if (k < 0 || W[j][x] > W[j][k]) k = x;
+      weg.push(k);
+      frei.delete(k);
+    }
+    const w = summe(weg);
+    if (w > bestWert) { bestWert = w; best = weg; }
+  }
+  let besser = true;
+  for (let runde = 0; besser && runde < 50; runde++) {
+    besser = false;
+    for (let i = 0; i < n; i++) {
+      for (let laenge = 1; laenge <= 3 && i + laenge <= n; laenge++) {
+        const stueck = best.slice(i, i + laenge);
+        const rest = [...best.slice(0, i), ...best.slice(i + laenge)];
+        for (const teil of [stueck, stueck.slice().reverse()]) {
+          for (let j = 0; j <= rest.length; j++) {
+            const neu = [...rest.slice(0, j), ...teil, ...rest.slice(j)];
+            const w = summe(neu);
+            if (w > bestWert + 1e-9) { bestWert = w; best = neu; besser = true; }
+          }
+        }
+      }
+    }
+  }
+  return best;
+}
+
+export const besteReihenfolge = (W, WS = null) => (W.length <= EXAKT_BIS ? heldKarp(W, WS) : naeherung(W, WS));
+
 // --- Planer mit Zwischenspeicher für Paarwerte ---
 export class SerienPlaner {
   constructor() {
@@ -370,7 +414,7 @@ export class SerienPlaner {
         return best;
       });
     }
-    return n ? heldKarp(W, WS).map((i) => ids[i]) : [];
+    return n ? besteReihenfolge(W, WS).map((i) => ids[i]) : [];
   }
 
   // Viterbi: beste Ausschnitte entlang der festen Kette (Anschlusswerte minus Ausschnittkosten).

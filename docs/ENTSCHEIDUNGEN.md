@@ -80,3 +80,12 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Kontrast hat Vorrang**, solange die passende Kontrast-Idee in dieser Strecke noch nicht kam.
 - **Richtung ab 3 % Abstand:** Darunter wird die Marke ohnehin grün. Über 12 % ist es kein „knapp daneben“ mehr. Der Hinweis erscheint erst nach drei gleichen Messungen, damit er nicht flackert. Er hat Vorrang vor Tipps und ruht, solange das Ideen-Feld offen ist.
 - **Tipps bei niedrigem Wert** kommen jetzt aus der Ideenquelle. Die alten fünf Tipps sind dort allgemeine Ideen mit der niedrigsten Priorität.
+
+## Fehler beim Bauen einer Serie (0.9.1)
+
+- **Problem:** Scheiterte `fertigstellen()` einmal, blieb ein Halt ohne Bild zurück. Jeder weitere Druck auf „Bauen“ machte ein weiteres Foto zum Halt und scheiterte mit „Vorgänger ist nicht fertig“. Erst ein Neustart reparierte es.
+- **Lösung:** „Bauen“ stellt zuerst alle offenen Halte fertig und fasst kein neues Foto an, solange das nicht klappt. Jeder Halt bekommt automatisch einen zweiten Versuch, mit frisch aus der Datenbank gelesenen Daten. Die Meldung sagt deshalb ehrlich „Tippe nochmal auf Bauen“.
+- **Ein dauerhaft kaputter Halt** (Rohbild unlesbar) blockiert die Serie, bis er nachgerechnet werden kann. Die wartenden Fotos bleiben unberührt. Streichen lässt sich ein solcher Halt über die normale Aufdeckung nicht. Das ist bewusst so, weil das Rohbild der einzige Beleg ist. Taucht der Fall am iPhone auf, braucht es eine eigene Lösung.
+- **Worker mit Zeitgrenze und Neustart**, Planer und Sucher-Rest bauen sich danach selbst wieder auf. In Tests lässt sich die Zeitgrenze über `localStorage` (`nahtlos-test-zeitgrenze`) verkürzen.
+- **Die Erinnerung an eine wartende Serie** kommt beim Start und beim Verlassen der Serien-Ansicht. Sie hat „Später“ und verschwindet nach 10 s, damit sie Auslöser und Versionsnummer nicht verdeckt.
+- **Mehr als 10 Fotos** entstehen, wenn man zu einer wartenden Serie nachlegt. Bis 12 Fotos bleibt die Reihenfolge exakt, darüber rechnet eine Näherung, weil Held-Karp sonst zu viel Speicher braucht.

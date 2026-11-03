@@ -112,3 +112,35 @@ export async function ausloesen(page) {
   await page.click('#ausloeser');
   await warteAuf(page, (n) => window.nahtlos.zustand().fertig > n, vorher, 30000);
 }
+
+// Testfoto im Browser zeichnen: Linie links flach auf a, rechts flach auf b.
+export async function fotoJpeg(page, { w = 1600, h = 1200, a, b, oben, unten, seed = 1 }) {
+  const b64 = await page.evaluate(async ({ w, h, a, b, oben, unten, seed }) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const k = c.getContext('2d');
+    k.fillStyle = oben;
+    k.fillRect(0, 0, w, h);
+    k.beginPath();
+    k.moveTo(0, h);
+    for (let x = 0; x <= w; x += 8) {
+      const u = x / w;
+      const t = u < 0.3 ? 0 : u > 0.7 ? 1 : (u - 0.3) / 0.4;
+      k.lineTo(x, (a + (b - a) * t * t * (3 - 2 * t)) * h);
+    }
+    k.lineTo(w, h);
+    k.closePath();
+    k.fillStyle = unten;
+    k.fill();
+    let r = seed;
+    const z = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (let i = 0; i < 120; i++) { k.fillStyle = `rgba(255,255,255,${0.04 + z() * 0.05})`; k.fillRect(z() * w, z() * h, 30 + z() * 60, 6); }
+    const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.9));
+    const u = new Uint8Array(await blob.arrayBuffer());
+    let s = '';
+    for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768));
+    return btoa(s);
+  }, { w, h, a, b, oben, unten, seed });
+  return Buffer.from(b64, 'base64');
+}
+

@@ -3,16 +3,16 @@
 // beim Bauen in einer einzigen Transaktion zum Halt, ein Abbruch verliert deshalb nichts.
 import { Z, registriere, zeige, neuLaden } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
-import { $, $$, el, frage, melde, datumKurz, uhrzeit } from '../ui.mjs';
-import { auftrag } from '../rechner.mjs';
+import { $, $$, el, frage, melde, meldungWeg, warte, datumKurz, uhrzeit } from '../ui.mjs';
+import { auftrag, generation, WorkerFehler } from '../rechner.mjs';
 import { alsBlob, freigeben } from '../bild.mjs';
 import { dekodiere } from '../einfuhr.mjs';
 import { aufnahmezeitAusDatei } from '../exif.mjs';
 import { SERIE_MAX } from '../serie.mjs';
 import { vorbereiten, vorbereitenAusBlob, startMerkmale, transformFuer, zeichneAusschnitt } from '../serienwerk.mjs';
-import { fertigstellen } from '../naehwerk.mjs';
+import { offeneFertigstellen, fertigstellenMitWiederholung } from '../naehwerk.mjs';
 import * as db from '../speicher.mjs';
-import { protokolliere } from '../diagnose.mjs';
+import { protokolliere, serienEintrag } from '../diagnose.mjs';
 
 const v = $('#v-serie');
 const liste = $('.se-liste', v);
@@ -34,6 +34,33 @@ let baut = false;
 let anhalten = false;
 let mitStart = false;
 let beschaeftigt = false;
+let startRechts = null;
+let planerGen = -1; // Generation des Workers, in der der Serienplan zuletzt vollständig aufgebaut wurde
+
+const fehlerText = (err) => String(err && (err.message || err) || 'unbekannt');
+
+// Der Serienplan lebt im Worker. Startet der Worker neu (Absturz, Zeitgrenze), ist er weg:
+// Dann alle Fotos und den Start neu übergeben und den Auftrag einmal wiederholen.
+async function planerSicher() {
+  const g = generation();
+  if (g === planerGen) return;
+  await auftrag('serie-neu');
+  for (const [id, c] of cache) await auftrag('serie-foto', { foto: { id, zeit: c.rec.zeit, kandidaten: c.kandidaten } });
+  await auftrag('serie-start', { rechts: startRechts });
+  planerGen = g;
+}
+
+async function planer(typ, daten = {}) {
+  for (let versuch = 1; ; versuch++) {
+    try {
+      await planerSicher();
+      return await auftrag(typ, daten);
+    } catch (err) {
+      if (!(err instanceof WorkerFehler) || versuch >= 2) throw err;
+      protokolliere('serie', `Worker neu gestartet, Serienplan wird neu aufgebaut: ${fehlerText(err)}`);
+    }
+  }
+}
 
 function zeigeStatus(text, anteil = null) {
   status.textContent = text;
@@ -46,7 +73,7 @@ function knoepfe() {
   btnBauen.hidden = baut;
   btnVerwerfen.hidden = baut;
   btnAnhalten.hidden = !baut;
-  btnBauen.disabled = sperre || !plan || !fotos.length;
+  btnBauen.disabled = sperre || !((plan && fotos.length) || offeneHalte());
   for (const b of modusKnoepfe) {
     b.disabled = sperre;
     b.setAttribute('aria-pressed', String(!eigene && b.dataset.modus === modus));
@@ -57,7 +84,7 @@ function knoepfe() {
 async function fotoAufnehmen(rec, quelle) {
   const vorb = quelle ? vorbereiten(quelle) : await vorbereitenAusBlob(rec.roh);
   cache.set(rec.id, { rec, ...vorb });
-  await auftrag('serie-foto', { foto: { id: rec.id, zeit: rec.zeit, kandidaten: vorb.kandidaten } });
+  await planer('serie-foto', { foto: { id: rec.id, zeit: rec.zeit, kandidaten: vorb.kandidaten } });
 }
 
 // Neue Fotos: einzeln dekodieren, Rohbild sichern, dann prüfen.
@@ -68,14 +95,18 @@ async function einlesen(dateien) {
   let reihe = vorhanden.reduce((m, x) => Math.max(m, x.reihe + 1), 0);
   const serieId = db.neueId();
   let kaputt = 0;
+  const pause = vorhanden.length + auswahl.length >= 12 ? 500 : 100;
   for (let k = 0; k < auswahl.length; k++) {
+    if (k) await warte(pause); // dem Browser Zeit zum Aufräumen geben
     zeigeStatus(f(T.seriePruefen, { k: k + 1, n: auswahl.length }), k / auswahl.length);
     const datei = auswahl[k];
+    const t0 = performance.now();
     let c;
     try {
       c = await dekodiere(datei);
     } catch (err) {
       protokolliere('serie', err);
+      serienEintrag(`Einlesen ${k + 1}/${auswahl.length}: Fehler beim Öffnen: ${fehlerText(err)}`);
       kaputt++;
       continue;
     }
@@ -88,6 +119,7 @@ async function einlesen(dateien) {
       };
       await db.neuesSerienFoto(rec);
       await fotoAufnehmen(rec, c);
+      serienEintrag(`Einlesen ${k + 1}/${auswahl.length}: ${c.width}x${c.height}, ${Math.round(performance.now() - t0)} ms`);
     } finally {
       freigeben(c);
     }
@@ -103,7 +135,7 @@ async function laden() {
     if (!fotos.some((x) => x.id === id)) {
       freigeben(cache.get(id).proxy);
       cache.delete(id);
-      await auftrag('serie-entferne', { fotoId: id });
+      await planer('serie-entferne', { fotoId: id });
     }
   }
   const fehlend = fotos.filter((x) => !cache.has(x.id));
@@ -118,9 +150,9 @@ async function laden() {
   fotos = fotos.filter((x) => cache.has(x.id));
   if (!fotos.length) return false;
   const letzter = Z.halte[Z.halte.length - 1] || null;
-  const start = await startMerkmale(letzter).catch(() => null);
-  mitStart = !!start;
-  await auftrag('serie-start', { rechts: start });
+  startRechts = await startMerkmale(letzter).catch(() => null);
+  mitStart = !!startRechts;
+  await planer('serie-start', { rechts: startRechts });
   // Ein unterbrochener Bau hinterlässt seinen Plan: genau so weitermachen.
   if (fotos.every((x) => x.plan)) {
     eigene = fotos.slice().sort((a, b) => a.plan.pos - b.plan.pos).map((x) => x.id);
@@ -134,7 +166,7 @@ async function planen() {
   beschaeftigt = true;
   knoepfe();
   try {
-    const r = await auftrag('serie-plane', { modus, reihenfolge: eigene, fest });
+    const r = await planer('serie-plane', { modus, reihenfolge: eigene, fest });
     plan = r.plan;
   } finally {
     beschaeftigt = false;
@@ -211,7 +243,7 @@ async function entfernen(id) {
   const c = cache.get(id);
   if (c) freigeben(c.proxy);
   cache.delete(id);
-  await auftrag('serie-entferne', { fotoId: id });
+  await planer('serie-entferne', { fotoId: id });
   fotos = fotos.filter((x) => x.id !== id);
   if (eigene) eigene = eigene.filter((x) => x !== id);
   delete fest[id];
@@ -222,7 +254,7 @@ async function entfernen(id) {
 // --- Ausschnitt per Antippen wählen ---
 async function wahlOeffnen(id) {
   if (baut || beschaeftigt || !plan) return;
-  const r = await auftrag('serie-alternativen', { ordnung: plan.reihenfolge, wahl: plan.wahl, fotoId: id, anzahl: 8 });
+  const r = await planer('serie-alternativen', { ordnung: plan.reihenfolge, wahl: plan.wahl, fotoId: id, anzahl: 8 });
   const c = cache.get(id);
   const raster = $('.se-raster', wahlSchicht);
   const knoepfe = r.liste.map((alt) => {
@@ -253,34 +285,63 @@ for (const b of modusKnoepfe) {
 }
 
 // --- Bauen: volle Auflösung, Foto für Foto ---
+const offeneHalte = () => Z.halte.some((h) => !h.bild);
+
 async function bauen() {
-  if (baut || !plan) return;
+  if (baut || (!plan && !offeneHalte())) return;
   baut = true;
   anhalten = false;
   knoepfe();
-  const ordnung = plan.reihenfolge.slice();
-  const wahl = { ...plan.wahl };
+  const ordnung = plan ? plan.reihenfolge.slice() : [];
+  const wahl = plan ? { ...plan.wahl } : {};
+  const n = ordnung.length;
+  const pause = n >= 12 ? 500 : 150;
   let fehler = null;
   try {
-    // Plan zuerst sichern: Bricht der Bau ab, geht es mit derselben Reihenfolge weiter.
-    for (let k = 0; k < ordnung.length; k++) await db.aendereSerienFoto(ordnung[k], { plan: { pos: k, ausschnitt: wahl[ordnung[k]] } });
-    for (let k = 0; k < ordnung.length; k++) {
+    // 1. Was ein früherer Fehler halbfertig zurückließ, zuerst fertigstellen. Scheitert das,
+    //    bricht der Bau hier ab und fasst kein weiteres Foto an.
+    const offen = Z.halte.filter((h) => !h.bild).length;
+    if (offen) {
+      zeigeStatus(f(T.wirdGebaut, { p: 0 }), 0);
+      const t0 = performance.now();
+      try {
+        await offeneFertigstellen(Z.strecke.id);
+        serienEintrag(`Nachgeholt: ${offen} offene Halte, ${Math.round(performance.now() - t0)} ms`);
+      } catch (err) {
+        serienEintrag(`Nachholen gescheitert, kein weiteres Foto angefasst: ${fehlerText(err)}`);
+        throw err;
+      } finally {
+        await neuLaden();
+      }
+    }
+    // 2. Plan sichern: Bricht der Bau ab, geht es mit derselben Reihenfolge weiter.
+    for (let k = 0; k < n; k++) await db.aendereSerienFoto(ordnung[k], { plan: { pos: k, ausschnitt: wahl[ordnung[k]] } });
+    // 3. Foto für Foto: in einer Transaktion zum Halt, dann fertigstellen (frisch aus der Datenbank).
+    for (let k = 0; k < n; k++) {
       if (anhalten) break;
-      zeigeStatus(f(T.wirdGebaut, { p: Math.round((k / ordnung.length) * 100) }), k / ordnung.length);
+      if (k) await warte(pause); // dem Browser Zeit zum Aufräumen geben
+      zeigeStatus(f(T.wirdGebaut, { p: Math.round((k / n) * 100) }), k / n);
+      const t0 = performance.now();
       const id = ordnung[k];
       const c = cache.get(id);
       const t = transformFuer(c.kandidaten[wahl[id]], c.proxy, c.rec.rohB, c.rec.rohH);
-      const index = Z.halte.length;
-      const vor = Z.halte[index - 1] || null;
       const halt = await db.serienFotoZuHalt(id, {
-        id: db.neueId(), streckeId: Z.strecke.id, index, zeit: c.rec.aufnahme ?? Date.now(), quelle: 'import',
+        id: db.neueId(), streckeId: Z.strecke.id, index: Z.halte.length, zeit: c.rec.aufnahme ?? Date.now(), quelle: 'import',
         transform: t, bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '',
       });
-      Z.halte.push(halt);
       freigeben(c.proxy);
       cache.delete(id);
-      await auftrag('serie-entferne', { fotoId: id });
-      Z.halte[index] = await fertigstellen(halt, vor);
+      await neuLaden();
+      await planer('serie-entferne', { fotoId: id }).catch(() => {});
+      try {
+        await fertigstellenMitWiederholung(halt.id);
+      } catch (err) {
+        serienEintrag(`Foto ${k + 1}/${n}: Fehler nach ${Math.round(performance.now() - t0)} ms: ${fehlerText(err)}`);
+        throw err;
+      } finally {
+        await neuLaden();
+      }
+      serienEintrag(`Foto ${k + 1}/${n}: ${Math.round(performance.now() - t0)} ms`);
     }
   } catch (err) {
     fehler = err;
@@ -289,13 +350,21 @@ async function bauen() {
     baut = false;
   }
   await neuLaden();
-  if (fehler) melde(fehler instanceof db.SpeicherVoll ? T.speicherVoll : T.naehFehler);
+  const meldung = fehler instanceof db.SpeicherVoll ? T.speicherVoll : T.serieNaehFehler;
+  if (fehler) melde(meldung);
   const rest = await db.serienFotos(Z.strecke.id);
   if (!rest.length && !fehler) { zeige('strecke'); return; }
   plan = null;
-  if (!(await laden())) { zeige('strecke'); return; }
+  if (!(await laden())) {
+    if (!fehler) { zeige('strecke'); return; }
+    // Nur noch der halbfertige Halt ist offen: Bauen bleibt möglich und holt ihn nach.
+    liste.replaceChildren();
+    zeigeStatus(meldung);
+    knoepfe();
+    return;
+  }
   await planen();
-  zeigeStatus(f(T.serieAngehalten, { n: rest.length }));
+  zeigeStatus(fehler ? meldung : f(T.serieAngehalten, { n: rest.length }));
 }
 
 btnBauen.addEventListener('click', () => bauen());
@@ -310,12 +379,13 @@ btnVerwerfen.addEventListener('click', async () => {
   for (const x of await db.serienFotos(Z.strecke.id)) await db.loescheSerienFoto(x.id);
   for (const c of cache.values()) freigeben(c.proxy);
   cache.clear();
-  await auftrag('serie-neu');
+  planerGen = -1;
   zeige('sucher');
 });
 
 registriere('serie', {
   async betreten({ dateien = null } = {}) {
+    meldungWeg(); // eine stehende Erinnerung würde sonst die Knöpfe verdecken
     plan = null;
     eigene = null;
     fest = {};
@@ -324,7 +394,7 @@ registriere('serie', {
     beschaeftigt = true;
     knoepfe();
     try {
-      if (!cache.size) await auftrag('serie-neu');
+      if (!cache.size) planerGen = -1;
       if (dateien) await einlesen(dateien);
       const da = await laden();
       beschaeftigt = false;
@@ -345,7 +415,7 @@ registriere('serie', {
 export async function serieErinnern() {
   try {
     if (!Z.strecke || Z.strecke.blind && !Z.strecke.ziel) return;
-    if ((await db.serienFotos(Z.strecke.id)).length) melde(T.serieWartet, [{ text: T.serieOeffnen, aktion: () => zeige('serie') }]);
+    if ((await db.serienFotos(Z.strecke.id)).length) melde(T.serieWartet, [{ text: T.spaeter, haupt: false }, { text: T.serieOeffnen, aktion: () => zeige('serie') }], 10000);
   } catch (err) {
     protokolliere('serie', err);
   }

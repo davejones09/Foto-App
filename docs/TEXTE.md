@@ -97,7 +97,8 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Zu viele:** Höchstens 10 Fotos. Die ersten 10 sind dabei.
 - **Kaputte Dateien:** {n} Fotos ließen sich nicht öffnen.
 - **Angehalten:** Angehalten. {n} Fotos warten noch.
-- **Beim Start:** Eine Serie aus der Mediathek wartet noch. · Weiter
+- **Beim Start und nach dem Verlassen der Serie:** Eine Serie aus der Mediathek wartet noch. · Später · Weiter
+- **Fehler beim Bauen:** Das Nähen hat nicht geklappt. Tippe nochmal auf Bauen.
 
 ## Feinjustieren
 

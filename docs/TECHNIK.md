@@ -173,7 +173,9 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 4. **Paarwert:** Nachbildung von `analysiere` über Profile: Zeilenfarben nach Angleichung, Linientreffer eng und weit, Struktur. Im Worker zwischengespeichert.
 5. **Reihenfolge:** Held-Karp exakt über die Fotos (bei 10 Fotos rund 100 000 Schritte), Kantengewicht = bester Paarwert der je 10 günstigsten Ausschnitte minus halbe Kosten. Hat die Strecke Halte, ist die rechte Kante des letzten Halts der feste Start.
 6. **Ausschnitte:** Viterbi entlang der Kette über alle erlaubten Ausschnitte, Summe der Paarwerte minus Kosten. Eigene Reihenfolge und per Antippen gewählte Ausschnitte gehen als feste Vorgaben ein.
-7. **Bauen:** erst den Plan je Foto sichern, dann Foto für Foto `serienFotoZuHalt` und `fertigstellen`. Nach einem Abbruch fertigt der Start den angefangenen Halt fertig und erinnert an die wartende Serie, die mit derselben Reihenfolge weitergeht.
+7. **Bauen:** erst alle offenen Halte der Strecke fertigstellen (scheitert das, bricht der Bau ab und fasst kein Foto an), dann den Plan je Foto sichern, dann Foto für Foto `serienFotoZuHalt` und `fertigstellenMitWiederholung`. Nach einem Abbruch geht die wartende Serie mit derselben Reihenfolge weiter.
+8. **Fehler:** `fertigstellenMitWiederholung` liest Halt und Vorgänger bei jedem Versuch frisch aus der Datenbank (nie Blobs aus der Übergabe-Transaktion) und versucht es höchstens zweimal. `fertigstellen` gibt Leinwände und Bitmaps im `finally` frei. Zwischen den Fotos wartet der Bau 150 ms, ab 12 Fotos 500 ms. Dauer und Fehler je Foto stehen im Serienprotokoll der Diagnose (`localStorage`, übersteht Abstürze).
+9. **Ab 13 Fotos** (durch Nachlegen möglich) rechnet die Reihenfolge nicht mehr Held-Karp, sondern eine Näherung: gierig von jedem Anfang, dann Teilstücke verschieben und umdrehen.
 
 ### Feinjustieren
 
@@ -185,6 +187,10 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 - **Letzte 3 Halte:** Mittelfarbe der Vorschauen. Gleicher Ton bei allen drei (oder alle hell, alle dunkel) heißt eintönig. Dann gewinnt die passende Kontrast-Idee.
 - **Auswahl:** Jede Idee hat Tags (Höhe, Neigung, Stärke, Farbe oben und unten, Ort, Tageszeit). Ein widersprechendes Tag schließt sie aus, passende Tags geben Punkte. Bei schräger Linie haben Ideen ohne Schräge Abzug. Gezogen wird die beste noch nicht benutzte. Benutzte IDs stehen je Strecke in der Datenbank (`ideen:<streckeId>`), der Ort unter `ideen-ort`.
 - **Richtung:** Liegt eine Kameralinie (aus `hauptlinien`) 3 bis 12 % neben einer Marke und trifft keine andere, zeigt der Sucher nach drei gleichen Messungen die Richtung. Liegt die Linie über der Marke, muss das iPhone höher: Höher halten oder nach oben kippen schiebt das Bild nach unten. Ein Lochkamera-Modell im Test prüft das.
+
+### Worker
+
+Jeder Auftrag hat eine Zeitgrenze (Nähen und Serienplan 60 s, Analyse 15 s, sonst 20 bis 30 s). Antwortet der Worker nicht, stürzt er ab oder ist eine Nachricht unlesbar, wird er beendet. Alle offenen Aufträge scheitern mit `WorkerFehler`, der nächste Auftrag startet einen frischen Worker. `generation()` zählt die Neustarts: Der Sucher schickt dann seinen Rest neu, die Serie baut den Plan im Worker neu auf und wiederholt den Auftrag einmal.
 
 ## 7. Diagnose
 

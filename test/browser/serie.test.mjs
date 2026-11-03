@@ -2,7 +2,7 @@
 // Bauen, Abbruch ohne Verlust, höchstens 10 Fotos, Blindfahrt, Migration alter Strecken.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, fotoJpeg } from './hilfe.mjs';
 
 let s;
 let b;
@@ -13,37 +13,6 @@ const HOEHEN = [0.55, 0.4, 0.62, 0.47, 0.34];
 const FARBEN = [
   ['#c9b48e', '#5a3522'], ['#b4c8a0', '#3c5a28'], ['#f0c896', '#46465a'], ['#a0aac8', '#28322d'],
 ];
-
-// Testfoto im Browser zeichnen: Linie links flach auf a, rechts flach auf b.
-async function fotoJpeg(page, { w = 1600, h = 1200, a, b, oben, unten, seed = 1 }) {
-  const b64 = await page.evaluate(async ({ w, h, a, b, oben, unten, seed }) => {
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const k = c.getContext('2d');
-    k.fillStyle = oben;
-    k.fillRect(0, 0, w, h);
-    k.beginPath();
-    k.moveTo(0, h);
-    for (let x = 0; x <= w; x += 8) {
-      const u = x / w;
-      const t = u < 0.3 ? 0 : u > 0.7 ? 1 : (u - 0.3) / 0.4;
-      k.lineTo(x, (a + (b - a) * t * t * (3 - 2 * t)) * h);
-    }
-    k.lineTo(w, h);
-    k.closePath();
-    k.fillStyle = unten;
-    k.fill();
-    let r = seed;
-    const z = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
-    for (let i = 0; i < 120; i++) { k.fillStyle = `rgba(255,255,255,${0.04 + z() * 0.05})`; k.fillRect(z() * w, z() * h, 30 + z() * 60, 6); }
-    const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.9));
-    const u = new Uint8Array(await blob.arrayBuffer());
-    let s = '';
-    for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768));
-    return btoa(s);
-  }, { w, h, a, b, oben, unten, seed });
-  return Buffer.from(b64, 'base64');
-}
 
 // EXIF mit DateTimeOriginal direkt hinter SOI einsetzen.
 function mitExif(jpeg, datum) {
@@ -160,7 +129,7 @@ test('Abbruch beim Bauen: nichts geht verloren, die Serie läuft mit derselben R
   await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && window.nahtlos.zustand().fertig === 2, null, 30000);
   await page.waitForSelector('#meldung:not([hidden])');
   assert.equal(await page.textContent('#meldung p'), 'Eine Serie aus der Mediathek wartet noch.');
-  await page.click('#meldung button');
+  await page.click('#meldung button.haupt');
   await page.waitForSelector('#v-serie:not([hidden])');
   await bereit(page);
   assert.deepEqual(await reihe(page), plan.slice(1), 'gleiche Reihenfolge wie vor dem Abbruch');
