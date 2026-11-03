@@ -155,7 +155,7 @@ async function betreten(d) {
   ladenEl.hidden = false;
   const { halt } = d;
   try {
-    roh = d.rohQuelle || (await ladeBitmap(halt.roh));
+    roh = d.rohQuelle || (await ladeBitmap(await db.blobPflicht(halt, 'roh')));
     rw = roh.width;
     rh = roh.height;
     anzeige = proxy(roh, rw, rh, 1800);
@@ -167,9 +167,10 @@ async function betreten(d) {
     for (const e of [wertEl, bewEl]) e.style.visibility = mitRest ? '' : 'hidden';
     if (mitRest) {
       if (restUrl) URL.revokeObjectURL(restUrl);
-      restUrl = URL.createObjectURL(vor.bild);
+      const vorBild = await db.blobPflicht(vor, 'bild');
+      restUrl = URL.createObjectURL(vorBild);
       restImg.src = restUrl;
-      const bm = await ladeBitmap(vor.bild);
+      const bm = await ladeBitmap(vorBild);
       const c = leinwand(bm.width, bm.height);
       ctx2d(c, true).drawImage(bm, 0, 0);
       freigeben(bm);

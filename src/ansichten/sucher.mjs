@@ -9,7 +9,7 @@ import { leinwand, ctx2d, pixel, ladeBitmap, freigeben } from '../bild.mjs';
 import { rohAusVideo, sichereRoh, kleinRest } from '../naehwerk.mjs';
 import { KLEIN_B, KLEIN_H, KLEIN_UE } from '../masse.mjs';
 import { messung, protokolliere, werte } from '../diagnose.mjs';
-import { SpeicherVoll } from '../speicher.mjs';
+import { SpeicherVoll, NichtGesichert, blob as ladeDatei } from '../speicher.mjs';
 import { waehleBild } from '../einfuhr.mjs';
 import { richtung, ORTE, ORT_NAMEN } from '../ideen.mjs';
 import * as ideen from '../ideenquelle.mjs';
@@ -149,7 +149,8 @@ async function setzeRest() {
   markenEl.replaceChildren();
   fadenLinie.setAttribute('points', '');
   urls.leeren();
-  if (!h || !h.bild) {
+  const bildBlob = h?.bild ? await ladeDatei(h, 'bild').catch(() => null) : null;
+  if (!h || !bildBlob) {
     restEl.hidden = true;
     miniImg.removeAttribute('src');
     ideen.setzeRest(null);
@@ -159,10 +160,10 @@ async function setzeRest() {
     restGen = generation();
     return;
   }
-  restImg.src = urls.von(h.bild);
-  miniImg.src = urls.von(h.vorschau || h.bild);
+  restImg.src = urls.von(bildBlob);
+  miniImg.src = urls.von((await ladeDatei(h, 'vorschau').catch(() => null)) || bildBlob);
   restEl.hidden = false;
-  const bm = await ladeBitmap(h.bild);
+  const bm = await ladeBitmap(bildBlob);
   const c = leinwand(bm.width, bm.height);
   ctx2d(c, true).drawImage(bm, 0, 0);
   freigeben(bm);
@@ -446,7 +447,7 @@ async function ausloesen() {
   } catch (err) {
     protokolliere('aufnahme', err);
     video.play().catch(() => {});
-    melde(err instanceof SpeicherVoll ? T.speicherVoll : T.allgemein);
+    melde(err instanceof SpeicherVoll ? T.speicherVoll : err instanceof NichtGesichert ? T.nichtGesichert : T.allgemein);
   } finally {
     ausloesend = false;
     ausloeser.disabled = false;
@@ -462,6 +463,7 @@ $('#frei-mediathek').addEventListener('click', waehleBild);
 registriere('sucher', {
   async betreten(daten, alt) {
     aktiv = true;
+    ausloeser.disabled = true; // erst wieder frei, wenn die Kamera wirklich Bilder liefert
     if (alt === 'serie') serieErinnern();
     glatt = null;
     zustandAngezeigt = null;

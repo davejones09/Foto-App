@@ -3,6 +3,7 @@
 import { fotoKandidaten, kantenMerkmale, KB, KH } from './serie.mjs';
 import { leinwand, ctx2d, pixel, ladeBitmap, freigeben, verkleinere } from './bild.mjs';
 import { fuellmass, begrenze } from './geometrie.mjs';
+import { blob as ladeDatei, blobPflicht } from './speicher.mjs';
 
 export const VORSCHAU_LANG = 480; // längste Seite der Arbeitsfassung je Foto
 const MOTIV_LANG = 64;
@@ -29,8 +30,9 @@ export function vorbereiten(quelle) {
   return { proxy, kandidaten };
 }
 
-export async function vorbereitenAusBlob(blob) {
-  const bm = await ladeBitmap(blob);
+// Arbeitsfassung aus dem gesicherten Rohbild eines Serienfotos.
+export async function vorbereitenAusDb(rec) {
+  const bm = await ladeBitmap(await blobPflicht(rec, 'roh'));
   try {
     return vorbereiten(bm);
   } finally {
@@ -40,8 +42,9 @@ export async function vorbereitenAusBlob(blob) {
 
 // Rechte Kante des letzten Halts: der feste Start der Serie.
 export async function startMerkmale(halt) {
-  if (!halt?.bild) return null;
-  const bm = await ladeBitmap(halt.bild);
+  const b = halt?.bild ? await ladeDatei(halt, 'bild') : null;
+  if (!b) return null;
+  const bm = await ladeBitmap(b);
   const c = verkleinere(bm, bm.width, bm.height, KB, KH);
   freigeben(bm);
   const m = kantenMerkmale(pixel(c)).rechts;

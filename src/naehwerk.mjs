@@ -19,15 +19,17 @@ export async function rohAusVideo(video) {
   return { blob, w, h, leinwand: c };
 }
 
-// Speichert den Halt mit Rohbild. Kehrt erst zurück, wenn die Transaktion abgeschlossen ist.
+// Speichert den Halt mit Rohbild. Kehrt erst zurück, wenn das Rohbild geschrieben und zurückgelesen ist.
+// Scheitert das, wirft es db.NichtGesichert: Das Foto gilt dann nicht als gesichert.
 export async function sichereRoh({ streckeId, index, quelle, roh, rohB, rohH }) {
   return db.neuerHalt({
     id: db.neueId(), streckeId, index, zeit: Date.now(), quelle,
-    roh, rohB, rohH, transform: { ...STANDARD },
-    bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null,
-    wert: null, teile: null, name: '',
-  });
+    rohB, rohH, transform: { ...STANDARD },
+  }, { roh });
 }
+
+// Ein Halt ohne Bild und ohne Rohbild lässt sich nicht mehr retten, nur löschen.
+export const unrettbar = (h) => !!h && !h.bild && !h.roh;
 
 async function blobZuLeinwand(blob) {
   const bm = await ladeBitmap(blob);
@@ -68,24 +70,25 @@ export async function fertigstellen(halt, vorgaenger, { rohQuelle = null } = {})
   const merke = (x) => { if (x) frei.push(x); return x; };
   try {
     if (vorgaenger && !vorgaenger.bild) throw new Error('Vorgänger ist nicht fertig');
-    const roh = rohQuelle || merke(await ladeBitmap(halt.roh));
+    const roh = rohQuelle || merke(await ladeBitmap(await db.blobPflicht(halt, 'roh')));
     const rw = halt.rohB || roh.width;
     const rh = halt.rohH || roh.height;
     const neuC = merke(rendere(roh, rw, rh, halt.transform || STANDARD, HALT_B, HALT_H));
     if (!rohQuelle) freigeben(roh); // früh freigeben, das Rohbild ist das größte Stück
-    const felder = { naht: null, nahtVorschau: null, pfad: null, wert: null, teile: null };
+    const felder = { pfad: null, wert: null, teile: null, beschaedigt: null };
+    const dateien = { naht: null, nahtVorschau: null };
     let bildC = neuC;
     if (vorgaenger) {
-      const letztesC = merke(await blobZuLeinwand(vorgaenger.bild));
+      const letztesC = merke(await blobZuLeinwand(await db.blobPflicht(vorgaenger, 'bild')));
       const letztes = pixel(letztesC);
       const neues = pixel(neuC);
       freigeben(neuC);
       const r = await auftrag('anschliessen', { letztes, neues, ueberlappung: UEBER }, [letztes.d.buffer, neues.d.buffer]);
       bildC = merke(ausPixel(r.neu));
       const nahtC = merke(ausPixel(r.naht));
-      felder.naht = await alsBlob(nahtC, 'image/jpeg', 0.95);
+      dateien.naht = await alsBlob(nahtC, 'image/jpeg', 0.95);
       const nv = merke(verkleinere(nahtC, UEBER, HALT_H, Math.round((UEBER * VORSCHAU_H) / HALT_H), VORSCHAU_H));
-      felder.nahtVorschau = await alsBlob(nv, 'image/jpeg', 0.85);
+      dateien.nahtVorschau = await alsBlob(nv, 'image/jpeg', 0.85);
       felder.pfad = r.pfad;
       const a = kleinRest(letztesC);
       const b = kleinAnfang(bildC);
@@ -93,10 +96,10 @@ export async function fertigstellen(halt, vorgaenger, { rohQuelle = null } = {})
       felder.wert = w.wert;
       felder.teile = w.teile;
     }
-    felder.bild = await alsBlob(bildC, 'image/jpeg', 0.92);
+    dateien.bild = await alsBlob(bildC, 'image/jpeg', 0.92);
     const v = merke(verkleinere(bildC, HALT_B, HALT_H, Math.round((HALT_B * VORSCHAU_H) / HALT_H), VORSCHAU_H));
-    felder.vorschau = await alsBlob(v, 'image/jpeg', 0.85);
-    const fertig = await db.aendereHalt(halt.id, felder);
+    dateien.vorschau = await alsBlob(v, 'image/jpeg', 0.85);
+    const fertig = await db.aendereHalt(halt.id, felder, dateien);
     messung('naehen', performance.now() - t0);
     return fertig;
   } finally {
@@ -116,11 +119,11 @@ async function ausDb(haltId) {
 }
 
 // Stellt einen Halt fertig, bei einem Fehler höchstens einmal automatisch neu (frisch gelesen).
-export async function fertigstellenMitWiederholung(haltId, { versuche = 2 } = {}) {
+export async function fertigstellenMitWiederholung(haltId, { versuche = 2, neu = false } = {}) {
   let letzter = null;
   for (let v = 1; v <= versuche; v++) {
     const { halt, vor } = await ausDb(haltId);
-    if (halt.bild) return halt;
+    if (halt.bild && !neu) return halt;
     try {
       return await fertigstellen(halt, vor);
     } catch (err) {
@@ -129,6 +132,67 @@ export async function fertigstellenMitWiederholung(haltId, { versuche = 2 } = {}
     }
   }
   throw letzter;
+}
+
+// Ohne Rohbild, aber mit Bild (etwa nach einem Umzug mit unlesbarem Rohbild): Fehlende Vorschau und
+// Naht aus dem fertigen Bild nachrechnen. Das Bild selbst bleibt, wie es ist.
+async function ausBildNachrechnen(halt, vor) {
+  const frei = [];
+  const merke = (x) => { if (x) frei.push(x); return x; };
+  try {
+    const bildC = merke(await blobZuLeinwand(await db.blobPflicht(halt, 'bild')));
+    const felder = {};
+    const dateien = {};
+    if (!halt.vorschau) {
+      const v = merke(verkleinere(bildC, bildC.width, bildC.height, Math.round((HALT_B * VORSCHAU_H) / HALT_H), VORSCHAU_H));
+      dateien.vorschau = await alsBlob(v, 'image/jpeg', 0.85);
+    }
+    if (halt.index > 0 && !halt.naht && vor?.bild) {
+      const letztesC = merke(await blobZuLeinwand(await db.blobPflicht(vor, 'bild')));
+      const letztes = pixel(letztesC);
+      const neues = pixel(bildC);
+      const r = await auftrag('anschliessen', { letztes, neues, ueberlappung: UEBER }, [letztes.d.buffer, neues.d.buffer]);
+      const nahtC = merke(ausPixel(r.naht));
+      dateien.naht = await alsBlob(nahtC, 'image/jpeg', 0.95);
+      const nv = merke(verkleinere(nahtC, UEBER, HALT_H, Math.round((UEBER * VORSCHAU_H) / HALT_H), VORSCHAU_H));
+      dateien.nahtVorschau = await alsBlob(nv, 'image/jpeg', 0.85);
+      felder.pfad = r.pfad;
+      const a = kleinRest(letztesC);
+      const b = kleinAnfang(bildC);
+      const w = await auftrag('analyse', { rest: a, kamera: b }, [a.d.buffer, b.d.buffer]);
+      felder.wert = w.wert;
+      felder.teile = w.teile;
+    }
+    return await db.aendereHalt(halt.id, felder, dateien);
+  } finally {
+    for (const x of frei) freigeben(x);
+  }
+}
+
+// Rechnet alles nach, was sich nachrechnen lässt: fehlendes Bild aus dem Rohbild, fehlende Vorschau
+// oder Naht aus dem Rohbild oder ersatzweise aus dem Bild. Unrettbare Halte (weder Bild noch Rohbild)
+// bleiben stehen und werden in der App zum Löschen angeboten. Scheitert ein Halt, geht es mit dem
+// nächsten weiter; geliefert wird die Zahl der ausgebesserten und der gescheiterten Halte.
+export async function ausbessern(streckeId) {
+  const ids = (await db.halte(streckeId)).map((h) => h.id);
+  let ausgebessert = 0;
+  let gescheitert = 0;
+  for (const id of ids) {
+    try {
+      const { halt: h, vor } = await ausDb(id);
+      if (unrettbar(h)) continue;
+      const nahtFehlt = h.index > 0 && !h.naht;
+      if (h.bild && h.vorschau && !nahtFehlt) continue;
+      if (vor && !vor.bild) continue; // Vorgänger erst retten oder löschen
+      if (h.roh) await fertigstellenMitWiederholung(id, { neu: true });
+      else await ausBildNachrechnen(h, vor);
+      ausgebessert++;
+    } catch (err) {
+      gescheitert++;
+      protokolliere('ausbessern', err);
+    }
+  }
+  return { ausgebessert, gescheitert };
 }
 
 // Halte mit Rohbild, aber ohne fertiges Bild, werden der Reihe nach nachgerechnet.

@@ -225,6 +225,8 @@ button:active { filter: brightness(0.85); }
 .fp-zeit, .fp-wert { font: 600 17px var(--mono); font-variant-numeric: tabular-nums; }
 .fp-wert { text-align: right; min-width: 3ch; }
 .fp-name { text-align: left; padding: 0; min-height: 46px; border-radius: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-zeile.kaputt { background: repeating-linear-gradient(135deg, rgba(0,0,0,.06) 0 8px, transparent 8px 16px); }
+.fp-loeschen { justify-self: end; border: 2px solid #0e0f10; border-radius: 10px; font-weight: 700; padding: 0 10px; }
 .fp-tagz { font: 700 12px var(--mono); padding: 14px 0 4px; letter-spacing: .06em; }
 
 /* Ausfahrt */

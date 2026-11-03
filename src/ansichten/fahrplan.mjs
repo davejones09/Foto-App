@@ -2,11 +2,12 @@
 // Dazu das Finale der Blindfahrt.
 import { Z, registriere, zeige, neuLaden } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
-import { $, el, frage, melde, uhrzeit, datumKurz, tagSchluessel } from '../ui.mjs';
+import { $, el, frage, melde, meldungWeg, uhrzeit, datumKurz, tagSchluessel } from '../ui.mjs';
 import { kennzahlen, TEMPI } from '../kennzahlen.mjs';
 import { fahrtAbspielen } from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
+import { ausbessern, unrettbar } from '../naehwerk.mjs';
 
 const v = $('#v-fahrplan');
 const tabelle = $('.fp-tabelle', v);
@@ -45,12 +46,34 @@ async function aufbauen() {
       tag = t;
       zeilen.push(el('div', { klasse: 'fp-tagz', text: `${WOCHENTAG[new Date(h.zeit).getDay()]}, ${datumKurz(h.zeit)}`.toUpperCase() }));
     }
-    zeilen.push(el('div', { klasse: 'fp-zeile', role: 'row' },
+    const kaputt = !!h.beschaedigt || unrettbar(h);
+    zeilen.push(el('div', { klasse: 'fp-zeile' + (kaputt ? ' kaputt' : ''), role: 'row', 'data-index': String(h.index) },
       el('span', { klasse: 'fp-zeit', text: uhrzeit(h.zeit), role: 'cell' }),
-      el('button', { klasse: 'fp-name', text: haltName(h), role: 'cell', onclick: () => benennen(h) }),
-      el('span', { klasse: 'fp-wert', text: h.wert == null ? '–' : String(h.wert), role: 'cell' })));
+      el('button', { klasse: 'fp-name', text: kaputt ? `${haltName(h)} · ${T.beschaedigt}` : haltName(h), role: 'cell', onclick: () => benennen(h) }),
+      kaputt
+        ? el('button', { klasse: 'fp-loeschen', text: T.loeschen, role: 'cell', onclick: () => beschaedigtLoeschen(h) })
+        : el('span', { klasse: 'fp-wert', text: h.wert == null ? '–' : String(h.wert), role: 'cell' })));
   }
   tabelle.replaceChildren(...zeilen);
+}
+
+// Beschädigten Halt löschen: Die späteren rücken auf, der Nachfolger wird an den neuen Vorgänger genäht.
+async function beschaedigtLoeschen(h) {
+  const r = await frage(f(T.beschaedigtLoeschen, { n: h.index + 1 }), [
+    { text: T.behalten, wert: false },
+    { text: T.loeschen, wert: true, haupt: true },
+  ]);
+  if (!r.wert) return;
+  try {
+    await db.loescheHalt(h.id);
+    melde(f(T.wirdGebaut, { p: 0 }), [], 0);
+    await ausbessern(Z.strecke.id);
+    meldungWeg();
+  } catch (err) {
+    protokolliere('loeschen', err);
+    melde(T.allgemein);
+  }
+  await aufbauen();
 }
 
 $('#fp-zurueck').addEventListener('click', () => zeige('strecke'));

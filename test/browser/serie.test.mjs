@@ -199,9 +199,11 @@ test('Migration: Strecken aus Format 1 bleiben erhalten', async () => {
     k.fillStyle = '#234'; k.fillRect(0, 900, 1296, 720);
     const bild = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.9));
     const t = db.transaction(['strecken', 'halte', 'einstellungen'], 'readwrite');
-    t.objectStore('strecken').put({ id: 'alt-1', name: 'Alte Strecke', erstellt: 1, blind: false, ziel: false, formatVersion: 1, gesichertBei: 0 });
-    t.objectStore('halte').put({ id: 'h-1', streckeId: 'alt-1', index: 0, zeit: Date.now(), quelle: 'kamera', roh: bild, rohB: 1296, rohH: 1620, transform: { dx: 0, dy: 0, zoom: 1, drehung: 0 }, bild, naht: null, vorschau: bild, nahtVorschau: null, pfad: null, wert: null, teile: null, name: 'Erster' });
-    t.objectStore('einstellungen').put({ schluessel: 'einfuehrung', wert: true });
+    // Alte Fassung: Blobs direkt im Datensatz, deshalb am Test-Wächter vorbei schreiben
+    const put = (store, wert) => IDBObjectStore.prototype.__putOriginal.call(t.objectStore(store), wert);
+    put('strecken', { id: 'alt-1', name: 'Alte Strecke', erstellt: 1, blind: false, ziel: false, formatVersion: 1, gesichertBei: 0 });
+    put('halte', { id: 'h-1', streckeId: 'alt-1', index: 0, zeit: Date.now(), quelle: 'kamera', roh: bild, rohB: 1296, rohH: 1620, transform: { dx: 0, dy: 0, zoom: 1, drehung: 0 }, bild, naht: null, vorschau: bild, nahtVorschau: null, pfad: null, wert: null, teile: null, name: 'Erster' });
+    put('einstellungen', { schluessel: 'einfuehrung', wert: true });
     await new Promise((ok) => (t.oncomplete = ok));
     db.close();
   });
@@ -211,10 +213,14 @@ test('Migration: Strecken aus Format 1 bleiben erhalten', async () => {
     const l = await db.strecken();
     const h = await db.halte('alt-1');
     const d = await db.oeffne();
-    return { version: d.version, stores: [...d.objectStoreNames], namen: l.map((x) => x.name), halte: h.length, name: h[0]?.name, wartend: await db.zaehleSerienFotos() };
+    const b = await db.blob(h[0], 'bild');
+    return { version: d.version, stores: [...d.objectStoreNames], namen: l.map((x) => x.name), halte: h.length, name: h[0]?.name, wartend: await db.zaehleSerienFotos(), bildLesbar: !!b && b.size > 1000, keinBlob: !(h[0].bild instanceof Blob) };
   });
-  assert.equal(r.version, 2);
+  assert.equal(r.version, 3);
   assert.ok(r.stores.includes('serie'));
+  assert.ok(r.stores.includes('dateien'));
+  assert.ok(r.bildLesbar, 'Bild nach dem Umzug lesbar');
+  assert.ok(r.keinBlob, 'kein Blob mehr im Datensatz');
   assert.deepEqual(r.namen, ['Alte Strecke']);
   assert.equal(r.halte, 1);
   assert.equal(r.name, 'Erster');

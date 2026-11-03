@@ -6,7 +6,7 @@ import { leinwand, ctx2d, alsBlob, freigeben, verkleinere } from './bild.mjs';
 import { sichereRoh } from './naehwerk.mjs';
 import { ROH_MAX } from './masse.mjs';
 import { protokolliere } from './diagnose.mjs';
-import { SpeicherVoll } from './speicher.mjs';
+import { SpeicherVoll, NichtGesichert } from './speicher.mjs';
 
 const eingabe = $('#datei-bild');
 // In der Blindfahrt bleibt es beim einzelnen Foto.
@@ -85,6 +85,6 @@ export async function importieren(datei) {
     await zeige('fein', { halt, rohQuelle: c, neu: true, erstlauf: erst });
   } catch (err) {
     protokolliere('import', err);
-    melde(err instanceof SpeicherVoll ? T.speicherVoll : T.allgemein);
+    melde(err instanceof SpeicherVoll ? T.speicherVoll : err instanceof NichtGesichert ? T.nichtGesichert : T.allgemein);
   }
 }

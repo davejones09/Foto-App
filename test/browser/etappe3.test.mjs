@@ -124,7 +124,10 @@ test('Sicherung lässt sich verlustfrei einspielen', async () => {
     for (let i = 0; i < ha.length; i++) {
       for (const k of ['index', 'zeit', 'wert', 'quelle', 'rohB', 'rohH']) if (ha[i][k] !== hb[i][k]) fehler.push(`${i}.${k}`);
       if (JSON.stringify(ha[i].transform) !== JSON.stringify(hb[i].transform)) fehler.push(`${i}.transform`);
-      for (const k of ['roh', 'bild', 'naht', 'vorschau', 'nahtVorschau']) if (!(await gleich(ha[i][k], hb[i][k]))) fehler.push(`${i}.${k}`);
+      for (const k of ['roh', 'bild', 'naht', 'vorschau', 'nahtVorschau']) {
+        if (!!ha[i][k] !== !!hb[i][k]) { fehler.push(`${i}.${k} fehlt`); continue; }
+        if (!(await gleich(await db.blob(ha[i], k), await db.blob(hb[i], k)))) fehler.push(`${i}.${k}`);
+      }
       if (hb[i].streckeId !== b || ha[i].id === hb[i].id) fehler.push(`${i}.id`);
     }
     const sa = await db.strecke(a);

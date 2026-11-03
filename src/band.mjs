@@ -2,6 +2,7 @@
 import { stuecke, bandBreite, HALT_B, HALT_H, UEBER } from './masse.mjs';
 import { ladeBitmap, freigeben } from './bild.mjs';
 import { protokolliere } from './diagnose.mjs';
+import { blobPflicht } from './speicher.mjs';
 
 const KLEIN = { bild: 'vorschau', naht: 'nahtVorschau' };
 
@@ -36,9 +37,9 @@ export class Kachellager {
       if (k === this.gross) { k.delete(sch); k.set(sch, e); }
       return e.p;
     }
-    const blob = halt[art];
     const eintrag = { bm: null, p: null };
-    eintrag.p = (blob ? ladeBitmap(blob) : Promise.reject(new Error('fehlt ' + art))).then((bm) => {
+    // Bilddaten erst jetzt aus der Datenbank: nur das, was gerade gezeichnet wird.
+    eintrag.p = (halt[art] ? blobPflicht(halt, art).then(ladeBitmap) : Promise.reject(new Error('fehlt ' + art))).then((bm) => {
       if (k.get(sch) !== eintrag) { freigeben(bm); return null; }
       eintrag.bm = bm;
       return bm;

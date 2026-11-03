@@ -15,7 +15,10 @@ async function eintrag(s) {
   const halte = await db.halte(s.id);
   const vorschau = el('span', { klasse: 'sl-vorschau' });
   if (!(s.blind && !s.ziel)) {
-    for (const h of halte.slice(0, 8)) if (h.vorschau) vorschau.append(el('img', { src: urls.von(h.vorschau), alt: '' }));
+    for (const h of halte.slice(0, 8)) {
+      const b = h.vorschau ? await db.blob(h, 'vorschau').catch(() => null) : null;
+      if (b) vorschau.append(el('img', { src: urls.von(b), alt: '' }));
+    }
   }
   const datum = halte.length ? datumKurz(halte[halte.length - 1].zeit) : datumKurz(s.erstellt);
   const knopf = el('button', { klasse: 'sl-oeffnen', onclick: () => oeffnen(s.id) },

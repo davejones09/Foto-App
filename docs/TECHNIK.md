@@ -85,20 +85,24 @@ Die Tests liefern mit der Umgebungsvariable `SICHTPRUEFUNG=<datei.ppm>` ein Bild
 
 IndexedDB mit eigener kleiner Hülle, keine Bibliothek. Beim Start `navigator.storage.persist()` anfragen.
 
+**Nie Blobs in IndexedDB.** WebKit auf dem iPhone macht gespeicherte Blobs unlesbar („Error preparing Blob/File data to be stored“, „An error occured reading the Blob argument“). Ab Format 3 liegen Bilddaten als ArrayBuffer im Speicher `dateien`. Halte und Serienfotos enthalten nur Metadaten. Ihre Bildfelder halten einen Verweis.
+
 ```
-strecken: { id, name, erstellt, blind, ziel, formatVersion }
-halte:    { id, streckeId, index, zeit, quelle: 'kamera'|'import',
-            roh: Blob,          // volles Videobild oder Import, längste Seite maximal 4000 px
-            transform: { dx, dy, zoom, drehung },
-            bild: Blob,         // 1296×1620, angeglichen, JPEG 0,92
-            naht: Blob|null,    // 363×1620 zum vorherigen Halt, JPEG 0,95
-            wert, teile, name }
-serie:    { id, streckeId, serieId, reihe, roh: Blob, rohB, rohH,   // ab Format 2
-            zeit, aufnahme, name, plan: { pos, ausschnitt }|null }
+strecken: { id, name, erstellt, blind, ziel, formatVersion, gesichertBei }
+halte:    { id, streckeId, index, zeit, quelle: 'kamera'|'import', rohB, rohH,
+            transform: { dx, dy, zoom, drehung }, pfad, wert, teile, name,
+            roh, bild, naht, vorschau, nahtVorschau,   // je { schluessel, laenge, typ } oder null
+            beschaedigt: null | { felder, grund, zeit } }
+serie:    { id, streckeId, serieId, reihe, rohB, rohH, zeit, aufnahme, name, plan, roh: Verweis }
+dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }   // Index auf laenge
 ```
 
-- **Format 2** legt nur den Speicher `serie` an. Strecken und Halte aus Format 1 bleiben unverändert (Migrationstest im Browser).
-- **Serienfotos warten in `serie`**, bis sie gebaut werden. `serienFotoZuHalt` legt den Halt an und löscht das wartende Foto in einer einzigen Transaktion.
+- **Schreiben:** ArrayBuffer vor der Transaktion erzeugen (ein `await` auf einen Blob beendet sie sonst), Metadaten und Daten in einer Transaktion schreiben, danach zurücklesen und die Länge vergleichen. Scheitert das, wird der Datensatz entfernt und die App meldet „Das Foto ließ sich nicht sichern. Bitte nochmal.“
+- **Lesen:** `blob(meta, feld)` baut aus dem ArrayBuffer einen frischen Blob im Arbeitsspeicher. `halte()` liefert nur Metadaten, Bilddaten kommen einzeln und nur bei Bedarf (Band und Ausgaben über den LRU-Lader).
+- **Serienfoto zum Halt:** nur Metadaten. Der Halt übernimmt den Verweis auf das schon gesicherte Rohbild (`<fotoId>/roh`), die Daten werden nicht noch einmal geschrieben.
+- **Format 3, Umzug:** Das Upgrade legt nur `dateien` an. Danach zieht `migriereBlobs()` Datensatz für Datensatz jeden alten Blob per `arrayBuffer()` um. Unlesbare Blobs brechen nicht ab: Das Feld wird leer, der Halt bekommt `beschaedigt`. Dann rechnet `ausbessern()` nach, was geht: Ohne Bild, aber mit Rohbild wird komplett neu genäht. Ohne Rohbild, aber mit Bild werden Vorschau und Naht aus dem Bild nachgerechnet. Ohne beides ist der Halt unrettbar.
+- **Beschädigte Halte** stehen im Fahrplan mit „Beschädigt“ und „Löschen“, beim Start erscheint ein Hinweis. `loescheHalt()` lässt die späteren aufrücken. Der Nachfolger verliert seine Naht (und, falls sein Rohbild da ist, Bild und Vorschau) und wird an seinen neuen Vorgänger genäht. Ein unrettbarer Halt blockiert das Weiterbauen, bis er gelöscht ist.
+- **Diagnose:** Anzahl und Größe der Einträge in `dateien` (über den Index, ohne Daten zu laden), Zahl beschädigter Halte mit Grund, Lesetest je Halt der aktiven Strecke.
 
 - **Rest für den Sucher:** rechte 363 Pixel von `bild`. Der Rest ist nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
 - **Wiederaufnahme:** iOS beendet Apps im Hintergrund jederzeit. Alles muss aus der Datenbank wiederherstellbar sein, ohne Zustand im Speicher vorauszusetzen.

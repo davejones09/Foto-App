@@ -223,6 +223,7 @@ test('Querformat zeigt den Hinweis', async () => {
   // Diagnose: fünfmal auf die Version
   for (let i = 0; i < 5; i++) await page.click('#version');
   await page.waitForSelector('#diagnose:not([hidden])');
+  await warteAuf(page, () => /Lesetest/.test(document.querySelector('.dg-text').textContent));
   assert.match(await page.textContent('.dg-text'), /Nahtlos \d+\.\d+\.\d+/);
   await bild(page, '22-diagnose');
   await ctx.close();
