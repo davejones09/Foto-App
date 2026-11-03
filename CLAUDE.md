@@ -4,11 +4,12 @@ Foto-Web-App fürs iPhone. „Nahtlos“ ist der Arbeitstitel.
 
 Lies vor der ersten Änderung in dieser Reihenfolge:
 
-1. `KONZEPT.md`: was die App ist und wie sie sich anfühlt
-2. `ETAPPEN.md`: was in welcher Reihenfolge gebaut wird und wann es fertig ist
-3. `TECHNIK.md`: Aufbau, iOS-Fallen, Speicher, Ausgaben
-4. `TEXTE.md`: alle Texte der App
-5. `REFERENZ.mjs` und `REFERENZ.test.mjs`: der fertige, getestete Bildkern
+1. `docs/KONZEPT.md`: was die App ist und wie sie sich anfühlt
+2. `docs/ETAPPEN.md`: was in welcher Reihenfolge gebaut wird und wann es fertig ist
+3. `docs/TECHNIK.md`: Aufbau, iOS-Fallen, Speicher, Ausgaben
+4. `docs/TEXTE.md`: alle Texte der App
+5. `src/kern.mjs` und `test/kern.test.mjs`: der fertige, getestete Bildkern
+6. `docs/ENTSCHEIDUNGEN.md`: was vom Konzept abweicht und warum
 
 ## Überraschung: nichts verraten
 
@@ -28,14 +29,15 @@ David hat die Idee bewusst nicht erklärt bekommen. Er soll sie in der App selbs
 - Nenne am Ende jeder Sitzung nur: welche Etappen fertig sind, was du nicht testen konntest und was David jetzt tun muss.
 - Wichtige Entscheidungen, die vom Konzept abweichen, gehören in `docs/ENTSCHEIDUNGEN.md`. Diese Datei darf das Konzept verraten, weil David sie nicht lesen muss.
 
-## Beim ersten Lauf aufräumen
+## Aufräumen (erledigt)
 
-Die Dateien liegen zuerst flach im Hauptordner, weil David sie vom iPad hochlädt.
+Die hochgeladenen Dateien liegen inzwischen an ihrem Platz: Bildkern in `src/kern.mjs`, seine Tests in `test/kern.test.mjs`, Konzept, Technik, Etappen und Texte in `docs/`.
 
-- `REFERENZ.mjs` wird `src/kern.mjs`.
-- `REFERENZ.test.mjs` wird `test/kern.test.mjs`. Passe den Import an.
-- `KONZEPT.md`, `TECHNIK.md`, `ETAPPEN.md` und `TEXTE.md` kommen nach `docs/`.
-- `CLAUDE.md` bleibt im Hauptordner. Passe darin die Pfade an.
+## Tests
+
+- `npm test`: Bildkern, Geometrie, ZIP, Auslieferung (Node, ohne Browser)
+- `npm run test:browser`: Ende-zu-Ende in Chromium mit Kamera-Ersatz, Screenshots landen in `test/ergebnisse/`
+- `npm run icons`: Icons und Startbilder neu erzeugen
 
 ## Feste Regeln
 
@@ -44,10 +46,10 @@ Die Dateien liegen zuerst flach im Hauptordner, weil David sie vom iPad hochläd
 - **Relative Pfade überall:** Die App läuft unter `https://<name>.github.io/<repo>/`.
 - **Alles bleibt auf dem Gerät:** keine Analyse-Dienste, keine externen Schriften, keine Netzabfragen zur Laufzeit. Nach dem ersten Start muss die App komplett offline laufen.
 - **Das Repository ist öffentlich:** keine Nachnamen, Adressen, Reiseziele, Reisedaten oder andere persönliche Daten in Code, Doku, Commits oder Testbildern.
-- **Bildkern:** `REFERENZ.mjs` ist getestet. Ändere das Verfahren nur, wenn ein Test auf echten Fotos oder dem iPhone es nötig macht, und halte die Tests grün. Werte in `KONFIG` darfst du anpassen.
+- **Bildkern:** `src/kern.mjs` ist getestet. Ändere das Verfahren nur, wenn ein Test auf echten Fotos oder dem iPhone es nötig macht, und halte die Tests grün. Werte in `KONFIG` darfst du anpassen.
 - **Versionen:** Jede Auslieferung erhöht `APP_VERSION` und den Cache-Namen des Service Workers. Die Version steht sichtbar in der App.
 - **Daten sind heilig:** Ein aufgenommenes Foto wird gespeichert, bevor irgendetwas anderes damit passiert. Stürzt das Nähen ab, ist das Foto noch da. Änderungen am Speicherformat brauchen eine Migration.
 
 ## Termin
 
-Die Testversion muss bis **08.11.2026** auf dem iPhone laufen, danach folgt der Praxistest. Wird es knapp, gilt die Streichliste in `ETAPPEN.md`. Eine kleine App, die zuverlässig läuft, ist besser als eine große, die unterwegs Fotos verliert.
+Die Testversion muss bis **08.11.2026** auf dem iPhone laufen, danach folgt der Praxistest. Wird es knapp, gilt die Streichliste in `docs/ETAPPEN.md`. Eine kleine App, die zuverlässig läuft, ist besser als eine große, die unterwegs Fotos verliert.

@@ -1,8 +1,8 @@
-// Tests für REFERENZ.mjs. Start: node --test REFERENZ.test.mjs
+// Tests für den Bildkern. Start: npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
-import { analysiere, anschliessen, ausschnitt, zeilenGain, angleichen, naehen, bewertung, hauptlinien } from './REFERENZ.mjs';
+import { analysiere, anschliessen, ausschnitt, zeilenGain, angleichen, naehen, bewertung, hauptlinien } from '../src/kern.mjs';
 
 function zufall(seed) {
   let s = seed >>> 0;

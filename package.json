@@ -1,0 +1,11 @@
+{
+  "name": "nahtlos",
+  "private": true,
+  "type": "module",
+  "description": "Nur für Tests. Die App selbst braucht keinen Build-Schritt.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:browser": "node --test --test-concurrency=1 test/browser/*.test.mjs",
+    "icons": "node werkzeuge/icons.mjs"
+  }
+}
