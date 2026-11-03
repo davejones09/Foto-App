@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0E0F10">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nahtlos">
+<meta name="format-detection" content="telephone=no">
+<title>Nahtlos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="icons/splash-750x1334.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="icons/splash-828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash-1320x2868.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Installation (nur im Browser) -->
+<section id="v-install" class="ansicht mitte" hidden>
+  <div class="karte">
+    <h1 data-t="installTitel"></h1>
+    <p data-t="installText"></p>
+    <ol class="schritte"></ol>
+    <button class="link" id="trotzdem" data-t="installTrotzdem"></button>
+  </div>
+</section>
+
+<!-- Sucher -->
+<section id="v-sucher" class="ansicht" hidden>
+  <header class="kopf">
+    <div class="signal" aria-hidden="true"><i class="rot"></i><i class="gelb"></i><i class="gruen"></i></div>
+    <div class="wertzeile"><span class="wert"></span><span class="bewertung"></span></div>
+  </header>
+  <div class="rahmen" id="sucher-rahmen">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="rest" hidden>
+      <img alt="">
+      <svg class="faden" viewBox="0 0 27 120" preserveAspectRatio="none"><polyline points=""/></svg>
+      <div class="marken"></div>
+    </div>
+    <div class="kamerastatus" hidden><span class="laden"></span><span data-t="kameraStartet"></span></div>
+    <div class="freigabe" hidden>
+      <p class="frei-text" data-t="kameraText"></p>
+      <button class="haupt" id="freigeben" data-t="kameraKnopf"></button>
+      <button class="link" id="frei-mediathek" data-t="kameraMediathek"></button>
+    </div>
+    <div class="kamerafehler" hidden>
+      <p data-t="kameraWeg"></p>
+      <button class="haupt" id="kamera-neu" data-t="neuStarten"></button>
+    </div>
+    <button class="linse rund" hidden aria-label="Linse wechseln"><span>1×</span></button>
+    <pre class="teilwerte" hidden></pre>
+  </div>
+  <p class="ansage" aria-live="polite"></p>
+  <footer class="steuerung">
+    <button class="neben" id="mediathek"><span class="sym-mediathek"></span><span data-t="mediathek"></span></button>
+    <button class="ausloeser" id="ausloeser" aria-label="Auslösen"><span></span></button>
+    <button class="neben" id="zur-strecke"><span class="mini"><img alt=""></span><span data-t="strecke"></span></button>
+  </footer>
+  <button class="version" id="version"></button>
+</section>
+
+<!-- Aufdeckung -->
+<section id="v-aufdeckung" class="ansicht" hidden>
+  <header class="kopf"></header>
+  <div class="buehne">
+    <div class="streifen" hidden>
+      <img class="s-vor" alt=""><img class="s-neu" alt="">
+      <div class="s-naht"><img alt=""></div>
+      <div class="s-faden"><svg viewBox="0 0 363 1620" preserveAspectRatio="none"><polyline points=""/></svg></div>
+    </div>
+    <canvas class="standbild"></canvas>
+    <div class="s-rest"><img alt=""></div>
+    <div class="stempel" hidden><span class="st-wert"></span><span class="st-text"></span></div>
+  </div>
+  <p class="ansage auf-ansage" aria-live="polite"></p>
+  <div class="naehfehler" hidden>
+    <p data-t="naehFehler"></p>
+    <button class="haupt" id="nochmal-naehen" data-t="nochmalVersuchen"></button>
+  </div>
+  <footer class="aktionen" hidden>
+    <button class="neben2" id="auf-streichen" data-t="streichen"></button>
+    <button class="haupt" id="auf-weiter" data-t="weiter"></button>
+    <button class="neben2" id="auf-fein" data-t="feinjustieren"></button>
+  </footer>
+</section>
+
+<!-- Feinjustieren -->
+<section id="v-fein" class="ansicht" hidden>
+  <header class="kopf">
+    <div class="signal" aria-hidden="true"><i class="rot"></i><i class="gelb"></i><i class="gruen"></i></div>
+    <div class="wertzeile"><span class="wert"></span><span class="bewertung"></span></div>
+  </header>
+  <div class="rahmen" id="fein-rahmen">
+    <canvas class="fein-bild"></canvas>
+    <div class="rest" hidden>
+      <img alt="">
+      <svg class="faden" viewBox="0 0 27 120" preserveAspectRatio="none"><polyline points=""/></svg>
+    </div>
+    <div class="kamerastatus" hidden><span class="laden"></span></div>
+  </div>
+  <p class="ansage" data-t="feinHinweis"></p>
+  <footer class="aktionen">
+    <button class="neben2" id="fein-abbrechen" data-t="abbrechen"></button>
+    <button class="haupt" id="fein-ok" data-t="uebernehmen"></button>
+  </footer>
+</section>
+
+<!-- Strecke -->
+<section id="v-strecke" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2" id="zu-strecken" data-t="streckenTitel"></button>
+    <h2 class="st-kopf"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="band-flaeche">
+    <canvas class="band"></canvas>
+    <p class="band-leer" hidden data-t="streckeLeer"></p>
+    <div class="band-blind" hidden>
+      <p data-t="blindStatt"></p>
+      <button class="haupt" id="ziel" data-t="zielKnopf"></button>
+    </div>
+  </div>
+  <div class="halteleiste"><div class="hl-inhalt"></div><div class="hl-fenster"></div></div>
+  <footer class="knopfreihe">
+    <button class="neben2" id="zum-fahrplan" data-t="fahrplan"></button>
+    <button class="neben2" id="zur-ausfahrt" data-t="ausfahrt"></button>
+    <button class="haupt" id="zum-sucher" data-t="zumSucher"></button>
+  </footer>
+</section>
+
+<!-- Fahrplan -->
+<section id="v-fahrplan" class="ansicht gelb" hidden>
+  <header class="leiste-oben">
+    <button class="neben2" id="fp-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="fahrplanTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <p class="fp-kennzahlen"></p>
+  <p class="fp-spruch"></p>
+  <div class="fp-tabelle" role="table"></div>
+</section>
+
+<!-- Ausfahrt -->
+<section id="v-ausfahrt" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2" id="af-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="ausfahrtTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <p class="af-erinnerung" hidden></p>
+  <div class="af-liste"></div>
+</section>
+
+<!-- Strecken -->
+<section id="v-strecken" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2" id="sl-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="streckenTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <p class="sl-leer" hidden data-t="streckenLeer"></p>
+  <div class="sl-liste"></div>
+  <footer class="knopfreihe">
+    <button class="neben2" id="sl-einspielen" data-t="einspielen"></button>
+    <button class="haupt" id="sl-neu" data-t="neueStrecke"></button>
+  </footer>
+</section>
+
+<!-- Finale (Blindfahrt) -->
+<section id="v-finale" class="ansicht" hidden>
+  <canvas class="finale"></canvas>
+</section>
+
+<!-- Dialog -->
+<div id="dialog" class="schicht" hidden>
+  <div class="karte">
+    <p class="d-text"></p>
+    <input class="d-eingabe" type="text" autocomplete="off" enterkeyhint="done" hidden>
+    <label class="d-option" hidden><input type="checkbox"><span></span></label>
+    <div class="d-knoepfe"></div>
+  </div>
+</div>
+
+<!-- Diagnose -->
+<div id="diagnose" class="schicht" hidden>
+  <div class="karte breit">
+    <h2 data-t="diagnoseTitel"></h2>
+    <pre class="dg-text"></pre>
+    <div class="d-knoepfe senkrecht">
+      <button class="haupt" id="dg-kopieren" data-t="berichtKopieren"></button>
+      <label class="schalter"><input type="checkbox" id="dg-faden"><span data-t="fadenZeigen"></span></label>
+      <button class="neben2" id="dg-schliessen" data-t="schliessen"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Meldung -->
+<div id="meldung" class="meldung" hidden><p></p><div class="m-knoepfe"></div></div>
+
+<!-- Querformat -->
+<div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
+
+<input type="file" id="datei-bild" accept="image/*" hidden>
+<input type="file" id="datei-sicherung" accept=".zip,application/zip" hidden>
+
+<script type="module" src="src/app.mjs"></script>
+</body>
+</html>

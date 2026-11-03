@@ -1,4 +1,4 @@
-// REFERENZ.mjs – getesteter Bildkern (siehe TECHNIK.md, Abschnitt 3).
+// kern.mjs – getesteter Bildkern (siehe TECHNIK.md, Abschnitt 3).
 // Rein rechnerisch, ohne Browser-APIs: läuft in Node, im Worker und im Hauptthread.
 // Bild-Typ überall: { w, h, d } mit d = Uint8ClampedArray (RGBA, Zeile für Zeile).
 

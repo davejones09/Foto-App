@@ -9,7 +9,7 @@ index.html            einzige Seite, alle Ansichten als DOM-Bereiche
 manifest.webmanifest  standalone, Hochformat, relative Pfade
 sw.js                 Offline-Cache, Name enthält APP_VERSION
 src/
-  kern.mjs            Bildkern (aus REFERENZ.mjs)
+  kern.mjs            Bildkern
   kern.worker.mjs     Live-Analyse und Nähen im Worker
   kamera.mjs          Stream-Verwaltung
   speicher.mjs        IndexedDB
@@ -36,7 +36,7 @@ App-Icon und Splash werden per Skript als PNG erzeugt und eingecheckt: gelber Fa
 
 ## 3. Bildkern
 
-`REFERENZ.mjs` ist reine Rechnung ohne Browser-APIs und läuft im Worker.
+`src/kern.mjs` ist reine Rechnung ohne Browser-APIs und läuft im Worker.
 
 | Größe | Volle Auflösung | Live-Analyse |
 |---|---|---|
@@ -69,7 +69,7 @@ Läuft ein Analysejob noch, wird das nächste Kamerabild verworfen, nicht einger
 
 ### Stand der Prüfung
 
-- 12 Tests grün mit `node --test REFERENZ.test.mjs`.
+- 12 Tests grün mit `npm test` (Datei `test/kern.test.mjs`).
 - Zusätzlich mit fünf echten Beispielfotos von Hand geprüft: Eine Kette aus völlig verschiedenen Motiven ergibt ein durchgehendes Bild. Gleiche Überlappung ergibt 100, nicht passende Paare meist unter 40.
 - Messwerte auf einem Linux-Server: Analyse rund 0,5 ms, Faden und Nähen bei voller Auflösung rund 0,5 Sekunden je Anschluss.
 - **Nicht geprüft:** auf einem iPhone und mit bewusst gesuchten Anschlüssen aus der echten Welt. Der Wert reagiert bei sehr feinen Details empfindlich und schwankt dort auch leicht. Die Schwellen sind mit echten Testfotos nachzujustieren.

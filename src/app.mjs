@@ -1,0 +1,135 @@
+// Start der App: Installationshinweis, Service Worker, Wiederaufnahme, Diagnose.
+import { installiereHandler, protokolliere, alleFehler, werte } from './diagnose.mjs';
+installiereHandler();
+
+import { APP_VERSION } from './version.mjs';
+import { T } from './texte.mjs';
+import { $, texteEinsetzen, melde } from './ui.mjs';
+import { Z, zeige, ladeAktive, neuLaden } from './zustand.mjs';
+import * as db from './speicher.mjs';
+import { offeneFertigstellen } from './naehwerk.mjs';
+import { auftrag } from './rechner.mjs';
+import { setzeTeilwerte, teilwerteSichtbar } from './ansichten/sucher.mjs';
+import './ansichten/aufdeckung.mjs';
+import './ansichten/fein.mjs';
+import './ansichten/strecke.mjs';
+import './ansichten/weitere.mjs';
+
+texteEinsetzen();
+$('#version').textContent = 'v' + APP_VERSION;
+document.documentElement.dataset.version = APP_VERSION;
+
+const istStandalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+
+// --- Service Worker ---
+let neueVersionBereit = false;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch((e) => protokolliere('sw', e));
+  let hatteController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hatteController) neueVersionBereit = true;
+    hatteController = true;
+  });
+  // Neue Version erst beim nächsten Zurückkommen laden, nie mitten in der Arbeit.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && neueVersionBereit && Z.ansicht === 'sucher') location.reload();
+  });
+}
+
+// --- Diagnose: fünfmal auf die Versionsnummer ---
+{
+  let tipps = [];
+  $('#version').addEventListener('click', () => {
+    const jetzt = Date.now();
+    tipps = tipps.filter((t) => jetzt - t < 2500);
+    tipps.push(jetzt);
+    if (tipps.length >= 5) { tipps = []; diagnoseOeffnen(); }
+  });
+}
+
+async function bericht() {
+  const s = await db.schaetzung();
+  const mb = (b) => (b == null ? '?' : (b / 1048576).toFixed(1) + ' MB');
+  let strecken = [];
+  try { strecken = await db.strecken(); } catch {}
+  const zeilen = [
+    `Nahtlos ${APP_VERSION}`,
+    `Zeit: ${new Date().toISOString()}`,
+    `Browser: ${navigator.userAgent}`,
+    `Standalone: ${istStandalone()}`,
+    `Bildschirm: ${screen.width}x${screen.height} @${devicePixelRatio}`,
+    `Stream: ${werte.stream || '-'}`,
+    `Analyse: ${werte.fps} Bilder/s, ${werte.analyseMs.toFixed(1)} ms`,
+    `Nähen: ${werte.naehenMs ? werte.naehenMs.toFixed(0) + ' ms' : '-'}`,
+    `Speicher: ${mb(s.belegt)} von ${mb(s.frei)}, dauerhaft: ${s.dauerhaft}`,
+    `Strecken: ${strecken.length}, aktiv: ${Z.halte.length} Halte`,
+    `Ansicht: ${Z.ansicht}`,
+    '',
+    `Fehler (${alleFehler().length}):`,
+    ...alleFehler().slice().reverse().map((f) => `${f.zeit} [${f.art}] ${f.text}`),
+  ];
+  return zeilen.join('\n');
+}
+
+async function diagnoseOeffnen() {
+  const d = $('#diagnose');
+  $('.dg-text', d).textContent = await bericht();
+  $('#dg-faden').checked = teilwerteSichtbar();
+  d.hidden = false;
+}
+$('#dg-schliessen').addEventListener('click', () => ($('#diagnose').hidden = true));
+$('#dg-faden').addEventListener('change', (e) => setzeTeilwerte(e.target.checked));
+$('#dg-kopieren').addEventListener('click', async () => {
+  const text = await bericht();
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {
+    // Ausweichweg: Text markieren und kopieren
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.append(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  melde(ok ? T.kopiert : T.allgemein);
+});
+
+// --- Start ---
+async function start() {
+  try { navigator.storage?.persist?.().catch(() => {}); } catch {}
+  if (localStorage.getItem('nahtlos-test-haenger') === '1') await auftrag('test-haenger', { an: true });
+  await ladeAktive();
+  // Unterbrochenes Nähen fertigstellen, in allen Strecken.
+  for (const s of await db.strecken()) {
+    try { await offeneFertigstellen(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
+  }
+  await neuLaden();
+  await zeige('sucher');
+}
+
+function weiterNachHinweis() {
+  start().catch((e) => {
+    protokolliere('start', e);
+    melde(T.allgemein, [{ text: T.neuLaden, aktion: () => location.reload() }]);
+  });
+}
+
+let imBrowser = false;
+try { imBrowser = sessionStorage.getItem('nahtlos-browser') === '1'; } catch {}
+if (!istStandalone() && !imBrowser) {
+  zeige('install');
+  $('#trotzdem').addEventListener('click', () => {
+    try { sessionStorage.setItem('nahtlos-browser', '1'); } catch {}
+    weiterNachHinweis();
+  }, { once: true });
+} else weiterNachHinweis();
+
+// Für Browser-Tests: Zustand lesen.
+window.nahtlos = {
+  version: APP_VERSION,
+  zustand: () => ({ ansicht: Z.ansicht, halte: Z.halte.length, fertig: Z.halte.filter((h) => h.bild).length, strecke: Z.strecke?.name }),
+};
