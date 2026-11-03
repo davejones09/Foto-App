@@ -68,6 +68,20 @@ button:active { filter: brightness(0.85); }
 .schritte { margin: 0 0 20px; padding-left: 24px; }
 .schritte li { margin: 6px 0; }
 
+/* Einführung */
+.einf-flaeche { position: relative; flex: 1; min-height: 240px; touch-action: pan-y; }
+.einf-bild { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.einf-text { padding: 8px 24px 0; min-height: 9.5em; flex: none; }
+.einf-titel { font-size: 24px; margin: 0 0 8px; }
+.einf-absatz { margin: 0; color: var(--text); font-size: 17px; }
+.einf-punkte { display: flex; justify-content: center; gap: 4px; flex: none; }
+.einf-punkte button { min-width: 32px; padding: 0; display: grid; place-items: center; }
+.einf-punkte button::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--aus); transition: background .2s, width .2s; }
+.einf-punkte button[aria-current="true"]::after { background: var(--gelb); width: 22px; border-radius: 4px; }
+.einf-knoepfe { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px 12px; flex: none; }
+.einf-knoepfe .haupt { min-width: 140px; min-height: 52px; font-size: 17px; }
+.sl-hilfe { text-align: center; margin: 0; flex: none; }
+
 /* Kopf mit Signal und Wert */
 .kopf { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: none; }
 .signal { display: flex; gap: 10px; height: 14px; transition: transform .3s; }
@@ -123,7 +137,15 @@ button:active { filter: brightness(0.85); }
 .laden { width: 26px; height: 26px; border: 3px solid var(--linie); border-top-color: var(--gelb); border-radius: 50%; animation: drehen 0.9s linear infinite; }
 @keyframes drehen { to { transform: rotate(360deg); } }
 .linse { position: absolute; right: 12px; bottom: 12px; width: 44px; height: 44px; background: rgba(0,0,0,.55); font: 600 13px var(--mono); }
-.teilwerte { position: absolute; right: 8px; top: 8px; margin: 0; padding: 6px 8px; background: rgba(0,0,0,.6); font: 11px/1.4 var(--mono); color: var(--text); border-radius: 6px; pointer-events: none; }
+.idee-knopf { position: absolute; right: 10px; top: 10px; min-height: 44px; padding: 0 16px; border-radius: 22px; background: rgba(14, 15, 16, .7); border: 1px solid rgba(255, 212, 0, .6); color: var(--gelb); font-weight: 600; }
+.idee { position: absolute; left: 8px; right: 8px; bottom: 8px; background: rgba(14, 15, 16, .92); border: 1px solid var(--linie); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.idee-text { margin: 0; font-size: 16px; }
+.idee-frage { margin: 0; font-size: 13px; color: var(--text2); }
+.idee-orte { display: flex; flex-wrap: wrap; gap: 6px; }
+.idee-orte button { min-height: 44px; padding: 0 12px; border: 1px solid var(--linie); border-radius: 22px; font-size: 14px; background: var(--grund2); }
+.idee-orte button[aria-pressed="true"] { background: var(--gelb); color: #0e0f10; border-color: var(--gelb); }
+.idee-knoepfe { display: flex; gap: 8px; justify-content: flex-end; }
+.teilwerte { position: absolute; right: 8px; top: 62px; margin: 0; padding: 6px 8px; background: rgba(0,0,0,.6); font: 11px/1.4 var(--mono); color: var(--text); border-radius: 6px; pointer-events: none; }
 
 .ansage { min-height: 52px; margin: 0; padding: 8px 24px; text-align: center; font-size: 17px; display: flex; align-items: center; justify-content: center; flex: none; transition: opacity .25s; }
 .ansage.neu { animation: einblenden .35s ease-out; }
@@ -216,8 +238,38 @@ button:active { filter: brightness(0.85); }
 .af-tempi { display: flex; border: 1px solid var(--linie); border-radius: 12px; overflow: hidden; }
 .af-tempi button { flex: 1; border-radius: 0; padding: 0 6px; font-size: 14px; }
 .af-tempi button[aria-pressed="true"] { background: var(--text); color: #0e0f10; }
+.af-reel { display: flex; flex-direction: column; gap: 10px; }
+.af-abschnitt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 14px; color: var(--text2); }
+.af-wahl { font: inherit; font-size: 15px; color: var(--text); background: var(--grund); border: 1px solid var(--linie); border-radius: 10px; min-height: 44px; padding: 0 8px; min-width: 0; width: 100%; }
+.af-tempo { font: 13px var(--mono); }
+.af-vorschlag { color: var(--gelb) !important; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.af-hinweis { color: var(--text2) !important; font-size: 13px !important; }
 .balken { height: 6px; background: var(--linie); border-radius: 3px; overflow: hidden; }
 .balken i { display: block; height: 100%; width: 0; background: var(--gelb); }
+
+/* Serie */
+.se-modus { margin: 0 16px 6px; flex: none; }
+.se-modus button { min-height: 40px; }
+.se-status { margin: 4px 16px; min-height: 1.35em; color: var(--text2); font-size: 14px; flex: none; }
+.se-balken { margin: 0 16px 8px; flex: none; }
+.se-liste { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.se-zeile { display: grid; grid-template-columns: 40px 64px minmax(0, 1fr) auto 44px; gap: 8px; align-items: center; background: var(--grund2); border: 1px solid var(--linie); border-radius: 12px; padding: 4px; touch-action: pan-y; }
+.se-zeile.zieht { position: relative; z-index: 2; box-shadow: 0 8px 24px rgba(0,0,0,.6); border-color: var(--gelb); }
+.se-griff { width: 40px; min-height: 80px; display: grid; place-items: center; color: var(--text2); font-size: 22px; touch-action: none; cursor: grab; padding: 0; }
+.se-bild { padding: 0; width: 64px; height: 80px; border-radius: 6px; overflow: hidden; }
+.se-bild canvas { width: 64px; height: 80px; display: block; }
+.se-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.se-info b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.se-info small { color: var(--text2); font: 12px var(--mono); }
+.se-wert { font: 600 22px var(--mono); font-variant-numeric: tabular-nums; min-width: 2.5ch; text-align: right; }
+.se-wert.rot { color: var(--rot); } .se-wert.gelb { color: var(--gelb); } .se-wert.gruen { color: var(--gruen); }
+.se-weg { color: var(--text2); font-size: 22px; padding: 0; }
+.se-hinweis { margin: 0 16px; color: var(--text2); font-size: 13px; text-align: center; flex: none; }
+.se-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; overflow-y: auto; margin-bottom: 14px; }
+.se-alt { padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 2px solid transparent; border-radius: 8px; }
+.se-alt[aria-current="true"] { border-color: var(--gelb); }
+.se-alt canvas { width: 80px; height: 100px; border-radius: 6px; display: block; }
+.se-alt span { font: 600 14px var(--mono); }
 
 /* Strecken */
 .sl-leer { text-align: center; color: var(--text2); }

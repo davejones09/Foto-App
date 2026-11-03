@@ -16,6 +16,8 @@ import './ansichten/strecke.mjs';
 import './ansichten/strecken.mjs';
 import './ansichten/ausfahrt.mjs';
 import './ansichten/fahrplan.mjs';
+import { serieErinnern } from './ansichten/serie.mjs';
+import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
 
 texteEinsetzen();
 $('#version').textContent = 'v' + APP_VERSION;
@@ -110,7 +112,10 @@ async function start() {
     try { await offeneFertigstellen(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
   }
   await neuLaden();
-  await zeige('sucher');
+  // Beim allerersten Start kommt vor der Kamera-Freigabe die Einführung.
+  if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'sucher' });
+  else await zeige('sucher');
+  serieErinnern();
 }
 
 function weiterNachHinweis() {
@@ -139,6 +144,7 @@ window.nahtlos = {
     fertig: Z.halte.filter((h) => h.bild).length,
     strecke: Z.strecke?.name,
     blind: Z.strecke?.blind,
+    naehenMs: werte.naehenMs,
     letzter: Z.halte.length ? (({ rohB, rohH, wert, quelle, transform }) => ({ rohB, rohH, wert, quelle, transform }))(Z.halte[Z.halte.length - 1]) : null,
   }),
 };

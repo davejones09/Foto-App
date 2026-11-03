@@ -11,6 +11,8 @@ import { KLEIN_B, KLEIN_H, KLEIN_UE } from '../masse.mjs';
 import { messung, protokolliere, werte } from '../diagnose.mjs';
 import { SpeicherVoll } from '../speicher.mjs';
 import { waehleBild } from '../einfuhr.mjs';
+import { richtung, ORTE, ORT_NAMEN } from '../ideen.mjs';
+import * as ideen from '../ideenquelle.mjs';
 
 const v = $('#v-sucher');
 const video = $('#video');
@@ -46,7 +48,9 @@ let fpsZaehler = 0;
 let fpsSeit = 0;
 let schlechtSeit = 0;
 let letzterTipp = 0;
-let tippIndex = 0;
+let richtungKandidat = null;
+let richtungZaehler = 0;
+let richtungAngezeigt = null;
 let ansageTimer = null;
 let erstPhase = null; // null | 'leer' | 'rest'
 let erstSchritt = 0;
@@ -145,6 +149,8 @@ async function setzeRest() {
   if (!h || !h.bild) {
     restEl.hidden = true;
     miniImg.removeAttribute('src');
+    ideen.setzeRest(null);
+    ideeKnopf.hidden = true;
     await auftrag('rest', { rest: null });
     return;
   }
@@ -156,6 +162,8 @@ async function setzeRest() {
   ctx2d(c, true).drawImage(bm, 0, 0);
   freigeben(bm);
   const klein = kleinRest(c);
+  ideen.setzeRest(c);
+  ideeKnopf.hidden = false;
   freigeben(c);
   const r = await auftrag('rest', { rest: klein }, [klein.d.buffer]);
   restMarken = r.marken || [];
@@ -199,9 +207,67 @@ function tippPruefen(w, jetzt) {
   if (jetzt - schlechtSeit > 15000 && jetzt - letzterTipp > 60000) {
     letzterTipp = jetzt;
     schlechtSeit = jetzt;
-    sage(T.tipps[tippIndex++ % T.tipps.length], { dauer: 8000 });
+    // Dieselbe Quelle wie der Knopf "Idee"
+    ideen.naechsteIdee(Z.strecke, Z.halte).then((satz) => { if (satz && aktiv && !richtungAngezeigt) sage(satz, { dauer: 9000 }); });
   }
 }
+
+// Liegt eine Kameralinie knapp neben einer Marke: Richtung sagen, in die das iPhone muss.
+function richtungPruefen() {
+  if (erstPhase || !ideePanel.hidden) return;
+  const r = richtung(kameraLinien, restMarken);
+  const art = r ? r.richtung : null;
+  if (art === richtungKandidat) richtungZaehler++;
+  else { richtungKandidat = art; richtungZaehler = 1; }
+  if (richtungZaehler < 3 || art === richtungAngezeigt) return; // erst nach drei gleichen Messungen
+  richtungAngezeigt = art;
+  if (art) sage(art === 'hoeher' ? T.richtungHoeher : T.richtungTiefer);
+  else sage('');
+}
+
+// --- Knopf "Idee" ---
+const ideeKnopf = $('#idee');
+const ideePanel = $('.idee', rahmen);
+const ideeText = $('.idee-text', ideePanel);
+const orteEl = $('.idee-orte', ideePanel);
+let ideeLaeuft = false;
+
+async function zeigeIdee() {
+  if (ideeLaeuft) return;
+  ideeLaeuft = true;
+  try {
+    const satz = await ideen.naechsteIdee(Z.strecke, Z.halte);
+    ideeText.textContent = satz || '';
+    ideeText.classList.remove('neu');
+    void ideeText.offsetWidth;
+    ideeText.classList.add('neu');
+  } finally {
+    ideeLaeuft = false;
+  }
+}
+
+async function orteZeigen() {
+  const aktuell = await ideen.ort();
+  orteEl.replaceChildren(...ORTE.map((o) => el('button', {
+    text: ORT_NAMEN[o], 'aria-pressed': String(o === aktuell), 'data-ort': o,
+    onclick: async () => {
+      const neu = (await ideen.ort()) === o ? null : o;
+      await ideen.setzeOrt(neu);
+      for (const b of orteEl.children) b.setAttribute('aria-pressed', String(b.dataset.ort === neu));
+      zeigeIdee();
+    },
+  })));
+}
+
+ideeKnopf.addEventListener('click', async () => {
+  if (!ideePanel.hidden) { ideePanel.hidden = true; return; }
+  ideePanel.hidden = false;
+  if (richtungAngezeigt) { richtungAngezeigt = null; sage(''); }
+  await orteZeigen();
+  zeigeIdee();
+});
+$('#idee-andere').addEventListener('click', zeigeIdee);
+$('#idee-zu').addEventListener('click', () => (ideePanel.hidden = true));
 
 // --- Live-Schleife ---
 const stufen = [leinwand(384, 480), leinwand(192, 240), leinwand(KLEIN_B, KLEIN_H)];
@@ -244,7 +310,7 @@ async function analysieren(jetzt) {
   aktualisiereAnzeige(glatt, performance.now());
   tippPruefen(glatt, jetzt);
   fadenLinie.setAttribute('points', r.pfad.map((x, y) => `${x + 0.5},${y + 0.5}`).join(' '));
-  if (r.linien) kameraLinien = r.linien;
+  if (r.linien) { kameraLinien = r.linien; richtungPruefen(); }
   const marken = markenEl.children;
   for (let i = 0; i < restMarken.length && i < marken.length; i++) {
     const trifft = kameraLinien.some((l) => Math.abs(l.y - restMarken[i].y) <= 0.03);
@@ -387,6 +453,9 @@ registriere('sucher', {
     zustandAngezeigt = null;
     schlechtSeit = 0;
     kameraLinien = [];
+    richtungKandidat = null;
+    richtungAngezeigt = null;
+    ideePanel.hidden = true;
     sage('');
     teilwerteEl.hidden = !teilwerteAn;
     $('#version').hidden = false;

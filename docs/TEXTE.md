@@ -9,6 +9,18 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Schritte:** Tippe auf Teilen. Wähle „Zum Home-Bildschirm“. Starte die App über das neue Icon.
 - **Link:** Trotzdem im Browser testen
 
+## Einführung (nur beim ersten Start, vor der Kamera-Freigabe)
+
+| Bildschirm | Titel | Text |
+|---|---|---|
+| 1 | Eine Reise, ein Bild. | Jedes Foto beginnt genau dort, wo das letzte aufhört. Fotografier unterwegs oder hol bis zu 10 Fotos aus der Mediathek: Die App sucht die Reihenfolge, die am besten passt. |
+| 2 | Anschluss suchen. | Links im Sucher liegt das Ende deines letzten Fotos. Such etwas, das dort weitergeht, egal wo: Horizont, Tischkante, Geländer. Grün heißt: Das passt. |
+| 3 | Endstation: eine lange Strecke. | Am Ende fährst du durch alles durch: als Reel für Instagram, als Karussell oder als ein langes Bild. |
+
+- **Knöpfe:** Überspringen · Weiter · auf dem letzten Bildschirm Einsteigen
+- **Beschriftung im Beispiel:** Karussell · Reel
+- **Wieder öffnen (in den Strecken):** So funktioniert's
+
 ## Kamera-Freigabe
 
 - **Text:** Hier geht's nur mit Kamera. Deine Fotos bleiben auf deinem iPhone.
@@ -41,13 +53,22 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 | 40 bis 69 | Knapp, läuft aber |
 | unter 40 | Anschluss verpasst |
 
-**Tipps**, wenn der Wert 15 Sekunden unter 40 bleibt, höchstens einer pro Minute:
+**Tipps**, wenn der Wert 15 Sekunden unter 40 bleibt, höchstens einer pro Minute: kommen aus derselben Quelle wie der Knopf „Idee“ (siehe unten). Die früheren fünf Tipps sind dort als allgemeine Ideen enthalten.
 
-- Such eine Kante auf Höhe der Marke.
-- Tisch, Mauer, Horizont, Geländer: Alles ist eine Linie.
-- Geh näher ran, dann wird die Linie größer.
-- Halt das iPhone tiefer oder höher. Die Linie wandert mit.
-- Es muss nicht derselbe Ort sein. Es muss nur weitergehen.
+**Idee:**
+
+- **Knopf:** Idee
+- **Satz:** {Beschreibung des Rests} {Idee}, zum Beispiel: Linie auf halber Höhe, oben hell, unten dunkel. Versuch's mit einer Tischkante vor einer hellen Wand.
+- **Beschreibung:** Linie {im oberen Drittel | auf halber Höhe | im unteren Drittel}{, steigt nach rechts | , fällt nach rechts}, oben {hell | dunkel | blau | grün | warm | grau}, unten {…}. Ohne Linie: Kaum Linien im Rest, nur Fläche.
+- **Kontrast:** Die letzten drei Halte waren alle {Farbe}. {Idee}
+- **Ort:** Wo bist du gerade? · Strand · Stadt · Essen · Natur · Unterkunft · Unterwegs
+- **Knöpfe:** Schließen · Andere Idee
+- **Alle Ideen:** `src/ideen.mjs` (73 Stück, getaggt)
+
+**Richtung**, wenn eine Kameralinie knapp neben einer Marke liegt:
+
+- Etwas höher halten oder leicht nach oben kippen. Die Linie rutscht dann zur Marke.
+- Etwas tiefer halten oder leicht nach unten kippen. Die Linie rutscht dann zur Marke.
 
 **Sonstiges:**
 
@@ -61,6 +82,22 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Knöpfe:** Weiter · Feinjustieren · Streichen
 - **Streichen, Rückfrage:** Letzten Halt streichen? · Streichen · Behalten
 - **Bei Fehler:** Das Nähen hat nicht geklappt. Dein Foto ist gespeichert. · Nochmal versuchen
+
+## Serie
+
+- **Titel:** Serie
+- **Modus:** Beste Anschlüsse · Nach Aufnahmezeit
+- **Während der Prüfung:** Foto {k} von {n} wird gesichert und geprüft …
+- **Kopf:** Schließt an Halt {n} an.
+- **Zeile:** Halt {n} · {Datum} {Uhrzeit} oder „Zeit unbekannt“ · Wert
+- **Hinweis:** Ziehen sortiert um, Antippen wählt einen anderen Ausschnitt.
+- **Auswahl:** Ausschnitt wählen · Schließen
+- **Knöpfe:** Serie verwerfen · Bauen · während des Bauens Abbrechen
+- **Verwerfen, Rückfrage:** Serie verwerfen? Die Fotos bleiben in deiner Mediathek. · Verwerfen · Behalten
+- **Zu viele:** Höchstens 10 Fotos. Die ersten 10 sind dabei.
+- **Kaputte Dateien:** {n} Fotos ließen sich nicht öffnen.
+- **Angehalten:** Angehalten. {n} Fotos warten noch.
+- **Beim Start:** Eine Serie aus der Mediathek wartet noch. · Weiter
 
 ## Feinjustieren
 
@@ -103,8 +140,15 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Titel:** Ausfahrt
 - **Karussell:** Karussell · {n} Bilder für Instagram
 - **Mehrere Beiträge:** Passt nicht in einen Beitrag. Wird auf {t} Teile aufgeteilt.
-- **Fahrt:** Fahrt · Video · {Tempo} · {Dauer}
-- **Tempi:** Bummelzug · Regionalexpress · Sprinter
+- **Reel:** Reel · Video für Instagram · {Länge} s
+- **Längen:** 15 s · 30 s · 60 s · 90 s
+- **Abschnitt:** Von {Halt} bis {Halt}
+- **Tempo:** {n} Halte · Tempo {v} Pixel pro Sekunde
+- **Zu schnell:** Bei {Länge} s wird es zu schnell. Vorschlag: Halt {von} bis {bis}. · Übernehmen
+- **Schalter:** Endstation am Ende
+- **Nach dem Bauen:** Teilen · In Fotos speichern
+- **Hinweis:** In Instagram „Reel“ wählen. „In Fotos speichern“ legt Video und Titelbild ab, das Titelbild nimmst du als Cover.
+- **Kein MP4:** Dieses Gerät kann hier kein MP4 bauen.
 - **Gesamtbild:** Gesamtbild · {Breite} × {Höhe} Pixel
 - **Verkleinert:** Für das iPhone zu groß, deshalb auf {Breite} × {Höhe} verkleinert.
 - **Sicherung:** Sicherung · als Datei speichern
@@ -114,7 +158,7 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Fertig:** Teilen
 - **Abbruch:** Abgebrochen, weil die App in den Hintergrund ging. · Nochmal
 
-## Endstation (letztes Bild und Ende der Fahrt)
+## Endstation (letztes Karussellbild, Ende des Reels und des Finales)
 
 ```
 Endstation

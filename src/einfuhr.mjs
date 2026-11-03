@@ -9,14 +9,22 @@ import { protokolliere } from './diagnose.mjs';
 import { SpeicherVoll } from './speicher.mjs';
 
 const eingabe = $('#datei-bild');
+// In der Blindfahrt bleibt es beim einzelnen Foto.
+const nurEinzeln = () => !!(Z.strecke?.blind && !Z.strecke?.ziel);
+
 eingabe.addEventListener('change', () => {
-  const datei = eingabe.files?.[0] || null;
+  let dateien = [...(eingabe.files || [])];
   eingabe.value = '';
-  if (datei) importieren(datei);
+  if (nurEinzeln()) dateien = dateien.slice(0, 1);
+  if (dateien.length > 1) zeige('serie', { dateien });
+  else if (dateien.length === 1) importieren(dateien[0]);
 });
 
 // Öffnet die Auswahl der Mediathek. Das Ergebnis kommt über das change-Ereignis.
-export function waehleBild() { eingabe.click(); }
+export function waehleBild() {
+  eingabe.multiple = !nurEinzeln();
+  eingabe.click();
+}
 
 function masseLesen(datei) {
   return new Promise((ok, fehler) => {

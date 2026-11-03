@@ -2,7 +2,7 @@
 // Jede Änderung am Speicherformat: FORMAT erhöhen, Migration ergänzen, Test mit alten Daten.
 
 export const DB_NAME = 'nahtlos';
-export const FORMAT = 1;
+export const FORMAT = 2;
 
 // Migrationen je Ziel-Version. Bekommen die Upgrade-Transaktion.
 const MIGRATIONEN = {
@@ -11,6 +11,11 @@ const MIGRATIONEN = {
     const h = db.createObjectStore('halte', { keyPath: 'id' });
     h.createIndex('strecke', 'streckeId');
     db.createObjectStore('einstellungen', { keyPath: 'schluessel' });
+  },
+  // 2: Zwischenablage für Serien aus der Mediathek. Bestehende Strecken bleiben unberührt.
+  2(db) {
+    const s = db.createObjectStore('serie', { keyPath: 'id' });
+    s.createIndex('strecke', 'streckeId');
   },
 };
 
@@ -94,9 +99,11 @@ export async function aendereStrecke(id, felder) {
 }
 
 export function loescheStrecke(id) {
-  return tx(['strecken', 'halte'], 'readwrite', async (t) => {
+  return tx(['strecken', 'halte', 'serie'], 'readwrite', async (t) => {
     const keys = await anfrage(t.objectStore('halte').index('strecke').getAllKeys(id));
     for (const k of keys) t.objectStore('halte').delete(k);
+    const wartend = await anfrage(t.objectStore('serie').index('strecke').getAllKeys(id));
+    for (const k of wartend) t.objectStore('serie').delete(k);
     t.objectStore('strecken').delete(id);
   });
 }
@@ -138,6 +145,50 @@ export function loescheLetztenHalt(streckeId) {
     t.objectStore('halte').delete(letzter.id);
     return letzter.id;
   });
+}
+
+// --- Serie: Rohbilder warten hier, bis sie als Halte gebaut sind ---
+// { id, streckeId, serieId, reihe, roh, rohB, rohH, zeit, aufnahme, name, plan }
+
+export function neuesSerienFoto(f) {
+  return tx('serie', 'readwrite', (t) => anfrage(t.objectStore('serie').add(f))).then(() => f);
+}
+
+export function serienFotos(streckeId) {
+  return tx('serie', 'readonly', (t) => anfrage(t.objectStore('serie').index('strecke').getAll(streckeId)))
+    .then((l) => l.sort((a, b) => a.reihe - b.reihe));
+}
+
+export function aendereSerienFoto(id, felder) {
+  return tx('serie', 'readwrite', async (t) => {
+    const st = t.objectStore('serie');
+    const f = await anfrage(st.get(id));
+    if (!f) return null;
+    Object.assign(f, felder);
+    await anfrage(st.put(f));
+    return f;
+  });
+}
+
+export function loescheSerienFoto(id) {
+  return tx('serie', 'readwrite', (t) => anfrage(t.objectStore('serie').delete(id)));
+}
+
+// Macht aus einem wartenden Foto einen Halt. Eine Transaktion: Entweder liegt das Foto danach als
+// Halt in der Strecke oder es wartet weiter. Es kann nicht verloren gehen und nicht doppelt auftauchen.
+export function serienFotoZuHalt(fotoId, halt) {
+  return tx(['serie', 'halte'], 'readwrite', async (t) => {
+    const f = await anfrage(t.objectStore('serie').get(fotoId));
+    if (!f) throw new Error('Serienfoto fehlt');
+    const h = { ...halt, roh: f.roh, rohB: f.rohB, rohH: f.rohH };
+    await anfrage(t.objectStore('halte').add(h));
+    t.objectStore('serie').delete(fotoId);
+    return h;
+  });
+}
+
+export function zaehleSerienFotos() {
+  return tx('serie', 'readonly', (t) => anfrage(t.objectStore('serie').count()));
 }
 
 export function zaehleHalte() {

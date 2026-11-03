@@ -46,6 +46,37 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Alles aus `KONZEPT.md` gebaut oder in `docs/ENTSCHEIDUNGEN.md` begründet gestrichen ist.
 
+## Nachtrag: Einführung
+
+- Drei Bildschirme vor der Kamera-Freigabe: was die App macht, wie ein Anschluss funktioniert, was am Ende rauskommt
+- Gezeichnete, animierte Beispiele, keine fremden Fotos, bei reduzierter Bewegung als Standbild
+- Überspringbar, nur beim ersten Start, in den Strecken wieder aufrufbar
+
+**Fertig, wenn:** Die Einführung im Browser-Test vor jeder Kamera-Anfrage erscheint, sich überspringen und wieder öffnen lässt und nach dem ersten Mal nicht mehr von selbst kommt. Geprüft an Screenshots jedes Bildschirms.
+
+## Nachtrag: Reel
+
+- Die Fahrt in der Ausfahrt wird zum Reel: Länge statt Tempo, Abschnitt von bis Halt, Vorschlag bei zu hohem Tempo, Start in Bewegung, weiches Ende, Endstation abwählbar, Titelbild, nur MP4, „Teilen“ und „In Fotos speichern“.
+
+**Fertig, wenn:** Ein 15-s-Reel eines Abschnitts im Browser-Test als MP4 mit 15 s Länge entsteht, sich ab dem ersten Bild bewegt, das Titelbild 1080 × 1920 misst und die Rechnung für Länge, Abschnitt, Vorschlag und Textränder in Node-Tests stimmt.
+
+## Nachtrag: Serie aus der Mediathek
+
+- Mehrfachauswahl bis 10, Rohbild zuerst, einzeln dekodieren, Fortschritt
+- 75 Ausschnitte je Foto, Motivschutz, schnelle Paarwerte, Held-Karp, Viterbi, fester Start
+- „Beste Anschlüsse“ oder „Nach Aufnahmezeit“ (EXIF), Vorschau mit Ziehen, Entfernen, Ausschnittwahl
+- Bauen mit Fortschritt, Abbruch ohne Verlust, Blindfahrt nur Einzelfoto, Speicherformat 2 mit Migration
+
+**Fertig, wenn:** Node-Tests Reihenfolge, festen Start, Aufnahmezeit-Modus, Motivschutz, Held-Karp und EXIF prüfen und der Browser-Test eine gemischte Serie richtig ordnet, nach einem Abbruch ohne Verlust weiterbaut und alte Strecken die Migration überstehen.
+
+## Nachtrag: Ideen für den nächsten Halt
+
+- Knopf „Idee“ im Sucher, „Andere Idee“, Ortswahl, Tipps bei niedrigem Wert aus derselben Quelle
+- Mindestens 60 getaggte Ideen, regelbasiert, offline, keine Wiederholung je Strecke, Kontrast nach drei gleichfarbigen Halten
+- Richtungshinweis, wenn eine Kameralinie knapp neben einer Marke liegt
+
+**Fertig, wenn:** Node-Tests Merkmale, Auswahl, Wiederholungsfreiheit, Kontrast und die Richtung (gegen ein Kameramodell) prüfen und der Browser-Test Idee, Ort und Richtungshinweis im Sucher zeigt.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:
@@ -61,7 +92,7 @@ Nie streichen: Rohbild zuerst speichern, Offline-Betrieb, Diagnose, Sicherung, K
 
 ## Was David am Ende tun muss
 
-Schreibe David nach dem ersten Merge genau das, ohne das Konzept zu verraten:
+Schreibe David nach dem ersten Merge genau das:
 
 1. PR über „Create PR“ anlegen und auf GitHub mergen.
 2. Im Repository unter **Settings → Pages** als Quelle `Deploy from a branch`, Branch `main`, Ordner `/ (root)` wählen. Das ist nur einmal nötig.
@@ -70,13 +101,16 @@ Schreibe David nach dem ersten Merge genau das, ohne das Konzept zu verraten:
 
 ## Abnahme am iPhone
 
-Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest in etwa 15 Minuten durchgehen kann, ohne dass die Liste das Konzept verrät:
+Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest in etwa 15 Minuten durchgehen kann:
 
-- Einmal den Erstlauf der App durchspielen, ohne vorher etwas darüber zu lesen.
+- Die Einführung ansehen und den Erstlauf einmal durchspielen. Liegen schon Strecken auf dem iPhone, kommt die Einführung nicht von selbst: Strecken → „So funktioniert's“.
 - Flugmodus an, App aus dem App-Umschalter schließen, neu öffnen: Alles ist noch da und die Kamera läuft.
 - Während der Nutzung auf den Home-Bildschirm wechseln und zurück: Die Kamera kommt wieder.
 - Ein Foto aus der Mediathek holen, auch eines von der Lumix.
 - Alles aus der Ausfahrt einmal auslösen und in Fotos oder Instagram prüfen.
+- Eine Serie aus 3 bis 10 Fotos aus der Mediathek holen, auch von der Lumix: Reihenfolge, Werte und Ausschnitte in der Vorschau ansehen, eins umsortieren, bauen.
+- Ein Reel mit 15 Sekunden bauen, „In Fotos speichern“, in Instagram als Reel anlegen (nicht veröffentlichen müssen) und das Titelbild als Cover wählen.
+- Im Sucher „Idee“ antippen, einen Ort wählen, ein paar Ideen durchgehen. Das iPhone so halten, dass eine Linie knapp neben der Marke liegt, und prüfen, ob der Richtungshinweis stimmt.
 - Fünfmal auf die Versionsnummer tippen und den Bericht kopieren. Er sollte in Claude Code einfügbar sein.
 
 ## Unterwegs

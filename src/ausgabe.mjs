@@ -1,9 +1,9 @@
-// Ausgaben: Karussell, Gesamtbild, Fahrt, Sicherung. Alles über den LRU-Lader, mit Fortschritt.
+// Ausgaben: Karussell, Gesamtbild, Reel (und Fahrt fürs Finale), Sicherung. Alles über den LRU-Lader, mit Fortschritt.
 import { Kachellager, zeichneBand } from './band.mjs';
 import { stuecke, stueckeIm, bandBreite, HALT_B, HALT_H, UEBER } from './masse.mjs';
 import {
   kennzahlen, karussellAnzahl, KARUSSELL_B, KARUSSELL_H,
-  fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse,
+  fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse, endstationLayout,
 } from './kennzahlen.mjs';
 import { leinwand, ctx2d, alsBlob, freigeben } from './bild.mjs';
 import { T, f } from './texte.mjs';
@@ -51,7 +51,7 @@ function zeichneEndstation(ctx, zeilen, x, mitteY, groesse, maxBreite = groesse 
   ctx.fillStyle = '#ffd400';
   ctx.fillRect(x, mitteY - groesse * 2.6, groesse * 2.2, groesse * 0.22);
   ctx.font = `700 ${groesse * 1.15}px -apple-system, system-ui, sans-serif`;
-  ctx.fillText(zeilen[0], x, mitteY - groesse * 1.1);
+  ctx.fillText(zeilen[0], x, mitteY - groesse * 1.1, maxBreite);
   ctx.fillStyle = '#dfe1e3';
   ctx.font = `600 ${groesse * 0.8}px -apple-system, system-ui, sans-serif`;
   ctx.fillText(zeilen[1], x, mitteY + groesse * 0.1, maxBreite);
@@ -209,10 +209,8 @@ function fahrtBildMaler(strecke, halte, tempo) {
   return { plan, male, ende: () => lager.leeren() };
 }
 
-export async function fahrt(strecke, halte, tempo, { fortschritt, waechter } = {}) {
-  const weg = await fahrtWeg();
-  if (!weg) throw new Error('Video wird hier nicht unterstützt');
-  const { plan, male, ende } = fahrtBildMaler(strecke, halte, tempo);
+// Kodiert Bilder zu einem Video. male(ctx, t) zeichnet das Bild zur Zeit t.
+async function videoBauen(weg, male, bilder, { fortschritt, waechter } = {}) {
   const c = leinwand(FAHRT_B, FAHRT_H);
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
@@ -223,7 +221,7 @@ export async function fahrt(strecke, halte, tempo, { fortschritt, waechter } = {
       let fehler = null;
       const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => (fehler = e) });
       enc.configure({ codec: weg.codec, width: FAHRT_B, height: FAHRT_H, bitrate: 8_000_000, framerate: FAHRT_FPS, avc: { format: 'avc' } });
-      for (let i = 0; i < plan.bilder; i++) {
+      for (let i = 0; i < bilder; i++) {
         waechter?.pruefe();
         if (fehler) throw fehler;
         await male(ctx, i / FAHRT_FPS);
@@ -231,7 +229,7 @@ export async function fahrt(strecke, halte, tempo, { fortschritt, waechter } = {
         enc.encode(frame, { keyFrame: i % (FAHRT_FPS * 2) === 0 });
         frame.close();
         while (enc.encodeQueueSize > 4) await new Promise((ok) => setTimeout(ok, 5));
-        if (i % 10 === 0) { fortschritt?.(i / plan.bilder); await kurz(); }
+        if (i % 10 === 0) { fortschritt?.(i / bilder); await kurz(); }
       }
       await enc.flush();
       if (fehler) throw fehler;
@@ -241,6 +239,7 @@ export async function fahrt(strecke, halte, tempo, { fortschritt, waechter } = {
       return new Blob([muxer.target.buffer], { type: 'video/mp4' });
     }
     // Ausweg: in Echtzeit aufnehmen.
+    const dauer = bilder / FAHRT_FPS;
     const stream = c.captureStream(FAHRT_FPS);
     const rec = new MediaRecorder(stream, { mimeType: weg.typ, videoBitsPerSecond: 8_000_000 });
     const teile = [];
@@ -254,9 +253,9 @@ export async function fahrt(strecke, halte, tempo, { fortschritt, waechter } = {
       const schritt = async () => {
         const t = (performance.now() - t0) / 1000;
         try { waechter?.pruefe(); } catch (e) { abbruch = e; ok(); return; }
-        if (t >= plan.dauer) { ok(); return; }
+        if (t >= dauer) { ok(); return; }
         await male(ctx, t);
-        fortschritt?.(t / plan.dauer);
+        fortschritt?.(t / dauer);
         requestAnimationFrame(schritt);
       };
       requestAnimationFrame(schritt);
@@ -268,7 +267,90 @@ export async function fahrt(strecke, halte, tempo, { fortschritt, waechter } = {
     fortschritt?.(1);
     return new Blob(teile, { type: weg.typ.split(';')[0] });
   } finally {
+    freigeben(c);
+  }
+}
+
+// --- Reel: immer MP4 ---
+export class KeinMp4 extends Error {}
+
+export async function reelWeg() {
+  const w = await fahrtWeg();
+  if (!w) return null;
+  if (w.art === 'webcodecs') return w;
+  return w.typ.startsWith('video/mp4') ? w : null;
+}
+
+// Endstation-Zahlen beziehen sich auf den gewählten Abschnitt.
+const abschnittHalte = (halte, plan) => halte.slice(plan.von, plan.bis + 1);
+
+function reelBildMaler(strecke, halte, plan) {
+  const lager = new Kachellager(6);
+  const zeilen = endstationText(strecke, abschnittHalte(halte, plan));
+  const layout = endstationLayout();
+  const endeStart = plan.bewegung - 0.2;
+  async function male(ctx, t) {
+    const xb = plan.xBand(Math.min(t, plan.bewegung));
+    ctx.fillStyle = '#0e0f10';
+    ctx.fillRect(0, 0, FAHRT_B, FAHRT_H);
+    await zeichneBereich(ctx, halte, lager, { s: plan.f, x0: xb, w: FAHRT_B, h: FAHRT_H });
+    if (plan.endstation && t > endeStart) {
+      const a = Math.min(1, (t - endeStart) / 0.8);
+      ctx.fillStyle = `rgba(14,15,16,${(a * 0.88).toFixed(3)})`;
+      ctx.fillRect(0, 0, FAHRT_B, FAHRT_H);
+      ctx.globalAlpha = a;
+      zeichneEndstation(ctx, zeilen, layout.x, layout.mitteY, layout.groesse, layout.maxBreite);
+      ctx.globalAlpha = 1;
+    }
+  }
+  return { male, ende: () => lager.leeren() };
+}
+
+export async function reel(strecke, halte, plan, opt = {}) {
+  const weg = await reelWeg();
+  if (!weg) throw new KeinMp4('Kein MP4');
+  const { male, ende } = reelBildMaler(strecke, halte, plan);
+  try {
+    return await videoBauen(weg, male, plan.bilder, opt);
+  } finally {
     ende();
+  }
+}
+
+// Titelbild 1080×1920. Das Wichtigste liegt in den mittleren 1080×1350: dort steht das Band
+// in voller Höhe, mittig auf dem besten Anschluss des Abschnitts.
+export const TITEL_MITTE = 1350;
+export function titelAusschnitt(halte, plan) {
+  const s = TITEL_MITTE / HALT_H;
+  const sicht = FAHRT_B / s;
+  let mitte = (plan.x0 + plan.x1) / 2;
+  let bester = -1;
+  for (const h of abschnittHalte(halte, plan)) {
+    if (h.index > plan.von && h.wert != null && h.wert > bester) { bester = h.wert; mitte = h.index * (HALT_B - UEBER) + UEBER / 2; }
+  }
+  const x0 = Math.max(plan.x0, Math.min(plan.x1 - sicht, mitte - sicht / 2));
+  return { s, x0, y: (FAHRT_H - TITEL_MITTE) / 2 };
+}
+
+export async function titelbild(halte, plan) {
+  const c = leinwand(FAHRT_B, FAHRT_H);
+  const ctx = ctx2d(c);
+  ctx.imageSmoothingQuality = 'high';
+  const lager = new Kachellager(4);
+  try {
+    ctx.fillStyle = '#0e0f10';
+    ctx.fillRect(0, 0, FAHRT_B, FAHRT_H);
+    const a = titelAusschnitt(halte, plan);
+    ctx.save();
+    ctx.translate(0, a.y);
+    ctx.beginPath();
+    ctx.rect(0, 0, FAHRT_B, TITEL_MITTE);
+    ctx.clip();
+    await zeichneBereich(ctx, halte, lager, { s: a.s, x0: a.x0, w: FAHRT_B, h: TITEL_MITTE });
+    ctx.restore();
+    return await alsBlob(c, 'image/jpeg', 0.92);
+  } finally {
+    lager.leeren();
     freigeben(c);
   }
 }

@@ -41,3 +41,42 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Pünktlichkeit** zählt nur Anschlüsse (ab dem zweiten Halt). Ohne Anschluss steht „–“ und kein Spruch.
 - **Blindfahrt:** Die Aufdeckung zeigt nur den Faden und den Stempel, kein Herauszoomen. Strecke, Leiste, Streckenvorschau und Ausfahrt bleiben bis „Ziel erreichen“ verdeckt. Das Finale spielt die Fahrt im Tempo Regionalexpress im Vollbild, Antippen überspringt.
 - **Linsenwechsel:** erscheint nur, wenn `enumerateDevices` nach der Freigabe mindestens zwei Kameras liefert, deren Name nicht nach Frontkamera klingt. Der Knopf zeigt „1/3“ usw. Nur am iPhone prüfbar.
+
+## Einführung (0.5.0)
+
+- **Die Überraschung ist vorbei.** Statt die Idee erst beim zweiten Foto zu zeigen, erklärt eine Einführung sie vorab in drei Bildschirmen. Die Spoiler-Regel ist aus `CLAUDE.md` gestrichen.
+- **Nur beim ersten Start** heißt: Die Einführung wurde noch nie gesehen oder übersprungen, und es liegt noch kein einziger Halt in der Datenbank. Wer die App schon benutzt hat, bekommt sie nach dem Update nicht ungefragt, kann sie aber in den Strecken über „So funktioniert's“ öffnen. Gemerkt wird das in `localStorage` und zusätzlich in der Datenbank.
+- **Reihenfolge beim ersten Start:** Installationshinweis (nur im Browser), Einführung, dann der Sucher mit der Kamera-Freigabe. Die Kamera wird erst nach der Einführung angefragt.
+- **Beispiele sind gezeichnet** (`src/ansichten/einfuehrung.mjs`): fünf einfache Szenen mit einer Linie auf gleicher Höhe (Meer, Café, Hafengeländer, Berg, Straße), weich verschmolzen wie im echten Band. Keine Fotos, keine Dateien, nichts aus dem Netz. Wert und Signal im Beispiel sind gespielt, nicht vom Bildkern gerechnet.
+- **Reduzierte Bewegung:** Ist sie im System eingestellt, zeigt jeder Bildschirm ein aussagekräftiges Standbild.
+- **Der geführte Erstlauf bleibt** wie gehabt. Seine Hinweise im Sucher passen auch nach der Einführung und helfen beim ersten echten Anschluss.
+
+## Reel (0.7.0)
+
+- **Die Fahrt in der Ausfahrt heißt jetzt Reel.** Das Finale der Blindfahrt nutzt weiter die alte Fahrt mit Rampe und Regionalexpress-Tempo, unverändert.
+- **Tempo aus der Länge:** konstantes Tempo ab dem ersten Bild, am Ende 1,6 s gleichmäßiges Bremsen. So stimmt die Länge exakt und es gibt keinen Stillstand am Anfang. Bei eingeschalteter Endstation gehören deren 3 s zur gewählten Länge.
+- **Vorschlag bei zu hohem Tempo:** Der Anfang („Von“) bleibt, das Ende rückt vor. Es ist der längste Abschnitt, der unter 900 Pixeln pro Sekunde bleibt. Man kann trotzdem schneller bauen, der Vorschlag ist kein Zwang.
+- **Endstation im Reel** zeigt die Zahlen des gewählten Abschnitts, nicht der ganzen Strecke.
+- **Titelbild:** ohne Text. Mittig steht das Band in 1350 Pixeln Höhe, zentriert auf den Faden des besten Anschlusses im Abschnitt. Oben und unten bleibt dunkler Grund, damit Instagram es beliebig zuschneiden kann, ohne Bildinhalt zu verlieren.
+- **„In Fotos speichern“** öffnet das Teilen-Menü mit Video und Titelbild, dort „Sichern“ wählen. Einen direkten Weg in die Fotos-App gibt es für Web-Apps nicht. Scheitert das Teilen, gibt es den Download.
+- **Nur MP4:** Kann das Gerät weder per WebCodecs noch per `MediaRecorder` MP4 schreiben, ist das Reel ausgegraut, statt still ein WebM zu liefern.
+
+## Serie aus der Mediathek (0.8.0)
+
+- **Eigener Wartebereich statt halbfertiger Halte.** Serienfotos liegen bis zum Bauen im neuen Speicher `serie` (Format 2). Würden sie sofort als Halte angelegt, würde der Start sie in der Auswahlreihenfolge fertignähen. Der Übergang zum Halt ist eine einzige Transaktion.
+- **Motivkarte:** Farbabweichung zur Umgebung (stark weichgezeichnetes Bild), nicht zum Bildmittel. Bei einem zweifarbigen Bild (Himmel und Meer) weicht sonst jeder Pixel vom Mittel ab und ein kleines Motiv ginge unter. Die Werte werden quadriert, damit Deutliches zählt.
+- **Motivschutz relativ zum besten Ausschnitt.** Ein Querformat verliert im 4:5-Rahmen immer Fläche. Gemessen wird deshalb, wie viel ein Ausschnitt gegenüber dem besten möglichen behält. Unter 80 % ist er verboten, darüber kostet jeder Prozentpunkt 2,5 Punkte. Im Test behalten alle erlaubten Ausschnitte mindestens 95 % des Motivs.
+- **Held-Karp mit geschätzten Kanten:** Für die Reihenfolge zählt je Fotopaar der beste Paarwert der 10 günstigsten Ausschnitte. Die exakte Ausschnittwahl macht danach Viterbi über alle erlaubten Ausschnitte. Beide Schritte sind exakt für ihr Teilproblem, zusammen eine sehr gute Näherung des Gesamtproblems.
+- **Werte in der Vorschau sind Schätzungen** aus dem schnellen Paarwert. Der endgültige Wert kommt beim Bauen aus dem Bildkern und steht danach im Fahrplan.
+- **Zeit eines Serienhalts** ist das Aufnahmedatum aus EXIF, sonst der Zeitpunkt des Bauens. Fahrplan und Tageswechsel zeigen so die Reise.
+- **Weitere Fotos zu einer wartenden Serie** kommen dazu, statt sie zu ersetzen.
+- **Blindfahrt:** Die Auswahl erlaubt nur ein Foto. Liefert das System trotzdem mehrere, zählt nur das erste.
+
+## Ideen (0.9.0)
+
+- **Satz aus zwei Teilen:** erst die Beschreibung des Rests („Linie auf halber Höhe, oben hell, unten dunkel.“), dann die Idee. Allgemeine Tipps und Kontrast-Ideen stehen ohne Beschreibung, Kontrast-Ideen mit dem Hinweis auf die letzten drei Halte.
+- **Ort ist optional.** Ohne Ort sind Ideen mit Ort erlaubt, aber leicht im Nachteil. Mit Ort fallen Ideen für andere Orte weg. Nochmal Antippen hebt die Wahl auf.
+- **Keine Wiederholung je Strecke**, auch über Neustarts hinweg (gemerkt in der Datenbank). Sind alle passenden durch, beginnt eine neue Runde.
+- **Kontrast hat Vorrang**, solange die passende Kontrast-Idee in dieser Strecke noch nicht kam.
+- **Richtung ab 3 % Abstand:** Darunter wird die Marke ohnehin grün. Über 12 % ist es kein „knapp daneben“ mehr. Der Hinweis erscheint erst nach drei gleichen Messungen, damit er nicht flackert. Er hat Vorrang vor Tipps und ruht, solange das Ideen-Feld offen ist.
+- **Tipps bei niedrigem Wert** kommen jetzt aus der Ideenquelle. Die alten fünf Tipps sind dort allgemeine Ideen mit der niedrigsten Priorität.

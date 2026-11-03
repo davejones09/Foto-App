@@ -38,6 +38,20 @@
   </div>
 </section>
 
+<!-- Einführung (erster Start, später über Strecken) -->
+<section id="v-einfuehrung" class="ansicht" hidden>
+  <div class="einf-flaeche"><canvas class="einf-bild" aria-hidden="true"></canvas></div>
+  <div class="einf-text" aria-live="polite">
+    <h1 class="einf-titel"></h1>
+    <p class="einf-absatz"></p>
+  </div>
+  <div class="einf-punkte"></div>
+  <footer class="einf-knoepfe">
+    <button class="link" id="einf-ueberspringen" data-t="einfUeberspringen"></button>
+    <button class="haupt" id="einf-weiter" data-t="weiter"></button>
+  </footer>
+</section>
+
 <!-- Sucher -->
 <section id="v-sucher" class="ansicht" hidden>
   <header class="kopf">
@@ -62,6 +76,16 @@
       <button class="haupt" id="kamera-neu" data-t="neuStarten"></button>
     </div>
     <button class="linse rund" hidden aria-label="Linse wechseln"><span>1×</span></button>
+    <button class="idee-knopf" id="idee" hidden data-t="idee"></button>
+    <div class="idee" hidden>
+      <p class="idee-text" aria-live="polite"></p>
+      <p class="idee-frage" data-t="ideeOrt"></p>
+      <div class="idee-orte" role="group"></div>
+      <div class="idee-knoepfe">
+        <button class="neben2" id="idee-zu" data-t="schliessen"></button>
+        <button class="haupt" id="idee-andere" data-t="andereIdee"></button>
+      </div>
+    </div>
     <pre class="teilwerte" hidden></pre>
   </div>
   <p class="ansage" aria-live="polite"></p>
@@ -119,6 +143,36 @@
   </footer>
 </section>
 
+<!-- Serie aus der Mediathek: Vorschau vor dem Bauen -->
+<section id="v-serie" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2" id="se-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="serieTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="se-modus af-tempi" role="group">
+    <button data-modus="beste" data-t="serieBeste"></button>
+    <button data-modus="zeit" data-t="serieZeit"></button>
+  </div>
+  <p class="se-status" aria-live="polite"></p>
+  <div class="balken se-balken" hidden><i></i></div>
+  <ol class="se-liste"></ol>
+  <p class="se-hinweis" data-t="serieHinweis"></p>
+  <footer class="knopfreihe">
+    <button class="neben2" id="se-verwerfen" data-t="serieVerwerfen"></button>
+    <button class="neben2" id="se-anhalten" data-t="abbrechen" hidden></button>
+    <button class="haupt" id="se-bauen" data-t="serieBauen"></button>
+  </footer>
+</section>
+
+<div id="se-wahl" class="schicht" hidden>
+  <div class="karte breit">
+    <h2 data-t="serieAusschnitt"></h2>
+    <div class="se-raster"></div>
+    <div class="d-knoepfe"><button class="neben2" id="se-wahl-zu" data-t="schliessen"></button></div>
+  </div>
+</div>
+
 <!-- Strecke -->
 <section id="v-strecke" class="ansicht" hidden>
   <header class="leiste-oben">
@@ -174,6 +228,7 @@
   </header>
   <p class="sl-leer" hidden data-t="streckenLeer"></p>
   <div class="sl-liste"></div>
+  <p class="sl-hilfe"><button class="link" id="sl-einfuehrung" data-t="einfOeffnen"></button></p>
   <footer class="knopfreihe">
     <button class="neben2" id="sl-einspielen" data-t="einspielen"></button>
     <button class="haupt" id="sl-neu" data-t="neueStrecke"></button>
@@ -214,7 +269,7 @@
 <!-- Querformat -->
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
-<input type="file" id="datei-bild" accept="image/*" hidden>
+<input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="datei-sicherung" accept=".zip,application/zip" hidden>
 
 <script type="module" src="src/app.mjs"></script>

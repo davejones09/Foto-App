@@ -1,5 +1,5 @@
 // Service Worker: alles für den Offline-Betrieb vorhalten. Der Name enthält APP_VERSION.
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.9.0';
 const CACHE = 'nahtlos-' + APP_VERSION;
 
 const DATEIEN = [
@@ -12,7 +12,10 @@ const DATEIEN = [
   './src/bild.mjs',
   './src/diagnose.mjs',
   './src/einfuhr.mjs',
+  './src/exif.mjs',
   './src/geometrie.mjs',
+  './src/ideen.mjs',
+  './src/ideenquelle.mjs',
   './src/kennzahlen.mjs',
   './src/ausgabe.mjs',
   './src/kamera.mjs',
@@ -21,6 +24,8 @@ const DATEIEN = [
   './src/masse.mjs',
   './src/naehwerk.mjs',
   './src/rechner.mjs',
+  './src/serie.mjs',
+  './src/serienwerk.mjs',
   './src/speicher.mjs',
   './src/texte.mjs',
   './src/ui.mjs',
@@ -28,9 +33,11 @@ const DATEIEN = [
   './src/zip.mjs',
   './src/zustand.mjs',
   './src/ansichten/aufdeckung.mjs',
+  './src/ansichten/einfuehrung.mjs',
   './src/ansichten/ausfahrt.mjs',
   './src/ansichten/fahrplan.mjs',
   './src/ansichten/fein.mjs',
+  './src/ansichten/serie.mjs',
   './src/ansichten/strecke.mjs',
   './src/ansichten/sucher.mjs',
   './src/ansichten/strecken.mjs',

@@ -1,8 +1,8 @@
-// Ausfahrt: Karussell, Fahrt, Gesamtbild, Sicherung und Einspielen.
+// Ausfahrt: Karussell, Reel, Gesamtbild, Sicherung und Einspielen.
 import { Z, registriere, zeige, neuLaden, ladeStrecke } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
 import { $, el, melde } from '../ui.mjs';
-import { karussellAnzahl, beitraege, fahrtPlan, dauerText, TEMPI } from '../kennzahlen.mjs';
+import { karussellAnzahl, beitraege, reelPlan, REEL_LAENGEN } from '../kennzahlen.mjs';
 import * as aus from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
@@ -10,13 +10,19 @@ import { protokolliere } from '../diagnose.mjs';
 const v = $('#v-ausfahrt');
 const liste = $('.af-liste', v);
 const erinnerung = $('.af-erinnerung', v);
-let tempoIndex = 1;
-try { const t = Number(localStorage.getItem('nahtlos-tempo')); if (t >= 0 && t <= 2) tempoIndex = t; } catch {}
+let reelLaenge = 30;
+let reelEndstation = true;
+try {
+  const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
+  if (REEL_LAENGEN.includes(l)) reelLaenge = l;
+  reelEndstation = localStorage.getItem('nahtlos-reel-endstation') !== '0';
+} catch {}
 let laeuft = false;
 
 const datei = (blob, name) => new File([blob], name, { type: blob.type });
 
 // Ein Ausgabepunkt: Titel antippen baut, danach "Teilen".
+// bauen() liefert Dateigruppen oder { knoepfe: [{ text, dateien, haupt }], hinweis }.
 function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
   const kopf = el('button', { klasse: 'af-titel neben2', text: titel });
   const infoEl = el('p', { text: info });
@@ -42,13 +48,16 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
     fort(0);
     const w = aus.hintergrundWaechter();
     try {
-      const gruppen = await bauen(fort, w, { infoEl });
+      const ergebnis = await bauen(fort, w, { infoEl });
       status.hidden = true;
       balken.hidden = true;
-      zeigeTeilen(gruppen);
+      if (Array.isArray(ergebnis)) zeigeTeilen(ergebnis);
+      else zeigeKnoepfe(ergebnis);
     } catch (err) {
       balken.hidden = true;
-      if (err instanceof aus.Abgebrochen) {
+      if (err instanceof aus.KeinMp4) {
+        status.textContent = T.mp4Fehlt;
+      } else if (err instanceof aus.Abgebrochen) {
         status.textContent = T.abbruchHintergrund;
         reihe.replaceChildren(el('button', { klasse: 'haupt', text: T.nochmal, onclick: start }));
       } else {
@@ -69,6 +78,14 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
       onclick: () => teile(g, gruppen),
     })));
   }
+  function zeigeKnoepfe({ knoepfe, hinweis }) {
+    reihe.replaceChildren(...knoepfe.map((k) => el('button', {
+      klasse: k.haupt ? 'haupt' : 'neben2',
+      text: k.text,
+      onclick: () => teile(k.dateien, null),
+    })));
+    if (hinweis) { status.textContent = hinweis; status.hidden = false; status.classList.add('af-hinweis'); }
+  }
   async function teile(g, gruppen) {
     try {
       const r = await aus.teilen(g, Z.strecke.name);
@@ -78,7 +95,7 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
       const knoepfe = [{ text: T.stattdessenSpeichern, aktion: () => { aus.speichern(g); nachTeilen?.(); } }];
       melde(T.teilenFehler, knoepfe);
       // Viele Dateien auf einmal schafft iOS womöglich nicht: in Portionen zu je 10 anbieten.
-      if (g.length > 10) {
+      if (gruppen && g.length > 10) {
         const portionen = [];
         for (let i = 0; i < g.length; i += 10) portionen.push(g.slice(i, i + 10));
         zeigeTeilen(gruppen.flatMap((x) => (x === g ? portionen : [x])));
@@ -109,24 +126,86 @@ function aufbauen() {
     },
   });
 
-  // Fahrt mit Tempowahl
-  const tempoTitel = () => f(T.fahrt, { tempo: T.tempi[tempoIndex], dauer: dauerText(fahrtPlan(n, TEMPI[tempoIndex]).dauer) });
-  const tempi = el('div', { klasse: 'af-tempi', role: 'group' }, ...T.tempi.map((t, i) => el('button', {
-    text: t, 'aria-pressed': String(i === tempoIndex),
+  // Reel: Länge wählen, Abschnitt wählen, das Tempo ergibt sich.
+  const auswahl = { von: 0, bis: Math.max(0, n - 1) };
+  const haltName = (i) => (halte[i].name ? `${i + 1} · ${halte[i].name}` : f(T.unbenannt, { n: i + 1 }));
+  const optionen = (sel, wert) => sel.replaceChildren(...halte.map((_, i) => el('option', { value: String(i), text: haltName(i), selected: i === wert })));
+  const vonSel = el('select', { klasse: 'af-wahl', 'aria-label': T.reelVon });
+  const bisSel = el('select', { klasse: 'af-wahl', 'aria-label': T.reelBis });
+  optionen(vonSel, auswahl.von);
+  optionen(bisSel, auswahl.bis);
+  const laengen = el('div', { klasse: 'af-tempi af-laengen', role: 'group' }, ...REEL_LAENGEN.map((l) => el('button', {
+    text: f(T.reelSekunden, { s: l }), 'aria-pressed': String(l === reelLaenge),
     onclick: (e) => {
-      tempoIndex = i;
-      try { localStorage.setItem('nahtlos-tempo', String(i)); } catch {}
+      reelLaenge = l;
+      try { localStorage.setItem('nahtlos-reel-laenge', String(l)); } catch {}
       for (const b of e.target.parentNode.children) b.setAttribute('aria-pressed', String(b === e.target));
-      $('.af-titel', fahrt).textContent = tempoTitel();
+      reelAktualisieren();
     },
   })));
-  const fahrt = punkt({
-    titel: tempoTitel(),
-    zusatz: tempi,
+  const endSchalter = el('input', { type: 'checkbox', checked: reelEndstation });
+  endSchalter.addEventListener('change', () => {
+    reelEndstation = endSchalter.checked;
+    try { localStorage.setItem('nahtlos-reel-endstation', reelEndstation ? '1' : '0'); } catch {}
+    reelAktualisieren();
+  });
+  const tempoEl = el('p', { klasse: 'af-tempo' });
+  const vorschlagText = el('span');
+  const vorschlagEl = el('p', { klasse: 'af-vorschlag' }, vorschlagText, ' ',
+    el('button', { klasse: 'neben2 af-vorschlag-ok', text: T.uebernehmen, onclick: () => {
+      const p = reelPlanJetzt();
+      if (!p.vorschlag) return;
+      auswahl.von = p.vorschlag.von;
+      auswahl.bis = p.vorschlag.bis;
+      vonSel.value = String(auswahl.von);
+      bisSel.value = String(auswahl.bis);
+      reelAktualisieren();
+    } }));
+  vorschlagEl.hidden = true;
+  vonSel.addEventListener('change', () => {
+    auswahl.von = Number(vonSel.value);
+    if (auswahl.bis < auswahl.von) { auswahl.bis = auswahl.von; bisSel.value = String(auswahl.bis); }
+    reelAktualisieren();
+  });
+  bisSel.addEventListener('change', () => {
+    auswahl.bis = Number(bisSel.value);
+    if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
+    reelAktualisieren();
+  });
+  const reelPlanJetzt = () => reelPlan(n, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, endstation: reelEndstation });
+  const zusatz = el('div', { klasse: 'af-reel' },
+    laengen,
+    el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
+    el('label', { klasse: 'schalter' }, endSchalter, el('span', { text: T.reelEndstation })),
+    tempoEl, vorschlagEl);
+  const reelKarte = punkt({
+    titel: f(T.reel, { laenge: reelLaenge }),
+    zusatz,
     async bauen(fort, w) {
-      const blob = await aus.fahrt(Z.strecke, halte, TEMPI[tempoIndex], { fortschritt: fort, waechter: w });
-      return [[datei(blob, `${name}-fahrt.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`)]];
+      const p = reelPlanJetzt();
+      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w });
+      const titelBlob = await aus.titelbild(halte, p);
+      fort(1);
+      const video = datei(blob, `${name}-reel-${p.laenge}s.mp4`);
+      const titel = datei(titelBlob, `${name}-reel-titelbild.jpg`);
+      return {
+        knoepfe: [{ text: T.teilen, dateien: [video], haupt: true }, { text: T.inFotos, dateien: [video, titel] }],
+        hinweis: T.reelHinweis,
+      };
     },
+  });
+  function reelAktualisieren() {
+    const p = reelPlanJetzt();
+    $('.af-titel', reelKarte).textContent = f(T.reel, { laenge: p.laenge });
+    tempoEl.textContent = f(T.reelTempo, { n: p.bis - p.von + 1, v: Math.round(p.tempo) });
+    vorschlagEl.hidden = !p.zuSchnell;
+    if (p.vorschlag) vorschlagText.textContent = f(T.reelZuSchnell, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+  }
+  reelAktualisieren();
+  aus.reelWeg().then((w) => {
+    if (w) return;
+    $('.af-titel', reelKarte).disabled = true;
+    tempoEl.textContent = T.mp4Fehlt;
   });
 
   const plan = aus.gesamtPlan(n);
@@ -154,8 +233,7 @@ function aufbauen() {
   });
 
   const einspielenKnopf = el('section', { klasse: 'af-punkt' }, el('button', { klasse: 'af-titel neben2', text: T.einspielen, onclick: einspielenWaehlen }));
-  liste.replaceChildren(karussell, fahrt, gesamt, sicherung, einspielenKnopf);
-  if (typeof VideoEncoder === 'undefined' && typeof MediaRecorder === 'undefined') fahrt.hidden = true;
+  liste.replaceChildren(karussell, reelKarte, gesamt, sicherung, einspielenKnopf);
 }
 
 // --- Einspielen ---

@@ -139,37 +139,75 @@ test('Sicherung lässt sich verlustfrei einspielen', async () => {
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-punkt');
 });
 
-test('Fahrt erzeugt ein abspielbares MP4', async () => {
-  await punkt(1).locator('.af-tempi button').nth(2).click();
-  const titel = await punkt(1).locator('.af-titel').textContent();
-  assert.match(titel, /^Fahrt · Video · Sprinter · \d+ s$/);
-  const erwartet = Number(titel.match(/(\d+) s$/)[1]);
-  await bauenUndTeilen(1, 120000);
-  await page.screenshot({ path: `${ERGEBNISSE}/e3-ausfahrt-fertig.png` });
+test('Reel: 15 s, Abschnitt von Halt 2 bis 3, MP4, Titelbild, ab dem ersten Bild in Bewegung', async () => {
+  const karte = punkt(1);
+  assert.match(await karte.locator('.af-titel').textContent(), /^Reel · Video für Instagram · \d+ s$/);
+  await karte.locator('.af-laengen button', { hasText: '15 s' }).click();
+  assert.equal(await karte.locator('.af-titel').textContent(), 'Reel · Video für Instagram · 15 s');
+  await karte.locator('select').nth(0).selectOption('1');
+  assert.equal(await karte.locator('select').nth(1).inputValue(), '2');
+  assert.match(await karte.locator('.af-tempo').textContent(), /^2 Halte · Tempo \d+ Pixel pro Sekunde$/);
+  assert.ok(await karte.locator('.af-vorschlag').isHidden());
+  await karte.locator('.af-titel').click();
+  await karte.locator('.af-reihe button', { hasText: 'In Fotos speichern' }).waitFor({ timeout: 180000 });
+  assert.match(await karte.locator('.af-status').textContent(), /Reel/);
+  await page.screenshot({ path: `${ERGEBNISSE}/e3-reel-fertig.png` });
+  const vorher = await page.evaluate(() => window.__geteilt.length);
+  await karte.locator('.af-reihe button', { hasText: 'In Fotos speichern' }).click();
+  await warteAuf(page, (n) => window.__geteilt.length > n, vorher);
   const r = await page.evaluate(async () => {
-    const [f] = window.__geteilt[window.__geteilt.length - 1];
-    const kopf = new Uint8Array(await f.slice(0, 12).arrayBuffer());
+    const [video, titel] = window.__geteilt[window.__geteilt.length - 1];
+    const kopf = new Uint8Array(await video.slice(0, 12).arrayBuffer());
     const v = document.createElement('video');
     v.muted = true;
-    v.src = URL.createObjectURL(f);
+    v.src = URL.createObjectURL(video);
     await new Promise((ok, fehler) => { v.onloadedmetadata = ok; v.onerror = () => fehler(new Error('nicht abspielbar')); });
-    v.currentTime = v.duration / 2;
-    await new Promise((ok) => (v.onseeked = ok));
-    await v.play();
-    await new Promise((ok) => setTimeout(ok, 300));
-    return { typ: f.type, name: f.name, groesse: f.size, ftyp: String.fromCharCode(...kopf.subarray(4, 8)), dauer: v.duration, b: v.videoWidth, h: v.videoHeight, zeit: v.currentTime };
+    // Erstes und zweites Bild vergleichen: Das Reel bewegt sich sofort.
+    const c = document.createElement('canvas');
+    c.width = 270; c.height = 480;
+    const k = c.getContext('2d', { willReadFrequently: true });
+    const bildBei = async (t) => {
+      v.currentTime = t;
+      await new Promise((ok) => (v.onseeked = ok));
+      k.drawImage(v, 0, 0, 270, 480);
+      return k.getImageData(0, 0, 270, 480).data;
+    };
+    const unterschied = (a, b) => { let d = 0; for (let i = 0; i < a.length; i += 4) d += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]); return d / (a.length / 4); };
+    const anfang = unterschied(await bildBei(0), await bildBei(0.2));
+    const ende = unterschied(await bildBei(14.4), await bildBei(14.6));
+    k.drawImage(v, 0, 0, 270, 480);
+    const endBild = c.toDataURL('image/png');
+    const tb = await createImageBitmap(titel);
+    const tc = new OffscreenCanvas(tb.width, tb.height);
+    const tk = tc.getContext('2d');
+    tk.drawImage(tb, 0, 0);
+    const zeile = (y) => { const d = tk.getImageData(0, y, tb.width, 1).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 4) / 3; };
+    return {
+      typ: video.type, name: video.name, ftyp: String.fromCharCode(...kopf.subarray(4, 8)), dauer: v.duration, b: v.videoWidth, h: v.videoHeight,
+      anfang, ende, endBild, titelBild: tc.convertToBlob ? await new Promise(async (ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(titel); }) : null,
+      titel: `${tb.width}x${tb.height}`, titelName: titel.name,
+      oben: zeile(100), mitte: zeile(960), unten: zeile(1800),
+    };
   });
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(`${ERGEBNISSE}/e3-reel-endstation.png`, Buffer.from(r.endBild.split(',')[1], 'base64'));
+  writeFileSync(`${ERGEBNISSE}/e3-reel-titelbild.jpg`, Buffer.from(r.titelBild.split(',')[1], 'base64'));
+  delete r.endBild; delete r.titelBild;
   console.log(JSON.stringify(r));
   assert.equal(r.typ, 'video/mp4');
   assert.equal(r.ftyp, 'ftyp');
+  assert.match(r.name, /-reel-15s\.mp4$/);
   assert.equal(r.b, 1080);
   assert.equal(r.h, 1920);
-  assert.ok(Math.abs(r.dauer - erwartet) <= 1, `Dauer ${r.dauer}, angezeigt ${erwartet}`);
-  assert.ok(r.zeit > r.dauer / 2, 'spielt ab');
+  assert.ok(Math.abs(r.dauer - 15) < 0.2, `Dauer ${r.dauer}`);
+  assert.ok(r.anfang > 3 * r.ende + 0.5, `in Bewegung ab dem ersten Bild: ${r.anfang}, am Ende ruhig: ${r.ende}`);
+  assert.equal(r.titel, '1080x1920');
+  assert.ok(r.mitte > 40, 'Titelbild trägt das Band in der Mitte');
+  assert.ok(r.oben < 20 && r.unten < 20, 'außerhalb der mittleren 1080×1350 nur Grund');
 });
 
 test('Geht die App in den Hintergrund, bricht die Ausgabe mit Hinweis ab', async () => {
-  await punkt(1).locator('.af-tempi button').nth(0).click();
+  await punkt(1).locator('.af-laengen button', { hasText: '90 s' }).click();
   await punkt(1).locator('.af-titel').click();
   await page.waitForTimeout(300);
   await page.evaluate(() => {

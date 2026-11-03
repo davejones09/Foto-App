@@ -33,14 +33,25 @@ Die App nutzt Bahnsprache, weil David vom Fach ist. Sie bleibt dabei trocken und
 | Anschluss | die Bewertung von 0 bis 100, wie gut zwei Halte zusammenpassen |
 | Marken | kleine Dreiecke, die zeigen, auf welcher Höhe Linien aus dem Rest kommen |
 | Fahrplan | die Liste aller Halte |
-| Fahrt | das Video, das durch die Strecke fährt |
+| Reel | das Hochkant-Video, das durch die Strecke fährt |
+| Fahrt | das Finale der Blindfahrt, live abgespielt |
 | Ausfahrt | der Bereich zum Teilen und Sichern |
 
 „Anschluss“ ist nur Bewertungsbegriff, kein App-Name: International ist das Wort historisch belastet.
 
 ## Bildschirme
 
-### 1. Sucher (Hauptbildschirm, immer der Einstieg)
+### 0. Einführung (nur beim ersten Start)
+
+Drei kurze Bildschirme vor der Kamera-Freigabe, jeder mit einem gezeichneten, animierten Beispiel und zwei Sätzen. Keine fremden Fotos.
+
+1. **Was die App macht:** Drei Fotos liegen durcheinander, sortieren sich, rücken zusammen und verschmelzen zu einer Strecke, die dann weiterfährt. Der Text nennt auch die Serie aus der Mediathek.
+2. **Wie ein Anschluss funktioniert:** Ein Sucher mit Rest. Die Linie im Kamerabild wandert, Wert und Signal steigen, die Marke wird grün, dann Auslösen, Faden und Stempel.
+3. **Was am Ende rauskommt:** Die ganze Strecke, in 4:5-Bilder geschnitten, daneben das Karussell und das Reel.
+
+„Überspringen“ ist immer da, Wischen wechselt die Bildschirme. Später lässt sich die Einführung in den Strecken über „So funktioniert's“ wieder öffnen.
+
+### 1. Sucher (Hauptbildschirm, danach immer der Einstieg)
 
 - Hochformat. Großer 4:5-Rahmen mit dem Kamerabild.
 - Beim ersten Halt ist der Sucher frei.
@@ -50,7 +61,9 @@ Die App nutzt Bahnsprache, weil David vom Fach ist. Sie bleibt dabei trocken und
 - **Signal:** Drei kleine Lichter oben. Rot unter 40, gelb von 40 bis 69, grün ab 70. Ab 90 blinkt grün langsam.
 - **Wert und Text:** großer Zahlenwert mit Bewertungstext aus `TEXTE.md`.
 - **Auslöser:** groß, unten mittig, immer erreichbar. Bei jedem Wert erlaubt: Auch ein verpasster Anschluss ist Teil der Reise.
-- Nebenfunktionen: Foto aus der Mediathek holen, Strecke ansehen, Linse wechseln (sofern verfügbar).
+- Nebenfunktionen: Foto aus der Mediathek holen (auch eine Serie), Strecke ansehen, Linse wechseln (sofern verfügbar).
+- **Idee:** Ein Knopf im Sucher schlägt einen konkreten nächsten Halt vor, passend zur Linie im Rest, zu Farben, Tageszeit und gemerktem Ort. Mehr unter „Ideen“.
+- **Richtung:** Liegt eine Linie der Kamera knapp neben einer Marke, sagt die App, ob das iPhone höher oder tiefer muss.
 
 ### 2. Aufdeckung (direkt nach dem Auslösen, etwa 1,5 Sekunden)
 
@@ -70,6 +83,17 @@ Rettet knappe Anschlüsse und ist der Weg für Fotos aus der Mediathek.
 - Das neue Foto lässt sich unter dem Rest verschieben, zoomen (100 bis 200 %) und drehen (±8°). Der Anschluss rechnet live mit.
 - Nur der jeweils letzte Halt ist änderbar. Das hält die Kette einfach und robust.
 
+### 3a. Serie aus der Mediathek
+
+Für Fotos, die schon gemacht sind, etwa mit der Lumix.
+
+- In der Auswahl sind bis zu 10 Fotos erlaubt. Ein einzelnes Foto läuft wie bisher über das Feinjustieren.
+- Jedes Foto wird einzeln geöffnet und sofort gesichert, dann geprüft: rund 75 Ausschnitte je Foto (3 Zoomstufen mal 5 × 5 Positionen).
+- **Motivschutz:** Ausschnitte, die das Auffällige im Bild (Farbabweichung und Kanten, zur Mitte stärker gewichtet) anschneiden, kosten Punkte oder sind verboten. Das wiegt schwerer als ein hoher Anschlusswert.
+- Die App sucht die beste Reihenfolge und die passenden Ausschnitte. Hat die Strecke schon Halte, schließt die Serie an den letzten an. Alternativ „Nach Aufnahmezeit“: Die Reihenfolge folgt dem Aufnahmedatum, nur die Ausschnitte werden gewählt.
+- Vorschau vor dem Bauen: Vorschaubilder mit Werten, Ziehen sortiert um, × entfernt, Antippen zeigt andere Ausschnitte. Erst „Bauen“ rechnet die volle Auflösung, mit Fortschritt. Ein Abbruch verliert kein Foto.
+- In der Blindfahrt bleibt es beim einzelnen Foto.
+
 ### 4. Strecke
 
 - Die ganze Strecke zum horizontalen Durchwischen, flüssig auch bei 50 Halten.
@@ -83,7 +107,7 @@ Sieht aus wie ein gelber Abfahrtsplan am Bahnsteig: schwarze Schrift auf Gelb, S
 ### 6. Ausfahrt
 
 - **Karussell:** Die Strecke in passgenau geschnittenen 4:5-Bildern für Instagram. Beim Wischen läuft das Bild nahtlos durch.
-- **Fahrt:** Hochkant-Video für Reels und Status, das durch die Strecke fährt. Tempo: Bummelzug, Regionalexpress, Sprinter. Die entstehende Länge steht direkt dabei.
+- **Reel:** Hochkant-Video (MP4) für Instagram, das durch die Strecke fährt. Man wählt die Länge (15, 30, 60 oder 90 Sekunden) und per Von-bis-Halt den Abschnitt, das Tempo ergibt sich. Über 900 Pixel pro Sekunde schlägt die App einen kürzeren Abschnitt vor. Das Reel ist ab dem ersten Bild in Bewegung, nur das Ende läuft weich aus. Die Endstation am Schluss ist per Schalter abwählbar. Dazu entsteht ein Titelbild in 1080 × 1920, dessen Wichtigstes in den mittleren 1080 × 1350 liegt. Danach: „Teilen“ und „In Fotos speichern“ mit dem Hinweis, es in Instagram als Reel auszuwählen.
 - **Gesamtbild:** Die ganze Strecke als ein langes Bild.
 - **Sicherung:** Die ganze Strecke als Datei fürs Backup und zum Wiedereinspielen.
 
@@ -91,19 +115,29 @@ Sieht aus wie ein gelber Abfahrtsplan am Bahnsteig: schwarze Schrift auf Gelb, S
 
 Liste aller Strecken mit kleiner Vorschau. „Neue Strecke“ fragt nach einem Namen und bietet die Blindfahrt an.
 
+## Ideen
+
+Regelbasiert und komplett offline, ohne KI und ohne Netz. Grundlagen:
+
+- Höhe, Stärke und Neigung der Linie im Rest, die Farben darüber und darunter
+- die Farben der letzten 3 Halte: Waren alle gleich, kommt eine Idee mit Kontrast
+- die Tageszeit und ein per Antippen gemerkter Ort: Strand, Stadt, Essen, Natur, Unterkunft, Unterwegs
+
+Jede Idee ist ein konkreter Satz im trockenen Ton der App. „Andere Idee“ wiederholt innerhalb einer Strecke nichts, bis alle passenden durch sind. Die Tipps bei niedrigem Wert kommen aus derselben Quelle.
+
 ## Blindfahrt
 
 Eine Option pro Strecke für zwei Personen: Man sieht immer nur den Rest, nie die Strecke. Das Handy wandert hin und her, und jeder setzt fort, ohne zu wissen, wie der andere dahin gekommen ist. Erst mit „Ziel erreichen“ wird alles aufgedeckt, und die Fahrt läuft als Vollbild-Finale.
 
 ## Erstlauf
 
-David weiß nicht, was die App macht. Es gibt deshalb keine Erklärseiten. Er lernt sie beim Benutzen, mit knappen Sätzen aus `TEXTE.md`:
+Die Einführung zeigt die Idee vorab in drei Bildschirmen. Danach lernt man die App beim Benutzen, mit knappen Sätzen aus `TEXTE.md`:
 
 1. **Foto 1:** Die App bittet nur um irgendein Foto.
 2. **Danach:** Der Rest erscheint im Sucher und wird in einem Satz erklärt. Die App fordert auf, etwas zu suchen, das hier weitergeht. Marken und Signal werden kurz hervorgehoben.
-3. **Foto 2:** Die erste Aufdeckung läuft langsam, etwa 3 Sekunden, und zeigt erstmals das durchgehende Bild. Erst jetzt fällt der Satz, der alles erklärt.
+3. **Foto 2:** Die erste Aufdeckung läuft langsam, etwa 3 Sekunden, und zeigt zum ersten Mal mit eigenen Fotos das durchgehende Bild. Danach kommt der Satz, der alles zusammenfasst.
 
-Wer nach Schritt 3 die Idee nicht verstanden hat, dem hat der Erstlauf nicht geholfen. Das ist das Abnahmekriterium.
+Wer nach Einführung und Schritt 3 die Idee nicht verstanden hat, dem hat der Erstlauf nicht geholfen. Das ist das Abnahmekriterium.
 
 ## Gestaltung
 

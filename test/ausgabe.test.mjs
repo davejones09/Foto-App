@@ -53,3 +53,60 @@ test('Gesamtbild: verkleinert nur, wenn es nötig ist', () => {
   assert.ok(gross.b * gross.h <= 16_777_216);
   assert.ok(Math.abs(gross.b / gross.h / (bandBreite(50) / 1620) - 1) < 0.005);
 });
+
+import { reelPlan, abschnittBereich, endstationLayout, REEL_LAENGEN, REEL_MAX_TEMPO, REEL_RAND, FAHRT_FPS as FPS } from '../src/kennzahlen.mjs';
+
+test('Reel: Länge bestimmt das Tempo, Dauer und Bildzahl stimmen', () => {
+  for (const laenge of REEL_LAENGEN) {
+    for (const endstation of [true, false]) {
+      const p = reelPlan(10, { laenge, endstation });
+      assert.equal(p.dauer, laenge);
+      assert.equal(p.bilder, laenge * FPS);
+      assert.ok(Math.abs(p.xBand(p.bewegung) - (p.x1 - p.sicht)) < 1e-6, 'endet am Abschnittsende');
+      assert.equal(p.bewegung, laenge - (endstation ? 3 : 0));
+    }
+  }
+  assert.ok(reelPlan(10, { laenge: 15 }).tempo > reelPlan(10, { laenge: 90 }).tempo, 'kürzer heißt schneller');
+});
+
+test('Reel: ab dem ersten Bild in Bewegung, nur das Ende läuft weich aus', () => {
+  const p = reelPlan(8, { laenge: 30 });
+  const v = (t) => (p.xBand(t + 1 / FPS) - p.xBand(t)) * p.f * FPS; // Pixel je Sekunde im Video
+  assert.equal(p.xBand(0), p.x0);
+  assert.ok(Math.abs(v(0) - p.tempo) < 1, `Start mit vollem Tempo: ${v(0)} / ${p.tempo}`);
+  assert.ok(Math.abs(v(p.bewegung / 2) - p.tempo) < 1, 'gleichmäßig in der Mitte');
+  assert.ok(v(p.bewegung - 1 / FPS) < p.tempo * 0.05, 'bremst bis fast null');
+  let alt = p.xBand(0);
+  for (let t = 1 / FPS; t <= p.dauer; t += 1 / FPS) {
+    const x = p.xBand(t);
+    assert.ok(x >= alt - 1e-9);
+    assert.ok((x - alt) * p.f <= p.tempo / FPS + 1e-6, 'nie schneller als das Tempo');
+    alt = x;
+  }
+});
+
+test('Reel: Abschnitt von bis Halt und Vorschlag bei zu hohem Tempo', () => {
+  assert.deepEqual(abschnittBereich(0, 0), { x0: 0, x1: 1296 });
+  assert.deepEqual(abschnittBereich(2, 4), { x0: 2 * 933, x1: 4 * 933 + 1296 });
+  const p = reelPlan(20, { von: 3, bis: 7, laenge: 30 });
+  assert.equal(p.x0, 3 * 933);
+  assert.ok(Math.abs(p.xBand(p.bewegung) + p.sicht - (7 * 933 + 1296)) < 1e-6);
+  const schnell = reelPlan(50, { laenge: 15 });
+  assert.ok(schnell.zuSchnell && schnell.tempo > REEL_MAX_TEMPO);
+  const v = schnell.vorschlag;
+  assert.equal(v.von, 0);
+  assert.ok(!reelPlan(50, { von: v.von, bis: v.bis, laenge: 15 }).zuSchnell, 'Vorschlag ist langsam genug');
+  assert.ok(reelPlan(50, { von: v.von, bis: v.bis + 1, laenge: 15 }).zuSchnell, 'Vorschlag ist der längste mögliche');
+  assert.equal(reelPlan(50, { laenge: 90 }).zuSchnell, false);
+  assert.equal(reelPlan(5, { laenge: 15 }).vorschlag, null);
+});
+
+test('Reel: Endstation hält oben und unten 250, rechts 60 Pixel Abstand', () => {
+  const l = endstationLayout();
+  for (const z of l.zeilen) {
+    assert.ok(z.oben >= REEL_RAND.oben, `${z.art} oben ${z.oben}`);
+    assert.ok(z.unten <= 1920 - REEL_RAND.unten, `${z.art} unten ${z.unten}`);
+  }
+  assert.ok(l.x >= REEL_RAND.links);
+  assert.ok(l.x + l.maxBreite <= 1080 - REEL_RAND.rechts);
+});

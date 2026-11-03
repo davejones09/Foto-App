@@ -10,12 +10,17 @@ manifest.webmanifest  standalone, Hochformat, relative Pfade
 sw.js                 Offline-Cache, Name enthält APP_VERSION
 src/
   kern.mjs            Bildkern
+  serie.mjs           Serie: Ausschnitte, Motivschutz, Paarwerte, Held-Karp, Viterbi (reine Rechnung)
+  serienwerk.mjs      Serie: kleine Fassungen per Canvas, Ausschnitt in Transformation umrechnen
+  exif.mjs            Aufnahmezeit aus EXIF
+  ideen.mjs           Ideen: 73 getaggte Sätze, Merkmale, Auswahl, Richtung (reine Rechnung)
+  ideenquelle.mjs     Ideen im Sucher: Rest messen, Farben der letzten Halte, Ort, benutzte Ideen
   kern.worker.mjs     Live-Analyse und Nähen im Worker
   kamera.mjs          Stream-Verwaltung
   speicher.mjs        IndexedDB
   band.mjs            Strecke anzeigen, Kacheln laden
-  ausgabe.mjs         Karussell, Fahrt, Gesamtbild, Sicherung
-  ansichten/          Sucher, Aufdeckung, Feinjustieren, Strecke, Fahrplan, Ausfahrt
+  ausgabe.mjs         Karussell, Reel, Titelbild, Gesamtbild, Sicherung, Fahrt fürs Finale
+  ansichten/          Einführung, Sucher, Aufdeckung, Feinjustieren, Strecke, Fahrplan, Ausfahrt
 vendor/               mp4-muxer, fflate (je eine Datei)
 test/                 Kern- und Browser-Tests
 docs/                 Konzept, Technik, Etappen, Texte, Entscheidungen
@@ -88,7 +93,12 @@ halte:    { id, streckeId, index, zeit, quelle: 'kamera'|'import',
             bild: Blob,         // 1296×1620, angeglichen, JPEG 0,92
             naht: Blob|null,    // 363×1620 zum vorherigen Halt, JPEG 0,95
             wert, teile, name }
+serie:    { id, streckeId, serieId, reihe, roh: Blob, rohB, rohH,   // ab Format 2
+            zeit, aufnahme, name, plan: { pos, ausschnitt }|null }
 ```
+
+- **Format 2** legt nur den Speicher `serie` an. Strecken und Halte aus Format 1 bleiben unverändert (Migrationstest im Browser).
+- **Serienfotos warten in `serie`**, bis sie gebaut werden. `serienFotoZuHalt` legt den Halt an und löscht das wartende Foto in einer einzigen Transaktion.
 
 - **Rest für den Sucher:** rechte 363 Pixel von `bild`. Der Rest ist nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
 - **Wiederaufnahme:** iOS beendet Apps im Hintergrund jederzeit. Alles muss aus der Datenbank wiederherstellbar sein, ohne Zustand im Speicher vorauszusetzen.
@@ -124,7 +134,16 @@ Jede Ausgabe läuft mit Fortschrittsanzeige und über den LRU-Lader. Geteilt wir
 - Das letzte Bild ist selten voll. Der Rest der Strecke läuft dort in den dunklen Grund aus und trägt die Endstation (`TEXTE.md`).
 - Schafft iOS das Teilen vieler Dateien nicht auf einmal, in Portionen zu je 10 anbieten.
 
-### Fahrt
+### Reel
+
+- 1080 × 1920, 30 Bilder pro Sekunde, H.264 als MP4. Ohne MP4-Weg (WebCodecs oder `MediaRecorder` mit `video/mp4`) gibt es kein Reel, nie WebM.
+- Länge 15, 30, 60 oder 90 s. Abschnitt von Halt a bis b: Bandbereich `a × 933` bis `b × 933 + 1296`. Weg = Bereich × 1920/1620 − 1080.
+- Bewegung: ab dem ersten Bild mit vollem Tempo, die letzten 1,6 s bremsen gleichmäßig auf null. Mit Endstation bleiben am Ende 3 s für die Einblendung. Tempo = Weg / (Bewegungszeit − 0,8 s).
+- Über 900 Pixel pro Sekunde: Vorschlag des längsten Abschnitts ab „Von“, der darunter bleibt.
+- Texte im Reel: oben und unten mindestens 250, links und rechts mindestens 60 Pixel Abstand (`endstationLayout`, Test).
+- Titelbild: Band in 1350 Pixel Höhe mittig, zentriert auf den besten Anschluss im Abschnitt, außen Grund.
+
+### Fahrt (Finale der Blindfahrt, unverändert)
 
 - 1080 × 1920, 30 Bilder pro Sekunde, H.264. Das Band wird auf die volle Höhe skaliert (Faktor 1920 / 1620). Weiche Beschleunigung am Anfang und Ende, je 1,5 Sekunden. Ganz am Ende die Endstation.
 - Tempo: Bummelzug 220, Regionalexpress 450, Sprinter 900 Pixel pro Sekunde. Länge vorab anzeigen.
@@ -146,9 +165,26 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 - Lumix-Fotos haben rund 25 MP. Mit `createImageBitmap(datei, { resizeWidth oder resizeHeight })` direkt beim Dekodieren auf höchstens 4000 Pixel lange Seite begrenzen, sonst droht auf dem iPhone der Speichertod. Ignoriert Safari die Option, nach dem Dekodieren die Größe prüfen und per Canvas verkleinern.
 - Quer- und Hochformat funktionieren, gefüllt wird immer der 4:5-Rahmen. Danach direkt ins Feinjustieren.
 
+### Serie
+
+1. Auswahl mit `multiple`, höchstens 10. Jedes Foto einzeln: dekodieren (höchstens 4000 Pixel), als JPEG in `serie` sichern, Aufnahmezeit aus EXIF (`DateTimeOriginal`, sonst `lastModified`).
+2. Arbeitsfassung mit längster Seite 480 Pixel, Motivkarte auf 64 Pixel. Je Ausschnitt eine 96 × 120-Fassung (wie die Live-Analyse), daraus Zeilenfarben und Linienprofile beider Ränder.
+3. **Motivschutz:** Auffälligkeit = (Farbabweichung zur Umgebung + 0,5 × Kanten)² × Mittengewicht. Ein Ausschnitt behält einen Anteil davon, relativ zum besten Ausschnitt. Unter 0,8 ist er verboten. Kosten = 250 × (1 − Anteil) + 50 × (Zoom − 1). Ein Anschluss bringt höchstens 100 Punkte, deshalb gewinnt der Motivschutz.
+4. **Paarwert:** Nachbildung von `analysiere` über Profile: Zeilenfarben nach Angleichung, Linientreffer eng und weit, Struktur. Im Worker zwischengespeichert.
+5. **Reihenfolge:** Held-Karp exakt über die Fotos (bei 10 Fotos rund 100 000 Schritte), Kantengewicht = bester Paarwert der je 10 günstigsten Ausschnitte minus halbe Kosten. Hat die Strecke Halte, ist die rechte Kante des letzten Halts der feste Start.
+6. **Ausschnitte:** Viterbi entlang der Kette über alle erlaubten Ausschnitte, Summe der Paarwerte minus Kosten. Eigene Reihenfolge und per Antippen gewählte Ausschnitte gehen als feste Vorgaben ein.
+7. **Bauen:** erst den Plan je Foto sichern, dann Foto für Foto `serienFotoZuHalt` und `fertigstellen`. Nach einem Abbruch fertigt der Start den angefangenen Halt fertig und erinnert an die wartende Serie, die mit derselben Reihenfolge weitergeht.
+
 ### Feinjustieren
 
 `transform` wird beim Start aus dem Rohbild abgeleitet, sodass der 4:5-Rahmen formatfüllend passt. Zoom unter dem Füllmaß ist nicht möglich. Die Live-Berechnung läuft über die 96×120-Fassung, gerendert per OffscreenCanvas. Erst „Übernehmen“ rechnet die volle Auflösung.
+
+### Ideen
+
+- **Merkmale:** Rest des letzten Halts auf 91 × 405 Pixel. Linienprofil über die ganze Breite: Höhe und Stärke der stärksten Linie. Neigung aus der Linienhöhe im linken und rechten Drittel, ab ±8° gilt sie als schräg. Mittelfarbe darüber und darunter, eingeordnet nach Helligkeit (hell, mittel, dunkel) und Ton (blau, grün, warm, grau).
+- **Letzte 3 Halte:** Mittelfarbe der Vorschauen. Gleicher Ton bei allen drei (oder alle hell, alle dunkel) heißt eintönig. Dann gewinnt die passende Kontrast-Idee.
+- **Auswahl:** Jede Idee hat Tags (Höhe, Neigung, Stärke, Farbe oben und unten, Ort, Tageszeit). Ein widersprechendes Tag schließt sie aus, passende Tags geben Punkte. Bei schräger Linie haben Ideen ohne Schräge Abzug. Gezogen wird die beste noch nicht benutzte. Benutzte IDs stehen je Strecke in der Datenbank (`ideen:<streckeId>`), der Ort unter `ideen-ort`.
+- **Richtung:** Liegt eine Kameralinie (aus `hauptlinien`) 3 bis 12 % neben einer Marke und trifft keine andere, zeigt der Sucher nach drei gleichen Messungen die Richtung. Liegt die Linie über der Marke, muss das iPhone höher: Höher halten oder nach oben kippen schiebt das Bild nach unten. Ein Lochkamera-Modell im Test prüft das.
 
 ## 7. Diagnose
 
