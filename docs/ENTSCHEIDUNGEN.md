@@ -60,3 +60,14 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Titelbild:** ohne Text. Mittig steht das Band in 1350 Pixeln Höhe, zentriert auf den Faden des besten Anschlusses im Abschnitt. Oben und unten bleibt dunkler Grund, damit Instagram es beliebig zuschneiden kann, ohne Bildinhalt zu verlieren.
 - **„In Fotos speichern“** öffnet das Teilen-Menü mit Video und Titelbild, dort „Sichern“ wählen. Einen direkten Weg in die Fotos-App gibt es für Web-Apps nicht. Scheitert das Teilen, gibt es den Download.
 - **Nur MP4:** Kann das Gerät weder per WebCodecs noch per `MediaRecorder` MP4 schreiben, ist das Reel ausgegraut, statt still ein WebM zu liefern.
+
+## Serie aus der Mediathek (0.8.0)
+
+- **Eigener Wartebereich statt halbfertiger Halte.** Serienfotos liegen bis zum Bauen im neuen Speicher `serie` (Format 2). Würden sie sofort als Halte angelegt, würde der Start sie in der Auswahlreihenfolge fertignähen. Der Übergang zum Halt ist eine einzige Transaktion.
+- **Motivkarte:** Farbabweichung zur Umgebung (stark weichgezeichnetes Bild), nicht zum Bildmittel. Bei einem zweifarbigen Bild (Himmel und Meer) weicht sonst jeder Pixel vom Mittel ab und ein kleines Motiv ginge unter. Die Werte werden quadriert, damit Deutliches zählt.
+- **Motivschutz relativ zum besten Ausschnitt.** Ein Querformat verliert im 4:5-Rahmen immer Fläche. Gemessen wird deshalb, wie viel ein Ausschnitt gegenüber dem besten möglichen behält. Unter 80 % ist er verboten, darüber kostet jeder Prozentpunkt 2,5 Punkte. Im Test behalten alle erlaubten Ausschnitte mindestens 95 % des Motivs.
+- **Held-Karp mit geschätzten Kanten:** Für die Reihenfolge zählt je Fotopaar der beste Paarwert der 10 günstigsten Ausschnitte. Die exakte Ausschnittwahl macht danach Viterbi über alle erlaubten Ausschnitte. Beide Schritte sind exakt für ihr Teilproblem, zusammen eine sehr gute Näherung des Gesamtproblems.
+- **Werte in der Vorschau sind Schätzungen** aus dem schnellen Paarwert. Der endgültige Wert kommt beim Bauen aus dem Bildkern und steht danach im Fahrplan.
+- **Zeit eines Serienhalts** ist das Aufnahmedatum aus EXIF, sonst der Zeitpunkt des Bauens. Fahrplan und Tageswechsel zeigen so die Reise.
+- **Weitere Fotos zu einer wartenden Serie** kommen dazu, statt sie zu ersetzen.
+- **Blindfahrt:** Die Auswahl erlaubt nur ein Foto. Liefert das System trotzdem mehrere, zählt nur das erste.

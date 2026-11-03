@@ -10,6 +10,9 @@ manifest.webmanifest  standalone, Hochformat, relative Pfade
 sw.js                 Offline-Cache, Name enthält APP_VERSION
 src/
   kern.mjs            Bildkern
+  serie.mjs           Serie: Ausschnitte, Motivschutz, Paarwerte, Held-Karp, Viterbi (reine Rechnung)
+  serienwerk.mjs      Serie: kleine Fassungen per Canvas, Ausschnitt in Transformation umrechnen
+  exif.mjs            Aufnahmezeit aus EXIF
   kern.worker.mjs     Live-Analyse und Nähen im Worker
   kamera.mjs          Stream-Verwaltung
   speicher.mjs        IndexedDB
@@ -88,7 +91,12 @@ halte:    { id, streckeId, index, zeit, quelle: 'kamera'|'import',
             bild: Blob,         // 1296×1620, angeglichen, JPEG 0,92
             naht: Blob|null,    // 363×1620 zum vorherigen Halt, JPEG 0,95
             wert, teile, name }
+serie:    { id, streckeId, serieId, reihe, roh: Blob, rohB, rohH,   // ab Format 2
+            zeit, aufnahme, name, plan: { pos, ausschnitt }|null }
 ```
+
+- **Format 2** legt nur den Speicher `serie` an. Strecken und Halte aus Format 1 bleiben unverändert (Migrationstest im Browser).
+- **Serienfotos warten in `serie`**, bis sie gebaut werden. `serienFotoZuHalt` legt den Halt an und löscht das wartende Foto in einer einzigen Transaktion.
 
 - **Rest für den Sucher:** rechte 363 Pixel von `bild`. Der Rest ist nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
 - **Wiederaufnahme:** iOS beendet Apps im Hintergrund jederzeit. Alles muss aus der Datenbank wiederherstellbar sein, ohne Zustand im Speicher vorauszusetzen.
@@ -154,6 +162,16 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 - `<input type="file" accept="image/*">` ohne `capture`.
 - Lumix-Fotos haben rund 25 MP. Mit `createImageBitmap(datei, { resizeWidth oder resizeHeight })` direkt beim Dekodieren auf höchstens 4000 Pixel lange Seite begrenzen, sonst droht auf dem iPhone der Speichertod. Ignoriert Safari die Option, nach dem Dekodieren die Größe prüfen und per Canvas verkleinern.
 - Quer- und Hochformat funktionieren, gefüllt wird immer der 4:5-Rahmen. Danach direkt ins Feinjustieren.
+
+### Serie
+
+1. Auswahl mit `multiple`, höchstens 10. Jedes Foto einzeln: dekodieren (höchstens 4000 Pixel), als JPEG in `serie` sichern, Aufnahmezeit aus EXIF (`DateTimeOriginal`, sonst `lastModified`).
+2. Arbeitsfassung mit längster Seite 480 Pixel, Motivkarte auf 64 Pixel. Je Ausschnitt eine 96 × 120-Fassung (wie die Live-Analyse), daraus Zeilenfarben und Linienprofile beider Ränder.
+3. **Motivschutz:** Auffälligkeit = (Farbabweichung zur Umgebung + 0,5 × Kanten)² × Mittengewicht. Ein Ausschnitt behält einen Anteil davon, relativ zum besten Ausschnitt. Unter 0,8 ist er verboten. Kosten = 250 × (1 − Anteil) + 50 × (Zoom − 1). Ein Anschluss bringt höchstens 100 Punkte, deshalb gewinnt der Motivschutz.
+4. **Paarwert:** Nachbildung von `analysiere` über Profile: Zeilenfarben nach Angleichung, Linientreffer eng und weit, Struktur. Im Worker zwischengespeichert.
+5. **Reihenfolge:** Held-Karp exakt über die Fotos (bei 10 Fotos rund 100 000 Schritte), Kantengewicht = bester Paarwert der je 10 günstigsten Ausschnitte minus halbe Kosten. Hat die Strecke Halte, ist die rechte Kante des letzten Halts der feste Start.
+6. **Ausschnitte:** Viterbi entlang der Kette über alle erlaubten Ausschnitte, Summe der Paarwerte minus Kosten. Eigene Reihenfolge und per Antippen gewählte Ausschnitte gehen als feste Vorgaben ein.
+7. **Bauen:** erst den Plan je Foto sichern, dann Foto für Foto `serienFotoZuHalt` und `fertigstellen`. Nach einem Abbruch fertigt der Start den angefangenen Halt fertig und erinnert an die wartende Serie, die mit derselben Reihenfolge weitergeht.
 
 ### Feinjustieren
 

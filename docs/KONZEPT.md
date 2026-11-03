@@ -81,6 +81,17 @@ Rettet knappe Anschlüsse und ist der Weg für Fotos aus der Mediathek.
 - Das neue Foto lässt sich unter dem Rest verschieben, zoomen (100 bis 200 %) und drehen (±8°). Der Anschluss rechnet live mit.
 - Nur der jeweils letzte Halt ist änderbar. Das hält die Kette einfach und robust.
 
+### 3a. Serie aus der Mediathek
+
+Für Fotos, die schon gemacht sind, etwa mit der Lumix.
+
+- In der Auswahl sind bis zu 10 Fotos erlaubt. Ein einzelnes Foto läuft wie bisher über das Feinjustieren.
+- Jedes Foto wird einzeln geöffnet und sofort gesichert, dann geprüft: rund 75 Ausschnitte je Foto (3 Zoomstufen mal 5 × 5 Positionen).
+- **Motivschutz:** Ausschnitte, die das Auffällige im Bild (Farbabweichung und Kanten, zur Mitte stärker gewichtet) anschneiden, kosten Punkte oder sind verboten. Das wiegt schwerer als ein hoher Anschlusswert.
+- Die App sucht die beste Reihenfolge und die passenden Ausschnitte. Hat die Strecke schon Halte, schließt die Serie an den letzten an. Alternativ „Nach Aufnahmezeit“: Die Reihenfolge folgt dem Aufnahmedatum, nur die Ausschnitte werden gewählt.
+- Vorschau vor dem Bauen: Vorschaubilder mit Werten, Ziehen sortiert um, × entfernt, Antippen zeigt andere Ausschnitte. Erst „Bauen“ rechnet die volle Auflösung, mit Fortschritt. Ein Abbruch verliert kein Foto.
+- In der Blindfahrt bleibt es beim einzelnen Foto.
+
 ### 4. Strecke
 
 - Die ganze Strecke zum horizontalen Durchwischen, flüssig auch bei 50 Halten.

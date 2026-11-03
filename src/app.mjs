@@ -16,6 +16,7 @@ import './ansichten/strecke.mjs';
 import './ansichten/strecken.mjs';
 import './ansichten/ausfahrt.mjs';
 import './ansichten/fahrplan.mjs';
+import { serieErinnern } from './ansichten/serie.mjs';
 import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
 
 texteEinsetzen();
@@ -114,6 +115,7 @@ async function start() {
   // Beim allerersten Start kommt vor der Kamera-Freigabe die Einführung.
   if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'sucher' });
   else await zeige('sucher');
+  serieErinnern();
 }
 
 function weiterNachHinweis() {

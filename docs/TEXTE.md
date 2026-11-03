@@ -74,6 +74,22 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Streichen, Rückfrage:** Letzten Halt streichen? · Streichen · Behalten
 - **Bei Fehler:** Das Nähen hat nicht geklappt. Dein Foto ist gespeichert. · Nochmal versuchen
 
+## Serie
+
+- **Titel:** Serie
+- **Modus:** Beste Anschlüsse · Nach Aufnahmezeit
+- **Während der Prüfung:** Foto {k} von {n} wird gesichert und geprüft …
+- **Kopf:** Schließt an Halt {n} an.
+- **Zeile:** Halt {n} · {Datum} {Uhrzeit} oder „Zeit unbekannt“ · Wert
+- **Hinweis:** Ziehen sortiert um, Antippen wählt einen anderen Ausschnitt.
+- **Auswahl:** Ausschnitt wählen · Schließen
+- **Knöpfe:** Serie verwerfen · Bauen · während des Bauens Abbrechen
+- **Verwerfen, Rückfrage:** Serie verwerfen? Die Fotos bleiben in deiner Mediathek. · Verwerfen · Behalten
+- **Zu viele:** Höchstens 10 Fotos. Die ersten 10 sind dabei.
+- **Kaputte Dateien:** {n} Fotos ließen sich nicht öffnen.
+- **Angehalten:** Angehalten. {n} Fotos warten noch.
+- **Beim Start:** Eine Serie aus der Mediathek wartet noch. · Weiter
+
 ## Feinjustieren
 
 - **Hinweis:** Schieben, zoomen, drehen. Der Anschluss rechnet mit.

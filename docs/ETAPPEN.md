@@ -60,6 +60,15 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Ein 15-s-Reel eines Abschnitts im Browser-Test als MP4 mit 15 s Länge entsteht, sich ab dem ersten Bild bewegt, das Titelbild 1080 × 1920 misst und die Rechnung für Länge, Abschnitt, Vorschlag und Textränder in Node-Tests stimmt.
 
+## Nachtrag: Serie aus der Mediathek
+
+- Mehrfachauswahl bis 10, Rohbild zuerst, einzeln dekodieren, Fortschritt
+- 75 Ausschnitte je Foto, Motivschutz, schnelle Paarwerte, Held-Karp, Viterbi, fester Start
+- „Beste Anschlüsse“ oder „Nach Aufnahmezeit“ (EXIF), Vorschau mit Ziehen, Entfernen, Ausschnittwahl
+- Bauen mit Fortschritt, Abbruch ohne Verlust, Blindfahrt nur Einzelfoto, Speicherformat 2 mit Migration
+
+**Fertig, wenn:** Node-Tests Reihenfolge, festen Start, Aufnahmezeit-Modus, Motivschutz, Held-Karp und EXIF prüfen und der Browser-Test eine gemischte Serie richtig ordnet, nach einem Abbruch ohne Verlust weiterbaut und alte Strecken die Migration überstehen.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:
