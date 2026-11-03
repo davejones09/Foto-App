@@ -8,15 +8,15 @@ import { ROH_MAX } from './masse.mjs';
 import { protokolliere } from './diagnose.mjs';
 import { SpeicherVoll } from './speicher.mjs';
 
-function waehle() {
-  const input = $('#datei-bild');
-  input.value = '';
-  return new Promise((ok) => {
-    const fertig = () => { input.removeEventListener('change', fertig); ok(input.files?.[0] || null); };
-    input.addEventListener('change', fertig);
-    input.click();
-  });
-}
+const eingabe = $('#datei-bild');
+eingabe.addEventListener('change', () => {
+  const datei = eingabe.files?.[0] || null;
+  eingabe.value = '';
+  if (datei) importieren(datei);
+});
+
+// Öffnet die Auswahl der Mediathek. Das Ergebnis kommt über das change-Ereignis.
+export function waehleBild() { eingabe.click(); }
 
 function masseLesen(datei) {
   return new Promise((ok, fehler) => {
@@ -59,10 +59,8 @@ export async function dekodiere(datei) {
   }
 }
 
-export async function importieren(datei = null) {
+export async function importieren(datei) {
   try {
-    datei = datei || (await waehle());
-    if (!datei) return;
     let c;
     try {
       c = await dekodiere(datei);

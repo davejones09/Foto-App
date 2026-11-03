@@ -10,7 +10,7 @@ import { rohAusVideo, sichereRoh, kleinRest } from '../naehwerk.mjs';
 import { KLEIN_B, KLEIN_H, KLEIN_UE } from '../masse.mjs';
 import { messung, protokolliere, werte } from '../diagnose.mjs';
 import { SpeicherVoll } from '../speicher.mjs';
-import { importieren } from '../einfuhr.mjs';
+import { waehleBild } from '../einfuhr.mjs';
 
 const v = $('#v-sucher');
 const video = $('#video');
@@ -376,8 +376,8 @@ async function ausloesen() {
 ausloeser.addEventListener('click', ausloesen);
 
 $('#zur-strecke').addEventListener('click', () => zeige('strecke'));
-$('#mediathek').addEventListener('click', () => importieren());
-$('#frei-mediathek').addEventListener('click', () => importieren());
+$('#mediathek').addEventListener('click', waehleBild);
+$('#frei-mediathek').addEventListener('click', waehleBild);
 
 // --- Ansicht ---
 registriere('sucher', {

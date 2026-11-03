@@ -13,7 +13,7 @@ import { setzeTeilwerte, teilwerteSichtbar } from './ansichten/sucher.mjs';
 import './ansichten/aufdeckung.mjs';
 import './ansichten/fein.mjs';
 import './ansichten/strecke.mjs';
-import './ansichten/weitere.mjs';
+import './ansichten/strecken.mjs';
 
 texteEinsetzen();
 $('#version').textContent = 'v' + APP_VERSION;
@@ -131,5 +131,12 @@ if (!istStandalone() && !imBrowser) {
 // Für Browser-Tests: Zustand lesen.
 window.nahtlos = {
   version: APP_VERSION,
-  zustand: () => ({ ansicht: Z.ansicht, halte: Z.halte.length, fertig: Z.halte.filter((h) => h.bild).length, strecke: Z.strecke?.name }),
+  zustand: () => ({
+    ansicht: Z.ansicht,
+    halte: Z.halte.length,
+    fertig: Z.halte.filter((h) => h.bild).length,
+    strecke: Z.strecke?.name,
+    blind: Z.strecke?.blind,
+    letzter: Z.halte.length ? (({ rohB, rohH, wert, quelle, transform }) => ({ rohB, rohH, wert, quelle, transform }))(Z.halte[Z.halte.length - 1]) : null,
+  }),
 };

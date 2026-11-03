@@ -14,3 +14,12 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Installationshinweis:** „Trotzdem im Browser testen“ gilt für die laufende Browser-Sitzung.
 - **Kamera bleibt während der Aufdeckung an** (Video pausiert), damit sie nach „Weiter“ sofort wieder da ist. In allen anderen Ansichten wird der Stream gestoppt.
 - **100 % in der Strecke** heißt: ein Bildpixel pro Bildschirmpunkt (CSS-Pixel). Auf dem iPhone mit dreifacher Pixeldichte wäre „ein Bildpixel pro Gerätepixel“ kaum größer als die normale Ansicht.
+
+## Etappe 2
+
+- **Erstlauf-Zustand** steht in `localStorage` und zusätzlich in der Datenbank. Liegen irgendwo schon zwei Halte, gilt er ohnehin als erledigt. So kommt der Erstlauf nach dem Löschen von Browserdaten nicht zurück, solange Strecken da sind.
+- **Erste Aufdeckung zeigt nur „Weiterfahren“.** „Feinjustieren“ und „Streichen“ fehlen in diesem einen Moment, damit nichts vom Satz ablenkt, der alles erklärt.
+- **Import geht immer durchs Feinjustieren**, auch beim ersten Halt (nur Bildausschnitt, ohne Wert). „Abbrechen“ übernimmt dort den Standardausschnitt; wer das Foto nicht will, streicht es danach.
+- **Stempel** sitzt rechts unten auf der Bühne, damit der Faden sichtbar bleibt.
+- **Strecken** erreicht man über die Strecke (Knopf oben links). Der Sucher bleibt frei.
+- **Test-Chromium kodiert JPEGs nach Screenshots gelegentlich langsamer** (bis 2 s je Bild). Das ist ein Effekt der Testumgebung, nicht der App. Die Nähzeit auf dem iPhone zeigt die Diagnose.
