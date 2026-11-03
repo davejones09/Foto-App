@@ -142,6 +142,7 @@ window.nahtlos = {
     fertig: Z.halte.filter((h) => h.bild).length,
     strecke: Z.strecke?.name,
     blind: Z.strecke?.blind,
+    naehenMs: werte.naehenMs,
     letzter: Z.halte.length ? (({ rohB, rohH, wert, quelle, transform }) => ({ rohB, rohH, wert, quelle, transform }))(Z.halte[Z.halte.length - 1]) : null,
   }),
 };

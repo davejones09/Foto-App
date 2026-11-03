@@ -56,7 +56,10 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   await bild(page, '08-aufdeckung-mitte');
   await page.waitForSelector('#v-aufdeckung .stempel:not([hidden])', { timeout: 20000 });
   const dauer = Date.now() - t0;
-  assert.ok(dauer > 2200, `erste Aufdeckung langsam: ${dauer} ms`);
+  // Ohne die Nähzeit bleibt die reine Animation. Das Test-Chromium kodiert JPEGs nach
+  // Screenshots mal schneller, mal langsamer, deshalb zählt nur die Animation.
+  const anim1 = dauer - (await zustand(page)).naehenMs;
+  assert.ok(anim1 > 2200, `erste Aufdeckung langsam: ${anim1} ms Animation`);
   await page.waitForTimeout(900);
   await bild(page, '09-kein-schnitt');
   await page.waitForSelector('#v-aufdeckung .aktionen:not([hidden])', { timeout: 10000 });
@@ -71,9 +74,11 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   await page.click('#ausloeser');
   await page.waitForSelector('#v-aufdeckung .stempel:not([hidden])', { timeout: 20000 });
   const dauer2 = Date.now() - t1;
+  const anim2 = dauer2 - (await zustand(page)).naehenMs;
   await page.waitForSelector('#v-aufdeckung .aktionen:not([hidden])', { timeout: 20000 });
-  console.log(`Aufdeckung: erste ${dauer} ms, normale ${dauer2} ms (inkl. Nähen)`);
-  assert.ok(dauer2 < 6000, `normale Aufdeckung: ${dauer2} ms`);
+  console.log(`Aufdeckung ohne Nähen: erste ${Math.round(anim1)} ms, normale ${Math.round(anim2)} ms`);
+  assert.ok(anim2 < 2600, `normale Aufdeckung: ${anim2} ms Animation`);
+  assert.ok(anim2 < anim1, 'die erste Aufdeckung ist langsamer');
   assert.equal(await page.textContent('#auf-weiter'), 'Weiter');
   assert.ok(await page.isVisible('#auf-fein'));
   await bild(page, '12-aufdeckung-normal');
@@ -198,6 +203,7 @@ test('Kamera verweigert: Text und Ausweg über die Mediathek', async () => {
   await ctx.addInitScript(() => { window.__kameraVerweigert = true; });
   await page.goto(s.url);
   await page.click('#trotzdem');
+  await page.click('#einf-ueberspringen');
   await page.click('#freigeben');
   await page.waitForSelector('.freigabe:not([hidden]) #frei-mediathek');
   assert.match(await page.textContent('.frei-text'), /Ohne Kamera bleibt der Zug stehen/);
