@@ -111,18 +111,19 @@ dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }
 
 ## 5. Strecke anzeigen
 
-Für `n` Halte gilt: **Bandbreite = n × 933 + 363 Pixel**, bei 1620 Pixeln Höhe (933 = 1296 − 363).
+Jeder Halt hat eine eigene Breite `b_i` bei 1620 Höhe: Kamerahalte 1296 (4:5), Serienhalte `1620 × Seitenverhältnis`, begrenzt auf 1134 bis 3240. Die Überlappung ist immer 363. Halt `i` beginnt im Band bei `x_i = x_(i−1) + b_(i−1) − 363`.
 
-Die Stücke liegen so hintereinander:
+**Bandbreite = Summe der Breiten − 363 × (n − 1)** (`bandBreite`, `lagen`, `stuecke` in `src/masse.mjs`; eine Zahl n steht dort für n Kamerahalte).
 
 ```
-Halt 0: bild, x von 0 bis 933
-Naht 1: naht von Halt 1, 363 breit
-Halt 1: bild, x von 363 bis 933
-Naht 2: naht von Halt 2
+Halt 0: bild, x von 0 bis b_0 − 363
+Naht 1: naht von Halt 1, 363 breit, liegt bei x_1
+Halt 1: bild, x von 363 bis b_1 − 363
 ...
-Letzter Halt: bild, x von 363 bis 1296
+Letzter Halt: bild, x von 363 bis b_(n−1)
 ```
+
+Sucher-Rest und Wert nutzen immer den 363 Pixel breiten Streifen am rechten bzw. linken Rand, egal wie breit der Halt ist. Der Sucher selbst bleibt 4:5.
 
 - **Nie das ganze Band auf einmal dekodieren.** Nur sichtbare Stücke laden und im Speicher höchstens etwa 6 halten (LRU). Dekodierte Bilder mit `close()` freigeben.
 - Kleine Vorschauen (Höhe 240) pro Halt beim Speichern erzeugen, für Herauszoomen und Leiste.
@@ -155,6 +156,12 @@ Jede Ausgabe läuft mit Fortschrittsanzeige und über den LRU-Lader. Geteilt wir
 - Weg 2, wenn das scheitert: `MediaRecorder` mit `canvas.captureStream`, verfügbar ab iOS 14.5.
 - Kein Ton in der ersten Fassung. Verlässt der Nutzer die App während des Renderns, darf es abbrechen, die Meldung bietet einen Neustart an.
 
+### Karussell ohne Grenze durchs Motiv
+
+- Je Halt die Motivkarte auf 640 Pixeln (im Worker, zwischengespeichert), daraus ein Spaltenprofil, zusammengesetzt zum Profil des Bands (`bandProfil`, in der Überlappung zählt das stärkere).
+- `karussellPlan`: Versatz von 0 bis 15 % einer Slide (194 Pixel, in Schritten von 2). Bewertet wird die mittlere Motivdichte ±40 Pixel um jede Grenze. Der Versatz lohnt sich nur, wenn er die Summe um mindestens 0,05 senkt. Anzahl = `ceil((Band − Versatz) / 1296)`, sie kann also nie steigen.
+- Bleibt an einer Grenze eine Dichte ab 25 % der stärksten Stelle, zeigt die Ausfahrt den Hinweis mit einer Vorschau dieser Stelle. Gebaut wird trotzdem.
+
 ### Gesamtbild
 
 JPEG der ganzen Strecke. iOS begrenzt die Canvas-Fläche. Grenze zur Laufzeit ermitteln, indem ein Pixel gezeichnet und zurückgelesen wird, Start mit 16 MP als sicherer Annahme. Bei längeren Strecken wird verkleinert und die Endgröße angezeigt, nie stillschweigend beschnitten.
@@ -172,11 +179,11 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 ### Serie
 
 1. Auswahl mit `multiple`, höchstens 10. Jedes Foto einzeln: dekodieren (höchstens 4000 Pixel), als JPEG in `serie` sichern, Aufnahmezeit aus EXIF (`DateTimeOriginal`, sonst `lastModified`).
-2. Arbeitsfassung mit längster Seite 480 Pixel, Motivkarte auf 64 Pixel. Je Ausschnitt eine 96 × 120-Fassung (wie die Live-Analyse), daraus Zeilenfarben und Linienprofile beider Ränder.
-3. **Motivschutz:** Auffälligkeit = (Farbabweichung zur Umgebung + 0,5 × Kanten)² × Mittengewicht. Ein Ausschnitt behält einen Anteil davon, relativ zum besten Ausschnitt. Unter 0,8 ist er verboten. Kosten = 250 × (1 − Anteil) + 50 × (Zoom − 1). Ein Anschluss bringt höchstens 100 Punkte, deshalb gewinnt der Motivschutz.
-4. **Paarwert:** Nachbildung von `analysiere` über Profile: Zeilenfarben nach Angleichung, Linientreffer eng und weit, Struktur. Im Worker zwischengespeichert.
-5. **Reihenfolge:** Held-Karp exakt über die Fotos (bei 10 Fotos rund 100 000 Schritte), Kantengewicht = bester Paarwert der je 10 günstigsten Ausschnitte minus halbe Kosten. Hat die Strecke Halte, ist die rechte Kante des letzten Halts der feste Start.
-6. **Ausschnitte:** Viterbi entlang der Kette über alle erlaubten Ausschnitte, Summe der Paarwerte minus Kosten. Eigene Reihenfolge und per Antippen gewählte Ausschnitte gehen als feste Vorgaben ein.
+2. **Ganze Fotos:** Arbeitsfassung mit langer Seite 640 Pixel. Rahmen = ganzes Foto, Breite `1620 × Seitenverhältnis`, Zoom 1. Nur außerhalb von 0,7 bis 2:1 wird beschnitten (`zuschnitt`), auf die Grenze und um das Motiv herum. Dafür und nur dafür wird die Motivkarte gerechnet.
+3. **Motivkarte** (`motivKarte`, auf der 640er-Fassung): Detail = |L − L mit Sigma 1 weichgezeichnet|, über 9 × 9 Pixel gemittelt. Davon 1,5 × den Median der Umgebung (Mittel je 32er-Block, Median über 5 × 5 Blöcke) und 0,3 abziehen, dann mit Sigma 6 glätten, Mittengewicht mit Sigma 0,4. Ein per Antippen gesetztes Motiv kommt als kräftige Glocke dazu (`motivSetzen`).
+4. **Paarwert:** Nachbildung von `analysiere` über Profile der 363er-Ränder, auf einer Fassung mit 120 Zeilen: Zeilenfarben nach Angleichung, Linientreffer eng und weit, Struktur. Im Worker zwischengespeichert.
+5. **Reihenfolge:** Held-Karp exakt über die vollen Fotos (bei 10 Fotos rund 100 000 Schritte). Hat die Strecke Halte, ist die rechte Kante des letzten Halts der feste Start. Feinjustieren in der Vorschau ändert Zoom und Verschiebung eines Fotos, danach wird neu bewertet.
+6. **Übergang** (`src/uebergang.mjs`, nur für Serienhalte, `uebergang: 'serie'`): Hauptlinien beider Ränder suchen. Liegt das beste Paar (gleiche Richtung) höchstens 8 % auseinander, wird das neue Foto spaltenweise senkrecht verbogen: voll am Übergang, auslaufend bis 45 % der Breite, oben und unten verankert. Dann `zeilenGain` mit `gainMin` 0,2, `gainMax` 3,5, `zeilenSigmaAnteil` 0,14 und `angleichen` über 85 % der Breite. Der Faden wie im Kern, aber ein harter Schnitt statt Laplace-Überblendung (2 Pixel Kante gegen Treppchen). Kamerahalte nähen weiter mit dem Bildkern.
 7. **Bauen:** erst alle offenen Halte der Strecke fertigstellen (scheitert das, bricht der Bau ab und fasst kein Foto an), dann den Plan je Foto sichern, dann Foto für Foto `serienFotoZuHalt` und `fertigstellenMitWiederholung`. Nach einem Abbruch geht die wartende Serie mit derselben Reihenfolge weiter.
 8. **Fehler:** `fertigstellenMitWiederholung` liest Halt und Vorgänger bei jedem Versuch frisch aus der Datenbank (nie Blobs aus der Übergabe-Transaktion) und versucht es höchstens zweimal. `fertigstellen` gibt Leinwände und Bitmaps im `finally` frei. Zwischen den Fotos wartet der Bau 150 ms, ab 12 Fotos 500 ms. Dauer und Fehler je Foto stehen im Serienprotokoll der Diagnose (`localStorage`, übersteht Abstürze).
 9. **Ab 13 Fotos** (durch Nachlegen möglich) rechnet die Reihenfolge nicht mehr Held-Karp, sondern eine Näherung: gierig von jedem Anfang, dann Teilstücke verschieben und umdrehen.

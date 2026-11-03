@@ -64,7 +64,7 @@ export function verkleinere(quelle, qw, qh, zw, zh, sx = 0, sy = 0, sw = qw, sh 
 }
 
 // Rendert ein Rohbild mit Transformation in den Rahmen B×H. Bei großer Verkleinerung über Zwischenstufe.
-export function rendere(quelle, rw, rh, t, B, H) {
+export function rendere(quelle, rw, rh, t, B, H, bezugB = undefined) {
   const s = Math.max(B / rw, H / rh) * t.zoom;
   if (s < 0.45) {
     // Zwischenstufe: erst grob, aber sauber verkleinern, dann transformieren.
@@ -75,13 +75,13 @@ export function rendere(quelle, rw, rh, t, B, H) {
     const c = leinwand(B, H);
     const k = ctx2d(c, true);
     k.imageSmoothingQuality = 'high';
-    zeichneTransformiert(k, z, zw, zh, t, B, H);
+    zeichneTransformiert(k, z, zw, zh, t, B, H, bezugB);
     freigeben(z);
     return c;
   }
   const c = leinwand(B, H);
   const k = ctx2d(c, true);
   k.imageSmoothingQuality = 'high';
-  zeichneTransformiert(k, quelle, rw, rh, t, B, H);
+  zeichneTransformiert(k, quelle, rw, rh, t, B, H, bezugB);
   return c;
 }

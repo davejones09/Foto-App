@@ -90,8 +90,8 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 - **Während der Prüfung:** Foto {k} von {n} wird gesichert und geprüft …
 - **Kopf:** Schließt an Halt {n} an.
 - **Zeile:** Halt {n} · {Datum} {Uhrzeit} oder „Zeit unbekannt“ · Wert
-- **Hinweis:** Ziehen sortiert um, Antippen wählt einen anderen Ausschnitt.
-- **Auswahl:** Ausschnitt wählen · Schließen
+- **Hinweis:** Ziehen am Griff sortiert um, Antippen des Bilds öffnet das Feinjustieren.
+- **Feinjustieren:** Feinjustieren · Ziehen verschiebt, zwei Finger zoomen. Antippen setzt das Motiv. · Ganzes Foto · Abbrechen · Übernehmen
 - **Knöpfe:** Serie verwerfen · Bauen · während des Bauens Abbrechen
 - **Verwerfen, Rückfrage:** Serie verwerfen? Die Fotos bleiben in deiner Mediathek. · Verwerfen · Behalten
 - **Zu viele:** Höchstens 10 Fotos. Die ersten 10 sind dabei.
@@ -140,6 +140,7 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 
 - **Titel:** Ausfahrt
 - **Karussell:** Karussell · {n} Bilder für Instagram
+- **Grenze im Motiv:** Hier läuft eine Bildgrenze durchs Motiv, das ließ sich nicht vermeiden. Das Karussell wird trotzdem gebaut.
 - **Mehrere Beiträge:** Passt nicht in einen Beitrag. Wird auf {t} Teile aufgeteilt.
 - **Reel:** Reel · Video für Instagram · {Länge} s
 - **Längen:** 15 s · 30 s · 60 s · 90 s

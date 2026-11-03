@@ -44,7 +44,7 @@ async function start(page) {
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher' && !document.querySelector('#ausloeser').disabled);
 }
 
-test('Serie: beste Reihenfolge ab dem letzten Halt, Aufnahmezeit, Ziehen, Entfernen, Ausschnitt, Bauen', async () => {
+test('Serie: beste Reihenfolge ab dem letzten Halt, Aufnahmezeit, Ziehen, Entfernen, Feinjustieren, Motiv, Bauen', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
   await start(page);
   const fotos = await kette(page, 4);
@@ -89,12 +89,17 @@ test('Serie: beste Reihenfolge ab dem letzten Halt, Aufnahmezeit, Ziehen, Entfer
   await warteAuf(page, () => document.querySelectorAll('#v-serie .se-zeile').length === 3);
   assert.equal(await wartend(page), 3);
 
-  // Ausschnitt per Antippen ändern
+  // Feinjustieren: Standard ist das ganze Foto; hier hineinzoomen und das Motiv per Antippen setzen
   await page.locator('#v-serie .se-zeile[data-name="foto1.jpg"] .se-bild').click();
-  await page.waitForSelector('#se-wahl:not([hidden]) .se-alt');
-  assert.ok(await page.locator('.se-alt').count() >= 3);
-  await page.screenshot({ path: `${ERGEBNISSE}/se-ausschnitt.png` });
-  await page.locator('.se-alt').nth(2).click();
+  await page.waitForSelector('#se-wahl:not([hidden]) .se-fein-bild');
+  const box = await page.locator('.se-fein-bild').boundingBox();
+  assert.ok(Math.abs(box.width / box.height - 4 / 3) < 0.03, `Rahmen im Seitenverhältnis des Fotos: ${box.width / box.height}`);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -300);
+  await page.mouse.click(box.x + box.width * 0.7, box.y + box.height * 0.3);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${ERGEBNISSE}/se-fein.png` });
+  await page.click('#se-fein-ok');
   await bereit(page);
 
   // Bauen
@@ -104,7 +109,14 @@ test('Serie: beste Reihenfolge ab dem letzten Halt, Aufnahmezeit, Ziehen, Entfer
   assert.equal(z.halte, 4);
   assert.equal(z.fertig, 4);
   assert.equal(await wartend(page), 0);
-  assert.equal(await page.getAttribute('#v-strecke .band', 'data-breite'), String(4 * 933 + 363));
+  // Serienfotos bleiben ganz: 4:3 heißt 2160 breit, die Kamera 1296
+  const halte = await page.evaluate(async () => (await import('./src/speicher.mjs')).halte(localStorage.getItem('nahtlos-aktiv')));
+  assert.deepEqual(halte.map((h) => h.breite), [1296, 2160, 2160, 2160]);
+  assert.deepEqual(halte.map((h) => h.uebergang), [null, 'serie', 'serie', 'serie']);
+  const gezoomt = halte.find((h) => h.transform.zoom > 1.05);
+  assert.ok(gezoomt && gezoomt.motiv && Math.abs(gezoomt.motiv.x - 0.7) < 0.03, 'Zoom und Motiv übernommen');
+  assert.equal(halte.filter((h) => h.transform.zoom === 1).length, 3, 'sonst ungezoomt');
+  assert.equal(await page.getAttribute('#v-strecke .band', 'data-breite'), String(1296 + 3 * 2160 - 3 * 363));
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${ERGEBNISSE}/se-strecke.png` });
   assert.deepEqual(fehler, []);
@@ -176,6 +188,25 @@ test('Höchstens 10 Fotos, in der Blindfahrt nur ein einzelnes', async () => {
   await ctx.close();
 });
 
+test('Panorama wird auf 2:1 beschnitten, ein hohes Foto auf 0,7, alles dazwischen bleibt ganz', async () => {
+  const { ctx, page } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(() => localStorage.setItem('nahtlos-erstlauf', 'fertig'));
+  const pano = await fotoJpeg(page, { w: 2400, h: 800, a: 0.5, b: 0.5, oben: '#9bc', unten: '#345' });
+  const hoch = await fotoJpeg(page, { w: 600, h: 1200, a: 0.5, b: 0.5, oben: '#cb9', unten: '#543' });
+  const quer = await fotoJpeg(page, { w: 1600, h: 1200, a: 0.5, b: 0.5, oben: '#bcb', unten: '#454' });
+  await page.setInputFiles('#datei-bild', [['pano.jpg', pano], ['hoch.jpg', hoch], ['quer.jpg', quer]].map(([name, buffer]) => ({ name, mimeType: 'image/jpeg', buffer })));
+  await page.waitForSelector('#v-serie:not([hidden])');
+  await bereit(page);
+  await page.click('#se-bauen');
+  await warteAuf(page, () => document.body.dataset.ansicht === 'strecke', null, 120000);
+  const halte = await page.evaluate(async () => (await import('./src/speicher.mjs')).halte(localStorage.getItem('nahtlos-aktiv')));
+  const breiten = Object.fromEntries(await Promise.all(halte.map(async (h) => [h.rohB / h.rohH > 2 ? 'pano' : h.rohB / h.rohH < 0.7 ? 'hoch' : 'quer', h.breite])));
+  assert.deepEqual(breiten, { pano: 3240, hoch: 1134, quer: 2160 });
+  for (const h of halte) assert.equal(h.transform.zoom, 1, 'nie automatisch gezoomt');
+  await ctx.close();
+});
+
 test('Migration: Strecken aus Format 1 bleiben erhalten', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
   // Alte Datenbank in Format 1 anlegen, bevor die App sie öffnet.
@@ -214,9 +245,10 @@ test('Migration: Strecken aus Format 1 bleiben erhalten', async () => {
     const h = await db.halte('alt-1');
     const d = await db.oeffne();
     const b = await db.blob(h[0], 'bild');
-    return { version: d.version, stores: [...d.objectStoreNames], namen: l.map((x) => x.name), halte: h.length, name: h[0]?.name, wartend: await db.zaehleSerienFotos(), bildLesbar: !!b && b.size > 1000, keinBlob: !(h[0].bild instanceof Blob) };
+    return { version: d.version, stores: [...d.objectStoreNames], namen: l.map((x) => x.name), halte: h.length, name: h[0]?.name, wartend: await db.zaehleSerienFotos(), bildLesbar: !!b && b.size > 1000, keinBlob: !(h[0].bild instanceof Blob), breite: h[0].breite };
   });
-  assert.equal(r.version, 3);
+  assert.equal(r.version, 4);
+  assert.equal(r.breite, 1296, 'alte Halte bekommen die Breite 1296');
   assert.ok(r.stores.includes('serie'));
   assert.ok(r.stores.includes('dateien'));
   assert.ok(r.bildLesbar, 'Bild nach dem Umzug lesbar');

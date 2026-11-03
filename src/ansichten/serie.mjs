@@ -9,7 +9,9 @@ import { alsBlob, freigeben } from '../bild.mjs';
 import { dekodiere } from '../einfuhr.mjs';
 import { aufnahmezeitAusDatei } from '../exif.mjs';
 import { SERIE_MAX } from '../serie.mjs';
-import { vorbereiten, vorbereitenAusDb, startMerkmale, transformFuer, zeichneAusschnitt } from '../serienwerk.mjs';
+import { vorbereiten, vorbereitenAusDb, startMerkmale, rahmen, merkmale, zeichneRahmen, rahmenZuFoto, imRahmen } from '../serienwerk.mjs';
+import { begrenze } from '../geometrie.mjs';
+import { HALT_H } from '../masse.mjs';
 import { offeneFertigstellen, fertigstellenMitWiederholung, unrettbar } from '../naehwerk.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere, serienEintrag } from '../diagnose.mjs';
@@ -24,12 +26,11 @@ const btnAnhalten = $('#se-anhalten');
 const btnVerwerfen = $('#se-verwerfen');
 const wahlSchicht = $('#se-wahl');
 
-const cache = new Map(); // Foto-ID -> { rec, proxy, kandidaten }
+const cache = new Map(); // Foto-ID -> { rec, proxy, breite, transform, motiv, beschnitten, kandidaten }
 let fotos = [];
 let plan = null;
 let modus = 'beste';
 let eigene = null; // eigene Reihenfolge nach dem Ziehen
-let fest = {}; // per Antippen gewählte Ausschnitte
 let baut = false;
 let anhalten = false;
 let mitStart = false;
@@ -81,10 +82,21 @@ function knoepfe() {
   v.classList.toggle('baut', baut);
 }
 
+// Ein Foto in den Plan: Rahmen (ganzes Foto oder, nur außerhalb 0,7 bis 2:1, um das Motiv beschnitten),
+// ein gespeicherter Plan aus einem unterbrochenen Bau hat Vorrang.
 async function fotoAufnehmen(rec, quelle) {
   const vorb = quelle ? vorbereiten(quelle) : await vorbereitenAusDb(rec);
-  cache.set(rec.id, { rec, ...vorb });
-  await planer('serie-foto', { foto: { id: rec.id, zeit: rec.zeit, kandidaten: vorb.kandidaten } });
+  const gesp = rec.plan && rec.plan.transform ? rec.plan : null;
+  const r = gesp ? { breite: gesp.breite, transform: gesp.transform, beschnitten: !!gesp.beschnitten } : rahmen(vorb.proxy, rec.rohB, rec.rohH);
+  cache.set(rec.id, { rec, proxy: vorb.proxy, breite: r.breite, transform: r.transform, beschnitten: r.beschnitten, motiv: gesp?.motiv || null });
+  await merkmaleSenden(rec.id);
+}
+
+// Bewertet wird das volle Foto: ein einziger Kandidat je Foto.
+async function merkmaleSenden(id) {
+  const c = cache.get(id);
+  c.kandidaten = [{ ...merkmale(c.proxy, c.breite, c.transform), kosten: 0, erlaubt: true }];
+  await planer('serie-foto', { foto: { id, zeit: c.rec.zeit, kandidaten: c.kandidaten } });
 }
 
 // Neue Fotos: einzeln dekodieren, Rohbild sichern, dann prüfen.
@@ -165,11 +177,7 @@ async function laden() {
   mitStart = !!startRechts;
   await planer('serie-start', { rechts: startRechts });
   // Ein unterbrochener Bau hinterlässt seinen Plan: genau so weitermachen.
-  if (fotos.every((x) => x.plan)) {
-    eigene = fotos.slice().sort((a, b) => a.plan.pos - b.plan.pos).map((x) => x.id);
-    fest = {};
-    for (const x of fotos) if (cache.get(x.id).kandidaten[x.plan.ausschnitt]) fest[x.id] = x.plan.ausschnitt;
-  }
+  if (fotos.every((x) => x.plan)) eigene = fotos.slice().sort((a, b) => a.plan.pos - b.plan.pos).map((x) => x.id);
   return true;
 }
 
@@ -177,7 +185,7 @@ async function planen() {
   beschaeftigt = true;
   knoepfe();
   try {
-    const r = await planer('serie-plane', { modus, reihenfolge: eigene, fest });
+    const r = await planer('serie-plane', { modus, reihenfolge: eigene });
     plan = r.plan;
   } finally {
     beschaeftigt = false;
@@ -192,17 +200,16 @@ function zeichnen() {
   const basis = Z.halte.length;
   const zeilen = plan.reihenfolge.map((id, k) => {
     const c = cache.get(id);
-    const a = c.kandidaten[plan.wahl[id]];
-    const bild = el('canvas');
+    const bild = el('canvas', { style: `width:${Math.round((80 * c.breite) / HALT_H)}px` });
     const wert = plan.werte[k];
     const zeit = c.rec.aufnahme ? `${datumKurz(c.rec.aufnahme)} ${uhrzeit(c.rec.aufnahme)}` : T.serieZeitUnbekannt;
     const zeile = el('li', { klasse: 'se-zeile', 'data-id': id, 'data-name': c.rec.name },
       el('button', { klasse: 'se-griff', 'aria-label': T.serieVerschieben, text: '≡' }),
-      el('button', { klasse: 'se-bild', 'aria-label': T.serieAusschnitt, onclick: () => wahlOeffnen(id) }, bild),
+      el('button', { klasse: 'se-bild', 'aria-label': T.feinjustieren, onclick: () => feinOeffnen(id) }, bild),
       el('span', { klasse: 'se-info' }, el('b', { text: f(T.halt, { n: basis + k + 1 }) }), el('small', { text: zeit })),
       el('span', { klasse: `se-wert ${wertKlasse(wert)}`, text: wert == null ? '–' : String(wert) }),
       el('button', { klasse: 'se-weg', 'aria-label': T.serieEntfernen, text: '×', onclick: () => entfernen(id) }));
-    zeile._zeichnen = () => zeichneAusschnitt(bild, c.proxy, a);
+    zeile._zeichnen = () => zeichneRahmen(bild, c.proxy, c.breite, c.transform, c.motiv);
     return zeile;
   });
   liste.replaceChildren(...zeilen);
@@ -257,35 +264,117 @@ async function entfernen(id) {
   await planer('serie-entferne', { fotoId: id });
   fotos = fotos.filter((x) => x.id !== id);
   if (eigene) eigene = eigene.filter((x) => x !== id);
-  delete fest[id];
   if (!fotos.length) { zeige('sucher'); return; }
   await planen();
 }
 
-// --- Ausschnitt per Antippen wählen ---
-async function wahlOeffnen(id) {
-  if (baut || beschaeftigt || !plan) return;
-  const r = await planer('serie-alternativen', { ordnung: plan.reihenfolge, wahl: plan.wahl, fotoId: id, anzahl: 8 });
-  const c = cache.get(id);
-  const raster = $('.se-raster', wahlSchicht);
-  const knoepfe = r.liste.map((alt) => {
-    const bild = el('canvas');
-    const b = el('button', {
-      klasse: 'se-alt', 'aria-current': String(alt.index === plan.wahl[id]),
-      onclick: async () => {
-        wahlSchicht.hidden = true;
-        fest[id] = alt.index;
-        await planen();
-      },
-    }, bild, el('span', { text: alt.wert == null ? '–' : String(alt.wert) }));
-    b._zeichnen = () => zeichneAusschnitt(bild, c.proxy, c.kandidaten[alt.index]);
-    return b;
-  });
-  raster.replaceChildren(...knoepfe);
-  wahlSchicht.hidden = false;
-  requestAnimationFrame(() => { for (const b of knoepfe) b._zeichnen(); });
+// --- Feinjustieren: optional zoomen und verschieben, Standard ist das ganze Foto. Antippen setzt das Motiv. ---
+const feinBild = $('.se-fein-bild', wahlSchicht);
+const feinFlaeche = $('.se-fein-flaeche', wahlSchicht);
+let fein = null; // { id, t, motiv }
+const feinFinger = new Map();
+let feinGeste = null;
+
+function feinMasse() {
+  const c = cache.get(fein.id);
+  const r = feinFlaeche.getBoundingClientRect();
+  const maxW = Math.max(120, r.width || 320);
+  const maxH = Math.max(160, Math.min(window.innerHeight * 0.5, 420));
+  const seite = c.breite / HALT_H;
+  const w = Math.min(maxW, maxH * seite);
+  feinBild.style.width = `${Math.round(w)}px`;
+  feinBild.style.height = `${Math.round(w / seite)}px`;
 }
-$('#se-wahl-zu').addEventListener('click', () => (wahlSchicht.hidden = true));
+
+function feinZeichnen() {
+  if (!fein) return;
+  const c = cache.get(fein.id);
+  zeichneRahmen(feinBild, c.proxy, c.breite, fein.t, fein.motiv);
+}
+
+function feinSetze(t) {
+  const c = cache.get(fein.id);
+  fein.t = begrenze(t, c.rec.rohB, c.rec.rohH, c.breite, HALT_H);
+  requestAnimationFrame(feinZeichnen);
+}
+
+function feinOeffnen(id) {
+  if (baut || beschaeftigt || !plan) return;
+  const c = cache.get(id);
+  fein = { id, t: { ...c.transform }, motiv: c.motiv };
+  wahlSchicht.hidden = false;
+  feinMasse();
+  requestAnimationFrame(feinZeichnen);
+}
+
+feinBild.addEventListener('pointerdown', (e) => {
+  if (!fein) return;
+  feinBild.setPointerCapture(e.pointerId);
+  feinFinger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const p = [...feinFinger.values()];
+  const masse = cache.get(fein.id).breite / feinBild.getBoundingClientRect().width;
+  if (p.length === 1) feinGeste = { art: 1, x: p[0].x, y: p[0].y, zeit: performance.now(), t: { ...fein.t }, masse, bewegt: 0 };
+  else feinGeste = { art: 2, d: Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y) || 1, t: { ...fein.t }, masse };
+});
+feinBild.addEventListener('pointermove', (e) => {
+  if (!fein || !feinGeste || !feinFinger.has(e.pointerId)) return;
+  feinFinger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const p = [...feinFinger.values()];
+  if (feinGeste.art === 1) {
+    feinGeste.bewegt = Math.max(feinGeste.bewegt, Math.hypot(p[0].x - feinGeste.x, p[0].y - feinGeste.y));
+    if (feinGeste.bewegt < 6) return;
+    feinSetze({ ...feinGeste.t, dx: feinGeste.t.dx + (p[0].x - feinGeste.x) * feinGeste.masse, dy: feinGeste.t.dy + (p[0].y - feinGeste.y) * feinGeste.masse });
+  } else if (p.length >= 2) {
+    const d = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y) || 1;
+    feinSetze({ ...feinGeste.t, zoom: feinGeste.t.zoom * (d / feinGeste.d) });
+  }
+});
+const feinLos = (e) => {
+  if (!fein || !feinFinger.has(e.pointerId)) return;
+  const war = feinGeste;
+  feinFinger.delete(e.pointerId);
+  if (war?.art === 1 && !feinFinger.size && war.bewegt < 6 && performance.now() - war.zeit < 500) {
+    // Antippen: Motiv setzen
+    const r = feinBild.getBoundingClientRect();
+    fein.motiv = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    const c = cache.get(fein.id);
+    // Muss beschnitten werden (außerhalb 0,7 bis 2:1), liegt der Zuschnitt jetzt um das Motiv
+    if (!imRahmen(c.rec.rohB, c.rec.rohH)) {
+      const foto = rahmenZuFoto(fein.motiv, c.rec.rohB, c.rec.rohH, c.breite, fein.t);
+      fein.t = rahmen(c.proxy, c.rec.rohB, c.rec.rohH, foto).transform;
+      fein.motiv = null; // nach dem Verschieben liegt der Punkt woanders; der Zuschnitt zeigt das Motiv
+      fein.motivFoto = foto;
+    }
+    requestAnimationFrame(feinZeichnen);
+  }
+  feinGeste = null;
+};
+feinBild.addEventListener('pointerup', feinLos);
+feinBild.addEventListener('pointercancel', feinLos);
+feinBild.addEventListener('wheel', (e) => {
+  if (!fein) return;
+  e.preventDefault();
+  feinSetze({ ...fein.t, zoom: fein.t.zoom * Math.exp(-e.deltaY * 0.002) });
+}, { passive: false });
+
+$('#se-fein-ganz').addEventListener('click', () => {
+  if (!fein) return;
+  const c = cache.get(fein.id);
+  fein.t = rahmen(c.proxy, c.rec.rohB, c.rec.rohH, fein.motivFoto || null).transform;
+  requestAnimationFrame(feinZeichnen);
+});
+$('#se-wahl-zu').addEventListener('click', () => { wahlSchicht.hidden = true; fein = null; });
+$('#se-fein-ok').addEventListener('click', async () => {
+  if (!fein) return;
+  const c = cache.get(fein.id);
+  c.transform = fein.t;
+  c.motiv = fein.motiv;
+  const id = fein.id;
+  wahlSchicht.hidden = true;
+  fein = null;
+  await merkmaleSenden(id);
+  await planen();
+});
 
 for (const b of modusKnoepfe) {
   b.addEventListener('click', () => {
@@ -305,7 +394,6 @@ async function bauen() {
   anhalten = false;
   knoepfe();
   const ordnung = plan ? plan.reihenfolge.slice() : [];
-  const wahl = plan ? { ...plan.wahl } : {};
   const n = ordnung.length;
   const pause = n >= 12 ? 500 : 150;
   let fehler = null;
@@ -330,7 +418,10 @@ async function bauen() {
       }
     }
     // 2. Plan sichern: Bricht der Bau ab, geht es mit derselben Reihenfolge weiter.
-    for (let k = 0; k < n; k++) await db.aendereSerienFoto(ordnung[k], { plan: { pos: k, ausschnitt: wahl[ordnung[k]] } });
+    for (let k = 0; k < n; k++) {
+      const c = cache.get(ordnung[k]);
+      await db.aendereSerienFoto(ordnung[k], { plan: { pos: k, breite: c.breite, transform: c.transform, motiv: c.motiv, beschnitten: c.beschnitten } });
+    }
     // 3. Foto für Foto: in einer Transaktion zum Halt, dann fertigstellen (frisch aus der Datenbank).
     for (let k = 0; k < n; k++) {
       if (anhalten) break;
@@ -339,10 +430,11 @@ async function bauen() {
       const t0 = performance.now();
       const id = ordnung[k];
       const c = cache.get(id);
-      const t = transformFuer(c.kandidaten[wahl[id]], c.proxy, c.rec.rohB, c.rec.rohH);
+      // Das Foto bleibt ganz: eigene Breite, Übergang für Serien (harter Schnitt, Farbverlauf, Biegung)
       const halt = await db.serienFotoZuHalt(id, {
         id: db.neueId(), streckeId: Z.strecke.id, index: Z.halte.length, zeit: c.rec.aufnahme ?? Date.now(), quelle: 'import',
-        transform: t, bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '',
+        breite: c.breite, transform: c.transform, uebergang: 'serie', motiv: c.motiv,
+        bild: null, naht: null, vorschau: null, nahtVorschau: null, pfad: null, wert: null, teile: null, name: '',
       });
       freigeben(c.proxy);
       cache.delete(id);
@@ -403,7 +495,6 @@ registriere('serie', {
     meldungWeg(); // eine stehende Erinnerung würde sonst die Knöpfe verdecken
     plan = null;
     eigene = null;
-    fest = {};
     btnAnhalten.disabled = false;
     liste.replaceChildren();
     beschaeftigt = true;
@@ -423,7 +514,7 @@ registriere('serie', {
       knoepfe();
     }
   },
-  verlassen() { wahlSchicht.hidden = true; },
+  verlassen() { wahlSchicht.hidden = true; fein = null; },
 });
 
 // Beim Start: Wartet noch eine Serie?

@@ -1,5 +1,5 @@
 // Kennzahlen einer Strecke und Pläne für die Ausgaben. Reine Rechnung.
-import { HALT_B, HALT_H, SCHRITT, bandBreite } from './masse.mjs';
+import { HALT_B, HALT_H, bandBreite, alsBreiten, lagen } from './masse.mjs';
 
 // Anschlüsse sind alle Halte ab dem zweiten mit Wert. Pünktlich heißt: Wert ab 70.
 export function kennzahlen(halte) {
@@ -27,6 +27,64 @@ export function beitraege(anzahl, max = BEITRAG_MAX) {
     start += n;
   }
   return aus;
+}
+
+// Karussell ohne Grenze durchs Motiv: Die Bildbreite bleibt 1296, der Anfang rückt um bis zu 15 %
+// einer Slide nach rechts (das Stück davor fällt weg). Gewählt wird der Versatz, bei dem die Grenzen
+// am wenigsten Motiv treffen. Die Bildanzahl steigt dadurch nie.
+export const KARUSSELL_VERSATZ_MAX = 0.15;
+export const KARUSSELL_GRENZE_FENSTER = 40; // Bandpixel links und rechts der Grenze
+export const KARUSSELL_TREFFER = 0.25; // ab dieser Motivdichte (Anteil der stärksten Stelle) trifft die Grenze das Motiv
+export const PROFIL_SCHRITT = 4; // Bandpixel je Eintrag im Motivprofil
+
+// Motivprofil des Bands aus den Spaltenprofilen der Halte. profile[i]: Float32Array über die Breite von
+// Halt i (beliebige Auflösung). In der Überlappung zählt das stärkere.
+export function bandProfil(x, profile, schritt = PROFIL_SCHRITT) {
+  const br = alsBreiten(x);
+  const anf = lagen(br);
+  const aus = new Float32Array(Math.ceil(bandBreite(br) / schritt));
+  profile.forEach((p, i) => {
+    if (!p || !p.length) return;
+    const f = br[i] / p.length;
+    for (let c = 0; c < p.length; c++) {
+      const k = Math.floor((anf[i] + (c + 0.5) * f) / schritt);
+      if (k >= 0 && k < aus.length && p[c] > aus[k]) aus[k] = p[c];
+    }
+  });
+  return aus;
+}
+
+export function karussellPlan(x, profil = null, { schritt = PROFIL_SCHRITT } = {}) {
+  const B = bandBreite(x);
+  const S = HALT_B;
+  const grenzenBei = (o) => {
+    const n = Math.ceil((B - o) / S);
+    return { anzahl: n, grenzen: Array.from({ length: Math.max(0, n - 1) }, (_, k) => o + (k + 1) * S) };
+  };
+  if (!profil || !profil.length) return { versatz: 0, ...grenzenBei(0), treffer: [] };
+  let max = 0;
+  for (const v of profil) if (v > max) max = v;
+  if (max <= 0) return { versatz: 0, ...grenzenBei(0), treffer: [] };
+  const fenster = Math.max(1, Math.round(KARUSSELL_GRENZE_FENSTER / schritt));
+  const dichte = (xb) => {
+    const k = Math.round(xb / schritt);
+    let s = 0;
+    let n = 0;
+    for (let j = k - fenster; j <= k + fenster; j++) if (j >= 0 && j < profil.length) { s += profil[j] / max; n++; }
+    return n ? s / n : 0;
+  };
+  const kosten = (o) => grenzenBei(o).grenzen.reduce((s, g) => s + dichte(g), 0);
+  const basis = kosten(0);
+  let versatz = 0;
+  let best = basis;
+  for (let o = 2; o <= Math.floor(KARUSSELL_VERSATZ_MAX * S); o += 2) {
+    const k = kosten(o) + 0.02 * (o / S); // bei gleichem Ergebnis lieber weniger abschneiden
+    if (k < best - 1e-9) { best = k; versatz = o; }
+  }
+  if (basis - best < 0.05) versatz = 0; // lohnt sich nicht: nichts abschneiden
+  const plan = grenzenBei(versatz);
+  const treffer = plan.grenzen.map((g) => ({ x: g, dichte: dichte(g) })).filter((t) => t.dichte >= KARUSSELL_TREFFER);
+  return { versatz, ...plan, treffer };
 }
 
 // --- Fahrt ---
@@ -77,9 +135,11 @@ export const REEL_AUSLAUF = 1.6; // Sekunden weiches Bremsen am Ende
 export const REEL_ENDSTATION = 3; // Sekunden Endstation, falls eingeschaltet
 export const REEL_RAND = { oben: 250, unten: 250, links: 60, rechts: 60 };
 
-// Bandbereich eines Abschnitts (Halt-Indizes ab 0, beide einschließlich).
-export function abschnittBereich(von, bis) {
-  return { x0: von * SCHRITT, x1: bis * SCHRITT + HALT_B };
+// Bandbereich eines Abschnitts (Halt-Indizes ab 0, beide einschließlich). x: Breitenliste oder Halte.
+export function abschnittBereich(x, von, bis) {
+  const br = alsBreiten(x);
+  const anf = lagen(br);
+  return { x0: anf[von], x1: anf[bis] + br[bis] };
 }
 
 function reelBewegung(weg, bewegung) {
@@ -95,11 +155,14 @@ function reelBewegung(weg, bewegung) {
   return { R, tempo, pos };
 }
 
-export function reelPlan(n, { von = 0, bis = n - 1, laenge = 30, endstation = true } = {}) {
+export function reelPlan(x, { von = 0, bis = null, laenge = 30, endstation = true } = {}) {
+  const br = alsBreiten(x);
+  const n = br.length;
+  if (bis == null) bis = n - 1;
   von = Math.max(0, Math.min(n - 1, von));
   bis = Math.max(von, Math.min(n - 1, bis));
   const f = FAHRT_H / HALT_H;
-  const { x0, x1 } = abschnittBereich(von, bis);
+  const { x0, x1 } = abschnittBereich(br, von, bis);
   const sicht = FAHRT_B / f; // Bandpixel im Bild
   const weg = Math.max(0, (x1 - x0) * f - FAHRT_B);
   const endeDauer = endstation ? REEL_ENDSTATION : 0;
@@ -111,7 +174,8 @@ export function reelPlan(n, { von = 0, bis = n - 1, laenge = 30, endstation = tr
     // Längster Abschnitt ab "von", der mit höchstens REEL_MAX_TEMPO auskommt.
     const wegMax = REEL_MAX_TEMPO * (bewegung - R / 2);
     const spanne = (wegMax + FAHRT_B) / f;
-    const b = Math.max(von, Math.min(bis - 1, Math.floor((spanne - HALT_B) / SCHRITT) + von));
+    let b = von;
+    while (b + 1 < bis && abschnittBereich(br, von, b + 1).x1 - x0 <= spanne) b++;
     vorschlag = { von, bis: b };
   }
   return {

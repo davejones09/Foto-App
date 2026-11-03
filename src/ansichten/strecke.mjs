@@ -3,7 +3,7 @@ import { Z, registriere, zeige, neuLaden } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
 import { $, el, frage, tagSchluessel } from '../ui.mjs';
 import { BandAnsicht } from '../band.mjs';
-import { bandBreite, SCHRITT, HALT_B } from '../masse.mjs';
+import { bandBreite, lagen, breiteVon } from '../masse.mjs';
 import * as db from '../speicher.mjs';
 
 const v = $('#v-strecke');
@@ -27,15 +27,16 @@ const band = new BandAnsicht(canvas, {
 });
 
 function leisteBauen(halte) {
-  const b = bandBreite(halte.length) || 1;
+  const b = bandBreite(halte) || 1;
+  const anf = lagen(halte);
   const teile = [];
   let tag = null;
   halte.forEach((h, i) => {
-    const mitte = (i * SCHRITT + HALT_B / 2) / b;
+    const mitte = (anf[i] + breiteVon(h) / 2) / b;
     const t = tagSchluessel(h.zeit);
     if (i > 0 && t !== tag) {
       const d = new Date(h.zeit);
-      teile.push(el('i', { klasse: 'hl-tag', style: `left:${((i * SCHRITT) / b) * 100}%` },
+      teile.push(el('i', { klasse: 'hl-tag', style: `left:${(anf[i] / b) * 100}%` },
         el('span', { text: `${WOCHENTAG[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.` })));
     }
     tag = t;

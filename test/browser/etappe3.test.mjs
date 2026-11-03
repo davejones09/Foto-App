@@ -68,11 +68,12 @@ test('Karussell: Anzahl stimmt, Bilder ergeben aneinandergelegt das Band ohne St
     }
     // Gegenprobe zum Gesamtbild: jedes Karussellbild ist der passende Ausschnitt des Bands.
     const g = await createImageBitmap(gesamt);
+    const versatz = (await import('./src/ausgabe.mjs')).letzterKarussellPlan().versatz;
     const abw = [];
     for (let k = 0; k < bilder.length - 1; k++) {
       const c = new OffscreenCanvas(1080, 1350);
       const x = c.getContext('2d');
-      x.drawImage(g, k * 1296 * (g.height / 1620), 0, 1296 * (g.height / 1620), g.height, 0, 0, 1080, 1350);
+      x.drawImage(g, (versatz + k * 1296) * (g.height / 1620), 0, 1296 * (g.height / 1620), g.height, 0, 0, 1080, 1350);
       const d = x.getImageData(0, 0, 1080, 1350).data;
       let sum = 0;
       for (let i = 0; i < d.length; i += 4 * 7) sum += Math.abs(d[i] - bilder[k].d[i]) + Math.abs(d[i + 1] - bilder[k].d[i + 1]) + Math.abs(d[i + 2] - bilder[k].d[i + 2]);

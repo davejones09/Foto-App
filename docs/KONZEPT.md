@@ -88,10 +88,11 @@ Rettet knappe Anschlüsse und ist der Weg für Fotos aus der Mediathek.
 Für Fotos, die schon gemacht sind, etwa mit der Lumix.
 
 - In der Auswahl sind bis zu 10 Fotos erlaubt. Ein einzelnes Foto läuft wie bisher über das Feinjustieren.
-- Jedes Foto wird einzeln geöffnet und sofort gesichert, dann geprüft: rund 75 Ausschnitte je Foto (3 Zoomstufen mal 5 × 5 Positionen).
-- **Motivschutz:** Ausschnitte, die das Auffällige im Bild (Farbabweichung und Kanten, zur Mitte stärker gewichtet) anschneiden, kosten Punkte oder sind verboten. Das wiegt schwerer als ein hoher Anschlusswert.
-- Die App sucht die beste Reihenfolge und die passenden Ausschnitte. Hat die Strecke schon Halte, schließt die Serie an den letzten an. Alternativ „Nach Aufnahmezeit“: Die Reihenfolge folgt dem Aufnahmedatum, nur die Ausschnitte werden gewählt.
-- Vorschau vor dem Bauen: Vorschaubilder mit Werten, Ziehen sortiert um, × entfernt, Antippen zeigt andere Ausschnitte. Erst „Bauen“ rechnet die volle Auflösung, mit Fortschritt. Ein Abbruch verliert kein Foto.
+- Jedes Foto wird einzeln geöffnet und sofort gesichert.
+- **Fotos bleiben ganz.** Ein Serienhalt behält sein Seitenverhältnis (feste Höhe 1620, eigene Breite) und wird nicht gezoomt. Nur was schmaler als 0,7 oder breiter als 2:1 ist, wird beschnitten, und zwar um das Motiv herum. Das Motiv findet eine Karte über Schärfe: Ein unscharfer Vordergrund oder gleichmäßige Textur wie Meer zählt nicht.
+- Die App sucht die beste Reihenfolge, bewertet nach den vollen Fotos. Hat die Strecke schon Halte, schließt die Serie an den letzten an. Alternativ „Nach Aufnahmezeit“: Die Reihenfolge folgt dem Aufnahmedatum.
+- **Übergang zwischen Serienfotos:** kein weiches Überblenden, sondern ein harter Schnitt am Faden. Dafür ein weiter Farbverlauf über 85 % des neuen Fotos. Treffen zwei Linien fast aufeinander (höchstens 8 % der Höhe auseinander), wird das neue Foto sanft verbogen, voll am Übergang und auslaufend bis 45 % seiner Breite. Der vorherige Halt bleibt unangetastet.
+- Vorschau vor dem Bauen: Vorschaubilder mit Werten, Ziehen sortiert um, × entfernt. Antippen öffnet das Feinjustieren: optional zoomen und verschieben, Standard ist das ganze Foto, Antippen setzt das Motiv. Erst „Bauen“ rechnet die volle Auflösung, mit Fortschritt. Ein Abbruch verliert kein Foto.
 - In der Blindfahrt bleibt es beim einzelnen Foto.
 
 ### 4. Strecke
@@ -106,7 +107,7 @@ Sieht aus wie ein gelber Abfahrtsplan am Bahnsteig: schwarze Schrift auf Gelb, S
 
 ### 6. Ausfahrt
 
-- **Karussell:** Die Strecke in passgenau geschnittenen 4:5-Bildern für Instagram. Beim Wischen läuft das Bild nahtlos durch.
+- **Karussell:** Die Strecke in passgenau geschnittenen 4:5-Bildern für Instagram. Beim Wischen läuft das Bild nahtlos durch. Damit keine Bildgrenze durchs Motiv läuft, darf der Anfang um bis zu 15 % eines Bildes nach rechts rücken. Die Bildanzahl steigt dadurch nie. Lässt sich eine Grenze im Motiv nicht vermeiden, zeigt die Ausfahrt die Stelle als Vorschau und baut trotzdem.
 - **Reel:** Hochkant-Video (MP4) für Instagram, das durch die Strecke fährt. Man wählt die Länge (15, 30, 60 oder 90 Sekunden) und per Von-bis-Halt den Abschnitt, das Tempo ergibt sich. Über 900 Pixel pro Sekunde schlägt die App einen kürzeren Abschnitt vor. Das Reel ist ab dem ersten Bild in Bewegung, nur das Ende läuft weich aus. Die Endstation am Schluss ist per Schalter abwählbar. Dazu entsteht ein Titelbild in 1080 × 1920, dessen Wichtigstes in den mittleren 1080 × 1350 liegt. Danach: „Teilen“ und „In Fotos speichern“ mit dem Hinweis, es in Instagram als Reel auszuwählen.
 - **Gesamtbild:** Die ganze Strecke als ein langes Bild.
 - **Sicherung:** Die ganze Strecke als Datei fürs Backup und zum Wiedereinspielen.

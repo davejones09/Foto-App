@@ -9,8 +9,8 @@ export class WorkerFehler extends Error {}
 const ZEITGRENZE = {
   anschliessen: 60000,
   'serie-plane': 60000,
-  'serie-alternativen': 30000,
   'serie-foto': 30000,
+  motivprofil: 30000,
   analyse: 15000,
   standard: 20000,
 };

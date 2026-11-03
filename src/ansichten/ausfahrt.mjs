@@ -114,16 +114,35 @@ function aufbauen() {
   erinnerung.hidden = !(seit > 5);
   erinnerung.textContent = f(T.erinnerung, { n: seit });
 
-  const anzahl = karussellAnzahl(n);
+  // Karussell: Der Plan (Versatz gegen Grenzen im Motiv) rechnet im Hintergrund, die Zahl kann dadurch
+  // noch kleiner werden. Liegt trotzdem eine Grenze im Motiv, zeigt ein Hinweis die Stelle.
+  const anzahl = karussellAnzahl(halte);
   const teile = beitraege(anzahl);
+  const grenzHinweis = el('div', { klasse: 'af-grenze' }, el('p', { text: T.karussellGrenze }), el('canvas', { klasse: 'af-grenze-bild' }));
+  grenzHinweis.hidden = true;
+  const karussellPlan = aus.karussellPlanen(halte).catch((err) => { protokolliere('karussell', err); return null; });
   const karussell = punkt({
     titel: f(T.karussell, { n: anzahl }),
     info: teile.length > 1 ? f(T.mehrereBeitraege, { t: teile.length }) : '',
+    zusatz: grenzHinweis,
     async bauen(fort, w) {
-      const bilder = await aus.karussell(Z.strecke, halte, { fortschritt: fort, waechter: w });
+      const plan = await karussellPlan;
+      const bilder = await aus.karussell(Z.strecke, halte, { fortschritt: fort, waechter: w, plan });
       const dateien = bilder.map((b, i) => datei(b, `${name}-${String(i + 1).padStart(2, '0')}.jpg`));
-      return teile.map(([a, e]) => dateien.slice(a, e));
+      return beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
     },
+  });
+  karussellPlan.then(async (plan) => {
+    if (!plan) return;
+    $('.af-titel', karussell).textContent = f(T.karussell, { n: plan.anzahl });
+    const t = beitraege(plan.anzahl).length;
+    const info = $('p', karussell);
+    info.textContent = t > 1 ? f(T.mehrereBeitraege, { t }) : '';
+    info.hidden = t <= 1;
+    if (plan.treffer.length) {
+      grenzHinweis.hidden = false;
+      await aus.grenzVorschau($('canvas', grenzHinweis), halte, plan.treffer[0].x).catch((err) => protokolliere('karussell', err));
+    }
   });
 
   // Reel: Länge wählen, Abschnitt wählen, das Tempo ergibt sich.
@@ -172,7 +191,7 @@ function aufbauen() {
     if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
     reelAktualisieren();
   });
-  const reelPlanJetzt = () => reelPlan(n, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, endstation: reelEndstation });
+  const reelPlanJetzt = () => reelPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, endstation: reelEndstation });
   const zusatz = el('div', { klasse: 'af-reel' },
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
@@ -208,7 +227,7 @@ function aufbauen() {
     tempoEl.textContent = T.mp4Fehlt;
   });
 
-  const plan = aus.gesamtPlan(n);
+  const plan = aus.gesamtPlan(halte);
   const gesamt = punkt({
     titel: f(T.gesamtbild, { b: plan.b, h: plan.h }),
     info: plan.verkleinert ? f(T.verkleinert, { b: plan.b, h: plan.h }) : '',
