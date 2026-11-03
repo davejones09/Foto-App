@@ -108,6 +108,9 @@ Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest 
 - Während der Nutzung auf den Home-Bildschirm wechseln und zurück: Die Kamera kommt wieder.
 - Ein Foto aus der Mediathek holen, auch eines von der Lumix.
 - Alles aus der Ausfahrt einmal auslösen und in Fotos oder Instagram prüfen.
+- Eine Serie aus 3 bis 10 Fotos aus der Mediathek holen, auch von der Lumix: Reihenfolge, Werte und Ausschnitte in der Vorschau ansehen, eins umsortieren, bauen.
+- Ein Reel mit 15 Sekunden bauen, „In Fotos speichern“, in Instagram als Reel anlegen (nicht veröffentlichen müssen) und das Titelbild als Cover wählen.
+- Im Sucher „Idee“ antippen, einen Ort wählen, ein paar Ideen durchgehen. Das iPhone so halten, dass eine Linie knapp neben der Marke liegt, und prüfen, ob der Richtungshinweis stimmt.
 - Fünfmal auf die Versionsnummer tippen und den Bericht kopieren. Er sollte in Claude Code einfügbar sein.
 
 ## Unterwegs
