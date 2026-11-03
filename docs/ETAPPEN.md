@@ -116,7 +116,7 @@ Nie streichen: Rohbild zuerst speichern, Offline-Betrieb, Diagnose, Sicherung, K
 
 Schreibe David nach dem ersten Merge genau das:
 
-1. PR über „Create PR“ anlegen und auf GitHub mergen.
+1. Den PR legt Claude selbst an. David mergt ihn auf GitHub.
 2. Im Repository unter **Settings → Pages** als Quelle `Deploy from a branch`, Branch `main`, Ordner `/ (root)` wählen. Das ist nur einmal nötig.
 3. Nach ein, zwei Minuten die Adresse aus Safari auf dem iPhone öffnen: Teilen → Zum Home-Bildschirm.
 4. Ab dann immer über das Icon starten.

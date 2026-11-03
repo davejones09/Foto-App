@@ -15,6 +15,7 @@ Lies vor der ersten Änderung in dieser Reihenfolge:
 
 - Leg direkt los und warte nicht auf Freigaben. Baue die Etappen der Reihe nach.
 - Mach nach jeder Etappe: Tests laufen lassen, committen, pushen.
+- Leg den PR nach `main` immer selbst an (über die GitHub-Werkzeuge), sobald gepusht ist. Ist schon einer offen, reicht der Push. David mergt nur noch.
 - Antworte David locker, kurz und auf Deutsch, per Du.
 - Nenne am Ende jeder Sitzung nur: welche Etappen fertig sind, was du nicht testen konntest und was David jetzt tun muss.
 - Wichtige Entscheidungen, die vom Konzept abweichen, gehören in `docs/ENTSCHEIDUNGEN.md`.
