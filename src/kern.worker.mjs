@@ -4,7 +4,7 @@ import { SerienPlaner } from './serie.mjs';
 
 let rest = null;
 let restLinien = [];
-let haenger = false;
+let haenger = new Set(); // Test: diese Aufträge bleiben unbeantwortet, wie bei einem Absturz
 let planer = new SerienPlaner();
 
 const bild = (b) => ({ w: b.w, h: b.h, d: new Uint8ClampedArray(b.d.buffer || b.d) });
@@ -12,8 +12,9 @@ const bild = (b) => ({ w: b.w, h: b.h, d: new Uint8ClampedArray(b.d.buffer || b.
 self.onmessage = (e) => {
   const { id, typ } = e.data;
   try {
+    if (haenger.has(typ)) return;
     if (typ === 'test-haenger') {
-      haenger = !!e.data.an;
+      haenger = new Set(e.data.an ? (e.data.typen || ['anschliessen']) : []);
       self.postMessage({ id, ok: true });
     } else if (typ === 'rest') {
       rest = e.data.rest ? bild(e.data.rest) : null;
@@ -28,7 +29,6 @@ self.onmessage = (e) => {
       const linien = e.data.mitLinien ? hauptlinien(b, 3) : null;
       self.postMessage({ id, ok: true, wert: r.wert, teile: r.teile, pfad: Array.from(r.pfad), linien, ms: performance.now() - t0 });
     } else if (typ === 'anschliessen') {
-      if (haenger) return; // Test: simuliert einen Absturz mitten im Nähen
       const t0 = performance.now();
       const { naht, neu, pfad } = anschliessen(bild(e.data.letztes), bild(e.data.neues), e.data.ueberlappung);
       self.postMessage(

@@ -1,7 +1,7 @@
 // Sucher: Kamera, Rest, Live-Faden, Marken, Signal, Wert, Auslöser.
 import { Z, registriere, zeige, letzterHalt, erstlaufFertig } from '../zustand.mjs';
 import * as kamera from '../kamera.mjs';
-import { auftrag, beschaeftigt } from '../rechner.mjs';
+import { auftrag, beschaeftigt, generation } from '../rechner.mjs';
 import { bewertung } from '../kern.mjs';
 import { T } from '../texte.mjs';
 import { $, $$, el, Urls, melde } from '../ui.mjs';
@@ -13,6 +13,7 @@ import { SpeicherVoll } from '../speicher.mjs';
 import { waehleBild } from '../einfuhr.mjs';
 import { richtung, ORTE, ORT_NAMEN } from '../ideen.mjs';
 import * as ideen from '../ideenquelle.mjs';
+import { serieErinnern } from './serie.mjs';
 
 const v = $('#v-sucher');
 const video = $('#video');
@@ -37,6 +38,8 @@ const urls = new Urls();
 let aktiv = false;
 let restDa = false;
 let restMarken = [];
+let restKopie = null; // kleiner Rest, um ihn nach einem Worker-Neustart erneut zu senden
+let restGen = -1;
 let kameraLinien = [];
 let glatt = null;
 let zustandAngezeigt = null;
@@ -151,7 +154,9 @@ async function setzeRest() {
     miniImg.removeAttribute('src');
     ideen.setzeRest(null);
     ideeKnopf.hidden = true;
+    restKopie = null;
     await auftrag('rest', { rest: null });
+    restGen = generation();
     return;
   }
   restImg.src = urls.von(h.bild);
@@ -165,7 +170,9 @@ async function setzeRest() {
   ideen.setzeRest(c);
   ideeKnopf.hidden = false;
   freigeben(c);
+  restKopie = { w: klein.w, h: klein.h, d: new Uint8ClampedArray(klein.d) };
   const r = await auftrag('rest', { rest: klein }, [klein.d.buffer]);
+  restGen = generation();
   restMarken = r.marken || [];
   markenEl.replaceChildren(...restMarken.map((m) => el('i', { klasse: 'marke', style: `top:${(m.y * 100).toFixed(2)}%` })));
   restDa = true;
@@ -296,6 +303,12 @@ export function setzeTeilwerte(an) {
 export const teilwerteSichtbar = () => teilwerteAn;
 
 async function analysieren(jetzt) {
+  if (restKopie && restGen !== generation()) {
+    // Worker wurde neu gestartet: Rest erneut übergeben
+    const k = { w: restKopie.w, h: restKopie.h, d: new Uint8ClampedArray(restKopie.d) };
+    await auftrag('rest', { rest: k }, [k.d.buffer]);
+    restGen = generation();
+  }
   const b = kameraKlein();
   if (!b) return;
   bildZaehler++;
@@ -447,8 +460,9 @@ $('#frei-mediathek').addEventListener('click', waehleBild);
 
 // --- Ansicht ---
 registriere('sucher', {
-  async betreten() {
+  async betreten(daten, alt) {
     aktiv = true;
+    if (alt === 'serie') serieErinnern();
     glatt = null;
     zustandAngezeigt = null;
     schlechtSeit = 0;

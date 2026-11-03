@@ -1,5 +1,5 @@
 // Start der App: Installationshinweis, Service Worker, Wiederaufnahme, Diagnose.
-import { installiereHandler, protokolliere, alleFehler, werte } from './diagnose.mjs';
+import { installiereHandler, protokolliere, alleFehler, werte, serienProtokoll } from './diagnose.mjs';
 installiereHandler();
 
 import { APP_VERSION } from './version.mjs';
@@ -71,6 +71,9 @@ async function bericht() {
     '',
     `Fehler (${alleFehler().length}):`,
     ...alleFehler().slice().reverse().map((f) => `${f.zeit} [${f.art}] ${f.text}`),
+    '',
+    `Serie (${serienProtokoll().length}):`,
+    ...serienProtokoll().slice(-30).map((e) => `${e.zeit} ${e.text}`),
   ];
   return zeilen.join('\n');
 }

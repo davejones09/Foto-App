@@ -216,3 +216,23 @@ test('Aufnahmezeit aus EXIF (beide Bytereihenfolgen), sonst null', () => {
   assert.equal(aufnahmezeit(new Uint8Array([1, 2, 3, 4]).buffer), null);
   assert.equal(aufnahmezeit(jpegMitExif('0000:00:00 00:00:00')), null);
 });
+
+test('Ab 13 Fotos rechnet eine Näherung: gültige Reihenfolge, findet eine klare Kette, nah an exakt', async () => {
+  const { naeherung, besteReihenfolge, EXAKT_BIS } = await import('../src/serie.mjs');
+  const r = zufall(11);
+  // Klare Kette 0 → 1 → … → 15 mit hohen Werten, sonst Rauschen
+  const n = 16;
+  const W = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? -Infinity : j === i + 1 ? 90 + r() * 5 : r() * 40)));
+  const weg = besteReihenfolge(W);
+  assert.equal(new Set(weg).size, n);
+  assert.deepEqual(weg, [...Array(n).keys()]);
+  // Bis EXAKT_BIS genau Held-Karp, die Näherung bleibt dort nah dran
+  for (let runde = 0; runde < 10; runde++) {
+    const m = 8;
+    const V = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => (i === j ? -Infinity : Math.round(r() * 100))));
+    const summe = (p) => p.reduce((s, x, k) => s + (k ? V[p[k - 1]][x] : 0), 0);
+    assert.deepEqual(besteReihenfolge(V), heldKarp(V));
+    assert.ok(summe(naeherung(V)) >= 0.9 * summe(heldKarp(V)));
+  }
+  assert.equal(EXAKT_BIS, 12);
+});
