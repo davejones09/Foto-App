@@ -39,13 +39,12 @@ export const T = {
   erstStrecke: 'Das ist deine Strecke. Sie wird so lang wie deine Reise.',
   erstKnopf: 'Weiterfahren',
 
-  tipps: [
-    'Such eine Kante auf Höhe der Marke.',
-    'Tisch, Mauer, Horizont, Geländer: Alles ist eine Linie.',
-    'Geh näher ran, dann wird die Linie größer.',
-    'Halt das iPhone tiefer oder höher. Die Linie wandert mit.',
-    'Es muss nicht derselbe Ort sein. Es muss nur weitergehen.',
-  ],
+  // Tipps und Ideen stehen in src/ideen.mjs, beide aus derselben Quelle.
+  idee: 'Idee',
+  andereIdee: 'Andere Idee',
+  ideeOrt: 'Wo bist du gerade?',
+  richtungHoeher: 'Etwas höher halten oder leicht nach oben kippen. Die Linie rutscht dann zur Marke.',
+  richtungTiefer: 'Etwas tiefer halten oder leicht nach unten kippen. Die Linie rutscht dann zur Marke.',
   kameraStartet: 'Kamera startet …',
   mediathek: 'Aus der Mediathek',
   strecke: 'Strecke',

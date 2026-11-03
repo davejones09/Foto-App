@@ -71,3 +71,12 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Zeit eines Serienhalts** ist das Aufnahmedatum aus EXIF, sonst der Zeitpunkt des Bauens. Fahrplan und Tageswechsel zeigen so die Reise.
 - **Weitere Fotos zu einer wartenden Serie** kommen dazu, statt sie zu ersetzen.
 - **Blindfahrt:** Die Auswahl erlaubt nur ein Foto. Liefert das System trotzdem mehrere, zählt nur das erste.
+
+## Ideen (0.9.0)
+
+- **Satz aus zwei Teilen:** erst die Beschreibung des Rests („Linie auf halber Höhe, oben hell, unten dunkel.“), dann die Idee. Allgemeine Tipps und Kontrast-Ideen stehen ohne Beschreibung, Kontrast-Ideen mit dem Hinweis auf die letzten drei Halte.
+- **Ort ist optional.** Ohne Ort sind Ideen mit Ort erlaubt, aber leicht im Nachteil. Mit Ort fallen Ideen für andere Orte weg. Nochmal Antippen hebt die Wahl auf.
+- **Keine Wiederholung je Strecke**, auch über Neustarts hinweg (gemerkt in der Datenbank). Sind alle passenden durch, beginnt eine neue Runde.
+- **Kontrast hat Vorrang**, solange die passende Kontrast-Idee in dieser Strecke noch nicht kam.
+- **Richtung ab 3 % Abstand:** Darunter wird die Marke ohnehin grün. Über 12 % ist es kein „knapp daneben“ mehr. Der Hinweis erscheint erst nach drei gleichen Messungen, damit er nicht flackert. Er hat Vorrang vor Tipps und ruht, solange das Ideen-Feld offen ist.
+- **Tipps bei niedrigem Wert** kommen jetzt aus der Ideenquelle. Die alten fünf Tipps sind dort allgemeine Ideen mit der niedrigsten Priorität.

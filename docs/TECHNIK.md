@@ -13,6 +13,8 @@ src/
   serie.mjs           Serie: Ausschnitte, Motivschutz, Paarwerte, Held-Karp, Viterbi (reine Rechnung)
   serienwerk.mjs      Serie: kleine Fassungen per Canvas, Ausschnitt in Transformation umrechnen
   exif.mjs            Aufnahmezeit aus EXIF
+  ideen.mjs           Ideen: 73 getaggte Sätze, Merkmale, Auswahl, Richtung (reine Rechnung)
+  ideenquelle.mjs     Ideen im Sucher: Rest messen, Farben der letzten Halte, Ort, benutzte Ideen
   kern.worker.mjs     Live-Analyse und Nähen im Worker
   kamera.mjs          Stream-Verwaltung
   speicher.mjs        IndexedDB
@@ -176,6 +178,13 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Eins
 ### Feinjustieren
 
 `transform` wird beim Start aus dem Rohbild abgeleitet, sodass der 4:5-Rahmen formatfüllend passt. Zoom unter dem Füllmaß ist nicht möglich. Die Live-Berechnung läuft über die 96×120-Fassung, gerendert per OffscreenCanvas. Erst „Übernehmen“ rechnet die volle Auflösung.
+
+### Ideen
+
+- **Merkmale:** Rest des letzten Halts auf 91 × 405 Pixel. Linienprofil über die ganze Breite: Höhe und Stärke der stärksten Linie. Neigung aus der Linienhöhe im linken und rechten Drittel, ab ±8° gilt sie als schräg. Mittelfarbe darüber und darunter, eingeordnet nach Helligkeit (hell, mittel, dunkel) und Ton (blau, grün, warm, grau).
+- **Letzte 3 Halte:** Mittelfarbe der Vorschauen. Gleicher Ton bei allen drei (oder alle hell, alle dunkel) heißt eintönig. Dann gewinnt die passende Kontrast-Idee.
+- **Auswahl:** Jede Idee hat Tags (Höhe, Neigung, Stärke, Farbe oben und unten, Ort, Tageszeit). Ein widersprechendes Tag schließt sie aus, passende Tags geben Punkte. Bei schräger Linie haben Ideen ohne Schräge Abzug. Gezogen wird die beste noch nicht benutzte. Benutzte IDs stehen je Strecke in der Datenbank (`ideen:<streckeId>`), der Ort unter `ideen-ort`.
+- **Richtung:** Liegt eine Kameralinie (aus `hauptlinien`) 3 bis 12 % neben einer Marke und trifft keine andere, zeigt der Sucher nach drei gleichen Messungen die Richtung. Liegt die Linie über der Marke, muss das iPhone höher: Höher halten oder nach oben kippen schiebt das Bild nach unten. Ein Lochkamera-Modell im Test prüft das.
 
 ## 7. Diagnose
 

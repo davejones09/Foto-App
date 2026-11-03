@@ -61,7 +61,9 @@ Drei kurze Bildschirme vor der Kamera-Freigabe, jeder mit einem gezeichneten, an
 - **Signal:** Drei kleine Lichter oben. Rot unter 40, gelb von 40 bis 69, grün ab 70. Ab 90 blinkt grün langsam.
 - **Wert und Text:** großer Zahlenwert mit Bewertungstext aus `TEXTE.md`.
 - **Auslöser:** groß, unten mittig, immer erreichbar. Bei jedem Wert erlaubt: Auch ein verpasster Anschluss ist Teil der Reise.
-- Nebenfunktionen: Foto aus der Mediathek holen, Strecke ansehen, Linse wechseln (sofern verfügbar).
+- Nebenfunktionen: Foto aus der Mediathek holen (auch eine Serie), Strecke ansehen, Linse wechseln (sofern verfügbar).
+- **Idee:** Ein Knopf im Sucher schlägt einen konkreten nächsten Halt vor, passend zur Linie im Rest, zu Farben, Tageszeit und gemerktem Ort. Mehr unter „Ideen“.
+- **Richtung:** Liegt eine Linie der Kamera knapp neben einer Marke, sagt die App, ob das iPhone höher oder tiefer muss.
 
 ### 2. Aufdeckung (direkt nach dem Auslösen, etwa 1,5 Sekunden)
 
@@ -112,6 +114,16 @@ Sieht aus wie ein gelber Abfahrtsplan am Bahnsteig: schwarze Schrift auf Gelb, S
 ### 7. Strecken
 
 Liste aller Strecken mit kleiner Vorschau. „Neue Strecke“ fragt nach einem Namen und bietet die Blindfahrt an.
+
+## Ideen
+
+Regelbasiert und komplett offline, ohne KI und ohne Netz. Grundlagen:
+
+- Höhe, Stärke und Neigung der Linie im Rest, die Farben darüber und darunter
+- die Farben der letzten 3 Halte: Waren alle gleich, kommt eine Idee mit Kontrast
+- die Tageszeit und ein per Antippen gemerkter Ort: Strand, Stadt, Essen, Natur, Unterkunft, Unterwegs
+
+Jede Idee ist ein konkreter Satz im trockenen Ton der App. „Andere Idee“ wiederholt innerhalb einer Strecke nichts, bis alle passenden durch sind. Die Tipps bei niedrigem Wert kommen aus derselben Quelle.
 
 ## Blindfahrt
 

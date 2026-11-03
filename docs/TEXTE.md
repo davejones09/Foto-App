@@ -53,13 +53,22 @@ Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben 
 | 40 bis 69 | Knapp, läuft aber |
 | unter 40 | Anschluss verpasst |
 
-**Tipps**, wenn der Wert 15 Sekunden unter 40 bleibt, höchstens einer pro Minute:
+**Tipps**, wenn der Wert 15 Sekunden unter 40 bleibt, höchstens einer pro Minute: kommen aus derselben Quelle wie der Knopf „Idee“ (siehe unten). Die früheren fünf Tipps sind dort als allgemeine Ideen enthalten.
 
-- Such eine Kante auf Höhe der Marke.
-- Tisch, Mauer, Horizont, Geländer: Alles ist eine Linie.
-- Geh näher ran, dann wird die Linie größer.
-- Halt das iPhone tiefer oder höher. Die Linie wandert mit.
-- Es muss nicht derselbe Ort sein. Es muss nur weitergehen.
+**Idee:**
+
+- **Knopf:** Idee
+- **Satz:** {Beschreibung des Rests} {Idee}, zum Beispiel: Linie auf halber Höhe, oben hell, unten dunkel. Versuch's mit einer Tischkante vor einer hellen Wand.
+- **Beschreibung:** Linie {im oberen Drittel | auf halber Höhe | im unteren Drittel}{, steigt nach rechts | , fällt nach rechts}, oben {hell | dunkel | blau | grün | warm | grau}, unten {…}. Ohne Linie: Kaum Linien im Rest, nur Fläche.
+- **Kontrast:** Die letzten drei Halte waren alle {Farbe}. {Idee}
+- **Ort:** Wo bist du gerade? · Strand · Stadt · Essen · Natur · Unterkunft · Unterwegs
+- **Knöpfe:** Schließen · Andere Idee
+- **Alle Ideen:** `src/ideen.mjs` (73 Stück, getaggt)
+
+**Richtung**, wenn eine Kameralinie knapp neben einer Marke liegt:
+
+- Etwas höher halten oder leicht nach oben kippen. Die Linie rutscht dann zur Marke.
+- Etwas tiefer halten oder leicht nach unten kippen. Die Linie rutscht dann zur Marke.
 
 **Sonstiges:**
 

@@ -137,7 +137,15 @@ button:active { filter: brightness(0.85); }
 .laden { width: 26px; height: 26px; border: 3px solid var(--linie); border-top-color: var(--gelb); border-radius: 50%; animation: drehen 0.9s linear infinite; }
 @keyframes drehen { to { transform: rotate(360deg); } }
 .linse { position: absolute; right: 12px; bottom: 12px; width: 44px; height: 44px; background: rgba(0,0,0,.55); font: 600 13px var(--mono); }
-.teilwerte { position: absolute; right: 8px; top: 8px; margin: 0; padding: 6px 8px; background: rgba(0,0,0,.6); font: 11px/1.4 var(--mono); color: var(--text); border-radius: 6px; pointer-events: none; }
+.idee-knopf { position: absolute; right: 10px; top: 10px; min-height: 44px; padding: 0 16px; border-radius: 22px; background: rgba(14, 15, 16, .7); border: 1px solid rgba(255, 212, 0, .6); color: var(--gelb); font-weight: 600; }
+.idee { position: absolute; left: 8px; right: 8px; bottom: 8px; background: rgba(14, 15, 16, .92); border: 1px solid var(--linie); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.idee-text { margin: 0; font-size: 16px; }
+.idee-frage { margin: 0; font-size: 13px; color: var(--text2); }
+.idee-orte { display: flex; flex-wrap: wrap; gap: 6px; }
+.idee-orte button { min-height: 44px; padding: 0 12px; border: 1px solid var(--linie); border-radius: 22px; font-size: 14px; background: var(--grund2); }
+.idee-orte button[aria-pressed="true"] { background: var(--gelb); color: #0e0f10; border-color: var(--gelb); }
+.idee-knoepfe { display: flex; gap: 8px; justify-content: flex-end; }
+.teilwerte { position: absolute; right: 8px; top: 62px; margin: 0; padding: 6px 8px; background: rgba(0,0,0,.6); font: 11px/1.4 var(--mono); color: var(--text); border-radius: 6px; pointer-events: none; }
 
 .ansage { min-height: 52px; margin: 0; padding: 8px 24px; text-align: center; font-size: 17px; display: flex; align-items: center; justify-content: center; flex: none; transition: opacity .25s; }
 .ansage.neu { animation: einblenden .35s ease-out; }

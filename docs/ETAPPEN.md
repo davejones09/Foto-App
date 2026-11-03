@@ -69,6 +69,14 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Node-Tests Reihenfolge, festen Start, Aufnahmezeit-Modus, Motivschutz, Held-Karp und EXIF prüfen und der Browser-Test eine gemischte Serie richtig ordnet, nach einem Abbruch ohne Verlust weiterbaut und alte Strecken die Migration überstehen.
 
+## Nachtrag: Ideen für den nächsten Halt
+
+- Knopf „Idee“ im Sucher, „Andere Idee“, Ortswahl, Tipps bei niedrigem Wert aus derselben Quelle
+- Mindestens 60 getaggte Ideen, regelbasiert, offline, keine Wiederholung je Strecke, Kontrast nach drei gleichfarbigen Halten
+- Richtungshinweis, wenn eine Kameralinie knapp neben einer Marke liegt
+
+**Fertig, wenn:** Node-Tests Merkmale, Auswahl, Wiederholungsfreiheit, Kontrast und die Richtung (gegen ein Kameramodell) prüfen und der Browser-Test Idee, Ort und Richtungshinweis im Sucher zeigt.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:
