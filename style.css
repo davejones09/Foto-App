@@ -198,10 +198,10 @@ button:active { filter: brightness(0.85); }
 .fp-kennzahlen { margin: 4px 16px 0; font: 600 15px var(--mono); font-variant-numeric: tabular-nums; }
 .fp-spruch { margin: 4px 16px 8px; font-weight: 600; min-height: 1.3em; }
 .fp-tabelle { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 16px 16px; }
-.fp-zeile { display: grid; grid-template-columns: 4.6em 1fr 4.5em; gap: 10px; align-items: center; border-bottom: 2px solid #0e0f10; min-height: 48px; font-size: 17px; }
+.fp-zeile { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; gap: 10px; align-items: center; border-bottom: 2px solid #0e0f10; min-height: 48px; font-size: 17px; }
 .fp-zeile.kopfz { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; min-height: 32px; font-weight: 700; border-bottom-width: 3px; }
 .fp-zeit, .fp-wert { font: 600 17px var(--mono); font-variant-numeric: tabular-nums; }
-.fp-wert { text-align: right; }
+.fp-wert { text-align: right; min-width: 3ch; }
 .fp-name { text-align: left; padding: 0; min-height: 46px; border-radius: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-tagz { font: 700 12px var(--mono); padding: 14px 0 4px; letter-spacing: .06em; }
 
@@ -232,7 +232,7 @@ button:active { filter: brightness(0.85); }
 .sl-info { font-size: 13px; color: var(--text2); }
 .sl-loeschen { color: var(--text2); font-size: 14px; align-self: stretch; border-left: 1px solid var(--linie); border-radius: 0; }
 
-.finale { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; }
+.finale { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; object-fit: contain; }
 
 /* Schichten */
 .schicht { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .66); padding: var(--oben) var(--rechts) var(--unten) var(--links); }

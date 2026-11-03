@@ -61,11 +61,10 @@ export const KAMERA = `
   }
   malen();
   setInterval(malen, 33);
-  const stream = c.captureStream(30);
   const md = navigator.mediaDevices || (navigator.mediaDevices = {});
   md.getUserMedia = async () => {
     if (window.__kameraVerweigert) { const e = new Error('nein'); e.name = 'NotAllowedError'; throw e; }
-    return stream;
+    return c.captureStream(30); // jedes Mal ein frischer Stream, wie bei einer echten Kamera
   };
   md.enumerateDevices = async () => [{ kind: 'videoinput', label: 'Rückkamera', deviceId: 'a' }];
 })();

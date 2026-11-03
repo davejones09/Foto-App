@@ -22,6 +22,7 @@ const band = new BandAnsicht(canvas, {
     const s = b.sicht();
     fenster.style.left = (s.von * 100).toFixed(3) + '%';
     fenster.style.width = (Math.max(0, s.bis - s.von) * 100).toFixed(3) + '%';
+    canvas.dataset.sicht = s.von.toFixed(3) + '-' + s.bis.toFixed(3);
   },
 });
 

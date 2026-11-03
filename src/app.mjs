@@ -15,6 +15,7 @@ import './ansichten/fein.mjs';
 import './ansichten/strecke.mjs';
 import './ansichten/strecken.mjs';
 import './ansichten/ausfahrt.mjs';
+import './ansichten/fahrplan.mjs';
 
 texteEinsetzen();
 $('#version').textContent = 'v' + APP_VERSION;

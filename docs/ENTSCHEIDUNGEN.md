@@ -32,3 +32,12 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
 - **Fahrt:** 0,6 s Stand am Anfang, am Ende 3 s mit eingeblendeter Endstation. Ist die Strecke kürzer als eine Rampe, gibt es eine einzige weiche Bewegung. Bei Strecken schmaler als das Video steht das Band mittig.
 - **Sicherung einspielen** gibt es in der Ausfahrt und in der Streckenliste (dort braucht man es, wenn die App neu installiert wurde). Jede Datei wird beim Einspielen per CRC geprüft; scheitert etwas, wird die halb eingespielte Strecke wieder entfernt.
 - **Sicherungserinnerung:** Gezählt wird ab dem letzten erfolgreichen Teilen oder Speichern der Sicherung.
+
+## Etappe 4
+
+- **Alles aus dem Konzept ist gebaut**, nichts von der Streichliste wurde gestrichen.
+- **Herauszoomen:** Zwei Finger (oder Mausrad) zoomen stufenlos von der ganzen Strecke bis 100 %, Doppeltipp wechselt zwischen Streckenhöhe und 100 %. Ein eigener Knopf dafür fehlt bewusst.
+- **Tageswechsel** stehen in der Leiste als gelber Strich mit Kurzdatum und im Fahrplan als Zwischenzeile.
+- **Pünktlichkeit** zählt nur Anschlüsse (ab dem zweiten Halt). Ohne Anschluss steht „–“ und kein Spruch.
+- **Blindfahrt:** Die Aufdeckung zeigt nur den Faden und den Stempel, kein Herauszoomen. Strecke, Leiste, Streckenvorschau und Ausfahrt bleiben bis „Ziel erreichen“ verdeckt. Das Finale spielt die Fahrt im Tempo Regionalexpress im Vollbild, Antippen überspringt.
+- **Linsenwechsel:** erscheint nur, wenn `enumerateDevices` nach der Freigabe mindestens zwei Kameras liefert, deren Name nicht nach Frontkamera klingt. Der Knopf zeigt „1/3“ usw. Nur am iPhone prüfbar.
