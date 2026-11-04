@@ -69,6 +69,7 @@
       <button class="neu-karte" data-art="reel"><span class="nk-bild nk-reel"></span><span class="nk-titel" data-t="artReel"></span><span class="nk-text" data-t="reelText"></span></button>
       <button class="neu-karte" data-art="collage"><span class="nk-bild nk-collage"><i></i><i></i><i></i></span><span class="nk-titel" data-t="artCollage"></span><span class="nk-text" data-t="collageText"></span></button>
     </div>
+    <button class="link start-tipps" id="start-tipps" data-t="tippTitel"></button>
     <div class="abschnitt-kopf">
       <h2 class="abschnitt" data-t="zuletzt"></h2>
       <button class="link" id="start-alle" data-t="alleProjekte"></button>
@@ -83,6 +84,15 @@
 </section>
 
 <!-- Einstellungen -->
+<section id="v-reeltipps" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2 zurueck" id="rt-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="tippTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="rt-liste"></div>
+</section>
+
 <section id="v-einstellungen" class="ansicht" hidden>
   <header class="leiste-oben">
     <button class="neben2 zurueck" id="ei-zurueck" aria-label="Zurück">‹</button>

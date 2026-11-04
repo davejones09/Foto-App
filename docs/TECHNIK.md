@@ -22,6 +22,7 @@ src/
   collagewerk.mjs     Collage: Fotos einlesen, zeichnen, Ausgabe, Sicherung
   reelstil.mjs        Reel-Stile: Zeitplan, Bewegungen, Ausschnitt 9:16 (reine Rechnung)
   reelvorlagen.mjs    Reel-Vorlagen: Schnitte im Takt, Übergänge, Masken (reine Rechnung)
+  reeltipps.mjs       Inhalte der Tipps für Reels, dargestellt in ansichten/reeltipps.mjs
   exif.mjs            Aufnahmezeit aus EXIF
   ideen.mjs           Ideen: 73 getaggte Sätze, Merkmale, Auswahl, Richtung (reine Rechnung)
   ideenquelle.mjs     Ideen im Sucher: Rest messen, Farben der letzten Fotos, Ort, benutzte Ideen
