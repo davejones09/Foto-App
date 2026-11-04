@@ -28,7 +28,7 @@ Die hochgeladenen Dateien liegen inzwischen an ihrem Platz: Bildkern in `src/ker
 
 ## Tests
 
-- `npm test`: Bildkern, Übergang, Farbprofil, Geometrie, ZIP, Ausgaben und Reel, Serie, Ideen, Auslieferung (Node, ohne Browser)
+- `npm test`: Bildkern, Übergang, Farbprofil, Metadaten, Collage, Reel-Stile, Texte, Geometrie, ZIP, Ausgaben, Serie, Ideen, Auslieferung (Node, ohne Browser)
 - `npm run test:browser`: Ende-zu-Ende in Chromium mit Kamera-Ersatz, Screenshots landen in `test/ergebnisse/`
 - `npm run icons`: Icons und Startbilder neu erzeugen
 
