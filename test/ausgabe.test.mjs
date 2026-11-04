@@ -9,11 +9,11 @@ test('Kennzahlen: Durchschnitt zählt nur Passungen ab dem zweiten Foto', () => 
   assert.deepEqual(kennzahlen([{ index: 0, wert: null }]), { n: 1, anschluesse: 0, schnitt: null });
 });
 
-test('Karussell: Anzahl und Aufteilung in Beiträge', () => {
-  assert.equal(karussellAnzahl(2), 2);
+test('Carousel: Anzahl und Aufteilung in Beiträge', () => {
   assert.equal(karussellAnzahl(1), 1);
-  assert.equal(karussellAnzahl(27), Math.ceil((27 * 933 + 363) / 1296));
-  assert.ok(karussellAnzahl(27) <= 20, 'etwa 27 Halte passen in einen Beitrag');
+  assert.equal(karussellAnzahl(2), 1, 'zwei Kamerafotos: 2 Slides bräuchten 16 % Zoom, also eine Slide');
+  assert.equal(karussellAnzahl(3), 2);
+  assert.ok(karussellAnzahl(27) <= 20, 'etwa 27 Fotos passen in einen Beitrag');
   assert.ok(karussellAnzahl(28) <= 21);
   assert.deepEqual(beitraege(7), [[0, 7]]);
   assert.deepEqual(beitraege(25), [[0, 13], [13, 25]]);
@@ -104,31 +104,79 @@ test('Reel: Abschnitt von bis Halt und Vorschlag bei zu hohem Tempo', () => {
   assert.equal(reelPlan(5, { laenge: 15 }).vorschlag, null);
 });
 
-import { karussellPlan, bandProfil, KARUSSELL_VERSATZ_MAX } from '../src/kennzahlen.mjs';
+import { karussellPlan, karussellGrund, bandProfil, slideAusschnitt, KARUSSELL_VERSATZ_MAX, KARUSSELL_ZOOM_MAX } from '../src/kennzahlen.mjs';
 import { motivKarte, spaltenProfil, skaliere } from '../src/serie.mjs';
 
-test('Karussell: Motiv auf einer Slide-Grenze rückt durch den Versatz in eine Slide', () => {
+// Jede Slide liegt vollständig im Band: keine leere Fläche, keine Abschluss-Slide.
+function pruefeVoll(plan, B, text = '') {
+  assert.ok(plan.versatz >= -1e-6, `${text} Versatz ${plan.versatz}`);
+  const letzte = slideAusschnitt(plan, plan.anzahl - 1);
+  assert.ok(letzte.x0 + letzte.w <= B + 1e-6, `${text} letzte Slide endet bei ${letzte.x0 + letzte.w} von ${B}`);
+  assert.ok(plan.y0 >= -1e-6 && plan.y0 + plan.hoehe <= 1620 + 1e-6, `${text} Höhe`);
+  assert.ok(Math.abs(plan.sicht * 1620 / 1296 - plan.hoehe) < 1e-6, `${text} Seitenverhältnis 4:5`);
+}
+
+test('Carousel geht genau in ganze Slides auf: erst bis 8 % Zoom, sonst Beschnitt an den Enden', () => {
+  // Zoom reicht: 3700 Pixel werden mit 5,1 % Zoom genau drei Slides, nichts fällt seitlich weg
+  const z = karussellPlan([3700]);
+  assert.equal(z.anzahl, 3);
+  assert.ok(Math.abs(z.zoom - 3888 / 3700) < 1e-9);
+  assert.equal(z.versatz, 0);
+  assert.ok(Math.abs(z.anzahl * z.sicht - 3700) < 1e-6, 'Band geht genau auf');
+  assert.ok(Math.abs(z.y0 - (1620 - 1620 / z.zoom) / 2) < 1e-9, 'oben und unten gleich viel');
+  // Zoom reicht nicht: drei Slides mit 212 Pixeln Beschnitt, je zur Hälfte am Anfang und Ende
+  const r = karussellPlan([4100]);
+  assert.equal(r.anzahl, 3);
+  assert.equal(r.zoom, 1);
+  assert.equal(r.versatz, 106);
+  // Kürzer als eine Slide: eine Slide, so groß wie nötig
+  const k = karussellPlan([1134]);
+  assert.equal(k.anzahl, 1);
+  assert.ok(Math.abs(k.zoom - 1296 / 1134) < 1e-9);
+  // Viele Breiten: immer voll, Zoom höchstens 8 %, und die Wahl kostet am wenigsten Bild
+  let s = 7;
+  const zufall = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 300; i++) {
+    const breiten = Array.from({ length: 1 + Math.floor(zufall() * 12) }, () => Math.round(1134 + zufall() * (3240 - 1134)));
+    const B = bandBreite(breiten);
+    const plan = karussellPlan(breiten);
+    pruefeVoll(plan, B, `Breiten ${breiten}`);
+    if (B >= 1296 / KARUSSELL_ZOOM_MAX) assert.ok(plan.zoom <= KARUSSELL_ZOOM_MAX + 1e-9, `Zoom ${plan.zoom}`);
+    const g = karussellGrund(B);
+    for (let n = 1; n <= Math.ceil(B / 1296); n++) {
+      const zn = Math.max(1, (n * 1296) / B);
+      if (zn <= KARUSSELL_ZOOM_MAX) assert.ok((n * 1296) / (B * zn * zn) <= g.sichtbar + 1e-9, `n=${n} wäre besser als ${g.n}`);
+    }
+  }
+});
+
+test('Carousel: Motiv auf einer Slide-Grenze rückt durch den Versatz in eine Slide', () => {
   const br = [1296, 2160, 1296];
   const B = bandBreite(br);
-  // Profil mit Motiv genau auf der ersten Grenze (1296)
+  const grund = karussellPlan(br);
+  // Profil mit Motiv genau auf der ersten Grenze des Grundplans
+  const mitte = grund.grenzen[0];
   const p = new Float32Array(Math.ceil(B / 4));
-  for (let x = 1296 - 70; x < 1296 + 70; x++) p[Math.floor(x / 4)] = 1;
+  for (let x = Math.round(mitte) - 70; x < mitte + 70; x++) p[Math.floor(x / 4)] = 1;
   const plan = karussellPlan(br, p);
-  assert.ok(plan.versatz > 0 && plan.versatz <= KARUSSELL_VERSATZ_MAX * 1296, `Versatz ${plan.versatz}`);
-  assert.ok(plan.anzahl <= Math.ceil(B / 1296), 'Bildanzahl steigt nicht');
-  for (const g of plan.grenzen) assert.ok(g < 1296 - 70 - 30 || g > 1296 + 70 + 30, `Grenze ${g} trifft das Motiv`);
+  assert.equal(plan.anzahl, grund.anzahl, 'Bildanzahl bleibt');
+  pruefeVoll(plan, B);
+  assert.ok(plan.zoom <= KARUSSELL_ZOOM_MAX);
+  for (const g of plan.grenzen) assert.ok(g < mitte - 70 - 30 || g > mitte + 70 + 30, `Grenze ${g} trifft das Motiv`);
   assert.equal(plan.treffer.length, 0);
-  // Ohne Motiv: kein Versatz
-  assert.equal(karussellPlan(br, new Float32Array(p.length)).versatz, 0);
-  assert.equal(karussellPlan(br, null).versatz, 0);
+  assert.ok(plan.verlust - grund.verlust <= KARUSSELL_VERSATZ_MAX * 1296 / B + 0.02, 'kostet wenig zusätzliches Bild');
+  // Ohne Motiv: mittig beschnitten wie der Grundplan
+  assert.equal(karussellPlan(br, new Float32Array(p.length)).versatz, grund.versatz);
+  assert.equal(karussellPlan(br, null).versatz, (B - grund.anzahl * 1296) / 2);
   // Zu breites Motiv: Grenze lässt sich nicht vermeiden, wird gemeldet
   const breit = new Float32Array(p.length).fill(1);
   const r = karussellPlan(br, breit);
   assert.ok(r.treffer.length >= 1);
-  assert.ok(r.anzahl <= Math.ceil(B / 1296));
+  assert.equal(r.anzahl, grund.anzahl);
+  pruefeVoll(r, B);
 });
 
-test('Karussell: echtes Motiv aus der Motivkarte zweier Halte, nach dem Versatz in einer Slide', () => {
+test('Carousel: echtes Motiv aus der Motivkarte zweier Fotos, nach dem Versatz in einer Slide', () => {
   // Zwei Halte, 1296 und 2160 breit. Ein scharfes Motiv sitzt im zweiten Halt so, dass es im Band auf 1296 liegt.
   const br = [1296, 2160];
   const halt = (w, motivBandX, start) => {
@@ -155,6 +203,7 @@ test('Karussell: echtes Motiv aus der Motivkarte zweier Halte, nach dem Versatz 
   p.forEach((v, k) => { if (v > 0.2 * max) { von = Math.min(von, k * 4); bis = Math.max(bis, k * 4 + 4); } });
   assert.ok(von < 1296 && bis > 1296, `Motiv liegt auf der Grenze: ${von}..${bis}`);
   for (const g of plan.grenzen) assert.ok(g <= von || g >= bis, `Grenze ${g} im Motiv ${von}..${bis}`);
-  const slide = Math.floor((von - plan.versatz) / 1296);
-  assert.equal(Math.floor((bis - 1 - plan.versatz) / 1296), slide, 'ganzes Motiv auf einer Slide');
+  const slide = Math.floor((von - plan.versatz) / plan.sicht);
+  assert.equal(Math.floor((bis - 1 - plan.versatz) / plan.sicht), slide, 'ganzes Motiv auf einer Slide');
+  pruefeVoll(plan, bandBreite(br));
 });

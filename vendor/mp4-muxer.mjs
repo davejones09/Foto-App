@@ -299,7 +299,7 @@ var hdlr = (componentSubtype) => fullBox("hdlr", 0, 0, [
   // Component flags
   u32(0),
   // Component flags mask
-  ascii("mp4-muxer-hdlr", true)
+  ascii("VideoHandler", true) // angepasst: neutraler Name, siehe docs/ENTSCHEIDUNGEN.md
   // Component name
 ]);
 var minf = (track) => box("minf", null, [

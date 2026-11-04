@@ -139,6 +139,7 @@ export const T = {
 
   ausfahrtTitel: 'Exportieren',
   karussell: 'Carousel · {n} Bilder für Instagram',
+  karussellVorschau: 'Vorschau der Slides',
   karussellGrenze: 'An dieser Stelle läuft eine Bildgrenze durchs Motiv, das ließ sich nicht vermeiden. Das Carousel wird trotzdem erstellt.',
   mehrereBeitraege: 'Passt nicht in einen Beitrag. Wird auf {t} Beiträge aufgeteilt.',
   reel: 'Reel · Video für Instagram · {laenge} s',

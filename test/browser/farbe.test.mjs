@@ -153,10 +153,10 @@ test('P3-Serie: Fotos bleiben P3 und außerhalb der Überlappung unverändert, A
     aus.gruen = null;
     for (let i = 1; i < halte.length; i++) {
       const bx = lagen[i] + halte[i].breite / 2;
-      const k = Math.floor((bx - plan.versatz) / 1296);
+      const k = Math.floor((bx - plan.versatz) / plan.sicht);
       if (k < 0 || k >= slides.length) continue;
       const c = await dekodiere(slides[k], 'srgb');
-      const sx = Math.round((bx - plan.versatz - k * 1296) * (1080 / 1296));
+      const sx = Math.round((bx - plan.versatz - k * plan.sicht) * (1080 / plan.sicht));
       const px = bild.pixel(c, sx - 20, 100, 40, 200);
       const m = [0, 0, 0];
       for (let j = 0; j < px.d.length; j += 4) for (let q = 0; q < 3; q++) m[q] += px.d[j + q] / (px.d.length / 4);

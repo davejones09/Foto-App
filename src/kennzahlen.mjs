@@ -13,7 +13,6 @@ export const KARUSSELL_B = 1080;
 export const KARUSSELL_H = 1350;
 export const BEITRAG_MAX = 20;
 
-export const karussellAnzahl = (n) => Math.ceil(bandBreite(n) / HALT_B);
 
 // Teilt die Bilder in Beiträge zu höchstens max Bildern, möglichst gleich groß.
 export function beitraege(anzahl, max = BEITRAG_MAX) {
@@ -28,10 +27,13 @@ export function beitraege(anzahl, max = BEITRAG_MAX) {
   return aus;
 }
 
-// Karussell ohne Grenze durchs Motiv: Die Bildbreite bleibt 1296, der Anfang rückt um bis zu 15 %
-// einer Slide nach rechts (das Stück davor fällt weg). Gewählt wird der Versatz, bei dem die Grenzen
-// am wenigsten Motiv treffen. Die Bildanzahl steigt dadurch nie.
-export const KARUSSELL_VERSATZ_MAX = 0.15;
+// Carousel ohne Abschluss-Slide: Das Band geht genau in ganze Slides auf, keine Slide hat leere Flächen.
+// Erst vergrößern (höchstens 8 %, oben und unten gleich viel weg). Reicht das nicht, gewinnt die Slide-Anzahl,
+// die am wenigsten Bild kostet, und der Rest fällt am Anfang und Ende weg, möglichst ohne Motive zu treffen.
+// Dazu der Motivversatz: Grenzen rücken weg vom Motiv, solange das spürbar hilft und wenig Bild kostet.
+// Slide k zeigt das Band von versatz + k·sicht bis versatz + (k + 1)·sicht, in der Höhe von y0 bis y0 + hoehe.
+export const KARUSSELL_ZOOM_MAX = 1.08;
+export const KARUSSELL_VERSATZ_MAX = 0.15; // Motivversatz: höchstens so viel zusätzlich (Anteil einer Slide)
 export const KARUSSELL_GRENZE_FENSTER = 40; // Bandpixel links und rechts der Grenze
 export const KARUSSELL_TREFFER = 0.25; // ab dieser Motivdichte (Anteil der stärksten Stelle) trifft die Grenze das Motiv
 export const PROFIL_SCHRITT = 4; // Bandpixel je Eintrag im Motivprofil
@@ -53,17 +55,47 @@ export function bandProfil(x, profile, schritt = PROFIL_SCHRITT) {
   return aus;
 }
 
+// Grundplan ohne Motiv: Anzahl n und kleinster Zoom, bei dem n Slides genau passen.
+// sichtbar = Anteil der Bandfläche, der im Carousel bleibt.
+export function karussellGrund(B, S = HALT_B) {
+  let best = null;
+  const nMax = Math.max(1, Math.ceil(B / S));
+  for (let n = 1; n <= nMax; n++) {
+    const zoom = Math.max(1, (n * S) / B);
+    if (zoom > KARUSSELL_ZOOM_MAX + 1e-9) continue;
+    const sichtbar = (n * S) / (B * zoom * zoom);
+    if (!best || sichtbar > best.sichtbar + 1e-12) best = { n, zoom, sichtbar };
+  }
+  // Kürzer als eine Slide auch mit 8 % Zoom: eine Slide, so groß wie nötig. Nie leere Flächen.
+  if (!best) best = { n: 1, zoom: S / B, sichtbar: B / S };
+  return best;
+}
+
+function planAus(B, S, n, zoom, versatz, dichte) {
+  const sicht = S / zoom;
+  const hoehe = HALT_H / zoom;
+  const grenzen = Array.from({ length: Math.max(0, n - 1) }, (_, k) => versatz + (k + 1) * sicht);
+  return {
+    anzahl: n, zoom, versatz, sicht, hoehe, y0: (HALT_H - hoehe) / 2, grenzen,
+    verlust: 1 - (n * sicht * hoehe) / (B * HALT_H),
+    treffer: dichte ? grenzen.map((g) => ({ x: g, dichte: dichte(g) })).filter((t) => t.dichte >= KARUSSELL_TREFFER) : [],
+  };
+}
+
+export const karussellAnzahl = (x) => karussellGrund(bandBreite(x)).n;
+
+// Ausschnitt einer Slide im Band.
+export const slideAusschnitt = (plan, k) => ({ x0: plan.versatz + k * plan.sicht, y0: plan.y0, w: plan.sicht, h: plan.hoehe });
+
 export function karussellPlan(x, profil = null, { schritt = PROFIL_SCHRITT } = {}) {
   const B = bandBreite(x);
   const S = HALT_B;
-  const grenzenBei = (o) => {
-    const n = Math.ceil((B - o) / S);
-    return { anzahl: n, grenzen: Array.from({ length: Math.max(0, n - 1) }, (_, k) => o + (k + 1) * S) };
-  };
-  if (!profil || !profil.length) return { versatz: 0, ...grenzenBei(0), treffer: [] };
+  const g = karussellGrund(B, S);
+  const rest = (z) => Math.max(0, B - (g.n * S) / z); // was am Anfang und Ende wegfällt
+  const mitte = planAus(B, S, g.n, g.zoom, rest(g.zoom) / 2, null);
   let max = 0;
-  for (const v of profil) if (v > max) max = v;
-  if (max <= 0) return { versatz: 0, ...grenzenBei(0), treffer: [] };
+  if (profil) for (const v of profil) if (v > max) max = v;
+  if (!profil || !profil.length || max <= 0 || g.n < 1) return mitte;
   const fenster = Math.max(1, Math.round(KARUSSELL_GRENZE_FENSTER / schritt));
   const dichte = (xb) => {
     const k = Math.round(xb / schritt);
@@ -72,18 +104,23 @@ export function karussellPlan(x, profil = null, { schritt = PROFIL_SCHRITT } = {
     for (let j = k - fenster; j <= k + fenster; j++) if (j >= 0 && j < profil.length) { s += profil[j] / max; n++; }
     return n ? s / n : 0;
   };
-  const kosten = (o) => grenzenBei(o).grenzen.reduce((s, g) => s + dichte(g), 0);
-  const basis = kosten(0);
-  let versatz = 0;
-  let best = basis;
-  for (let o = 2; o <= Math.floor(KARUSSELL_VERSATZ_MAX * S); o += 2) {
-    const k = kosten(o) + 0.02 * (o / S); // bei gleichem Ergebnis lieber weniger abschneiden
-    if (k < best - 1e-9) { best = k; versatz = o; }
+  // Am Anfang und Ende: Motive, die beim Wegschneiden getroffen würden, zählen ebenfalls.
+  const randKosten = (v, z) => (v > 0 ? 0.5 * dichte(v) : 0) + (B - v - (g.n * S) / z > 0 ? 0.5 * dichte(v + (g.n * S) / z) : 0);
+  const kosten = (z, v) => planAus(B, S, g.n, z, v, null).grenzen.reduce((s, x) => s + dichte(x), 0) + randKosten(v, z);
+  const basis = kosten(g.zoom, mitte.versatz);
+  let best = { k: basis, z: g.zoom, v: mitte.versatz };
+  // Zusätzlicher Spielraum für den Motivversatz: höchstens 15 % einer Slide, und der Zoom bleibt bei 8 %.
+  const zMax = Math.max(g.zoom, Math.min(KARUSSELL_ZOOM_MAX, (g.n * S) / Math.max(1, (g.n * S) / g.zoom - KARUSSELL_VERSATZ_MAX * S)));
+  for (let z = g.zoom; z <= zMax + 1e-9; z += 0.0025) {
+    const r = rest(z);
+    for (let v = 0; v <= r + 1e-9; v += 2) {
+      const extra = (planAus(B, S, g.n, z, v, null).verlust - mitte.verlust);
+      const k = kosten(z, v) + 0.5 * extra + 0.002 * Math.abs(v - r / 2) / S; // bei gleichem Ergebnis: wenig Bild weg, mittig
+      if (k < best.k - 1e-9) best = { k, z, v };
+    }
   }
-  if (basis - best < 0.05) versatz = 0; // lohnt sich nicht: nichts abschneiden
-  const plan = grenzenBei(versatz);
-  const treffer = plan.grenzen.map((g) => ({ x: g, dichte: dichte(g) })).filter((t) => t.dichte >= KARUSSELL_TREFFER);
-  return { versatz, ...plan, treffer };
+  if (basis - best.k < 0.05) return planAus(B, S, g.n, g.zoom, mitte.versatz, dichte); // lohnt sich nicht
+  return planAus(B, S, g.n, best.z, best.v, dichte);
 }
 
 // --- Fahrt ---

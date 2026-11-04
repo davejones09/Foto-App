@@ -112,21 +112,24 @@ function aufbauen() {
   erinnerung.hidden = !(seit > 5);
   erinnerung.textContent = f(T.erinnerung, { n: seit });
 
-  // Karussell: Der Plan (Versatz gegen Grenzen im Motiv) rechnet im Hintergrund, die Zahl kann dadurch
-  // noch kleiner werden. Liegt trotzdem eine Grenze im Motiv, zeigt ein Hinweis die Stelle.
+  // Carousel: Der Plan (genau aufgehende Slides, Versatz gegen Grenzen im Motiv) rechnet im Hintergrund.
+  // Die Vorschau zeigt jede Slide genau so, wie sie exportiert wird. Liegt trotzdem eine Grenze im Motiv,
+  // zeigt ein Hinweis die Stelle.
   const anzahl = karussellAnzahl(halte);
   const teile = beitraege(anzahl);
   const grenzHinweis = el('div', { klasse: 'af-grenze' }, el('p', { text: T.karussellGrenze }), el('canvas', { klasse: 'af-grenze-bild' }));
   grenzHinweis.hidden = true;
+  const slides = el('div', { klasse: 'af-slides', 'aria-label': T.karussellVorschau });
+  const zusatzKarussell = el('div', { klasse: 'af-reel' }, slides, grenzHinweis);
   const karussellPlan = aus.karussellPlanen(halte).catch((err) => { protokolliere('karussell', err); return null; });
   const karussell = punkt({
     titel: f(T.karussell, { n: anzahl }),
     info: teile.length > 1 ? f(T.mehrereBeitraege, { t: teile.length }) : '',
-    zusatz: grenzHinweis,
+    zusatz: zusatzKarussell,
     async bauen(fort, w) {
       const plan = await karussellPlan;
       const bilder = await aus.karussell(Z.strecke, halte, { fortschritt: fort, waechter: w, plan });
-      const dateien = bilder.map((b, i) => datei(b, `${name}-${String(i + 1).padStart(2, '0')}.jpg`));
+      const dateien = bilder.map((b, i) => datei(b, `carousel-${String(i + 1).padStart(2, '0')}.jpg`));
       return beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
     },
   });
@@ -137,6 +140,11 @@ function aufbauen() {
     const info = $('p', karussell);
     info.textContent = t > 1 ? f(T.mehrereBeitraege, { t }) : '';
     info.hidden = t <= 1;
+    const leinwaende = Array.from({ length: plan.anzahl }, () => Object.assign(document.createElement('canvas'), { width: 128, height: 160 }));
+    slides.replaceChildren(...leinwaende);
+    slides.dataset.anzahl = String(plan.anzahl);
+    await aus.karussellVorschau(leinwaende, halte, plan).catch((err) => protokolliere('karussell', err));
+    slides.dataset.fertig = '1';
     if (plan.treffer.length) {
       grenzHinweis.hidden = false;
       await aus.grenzVorschau($('canvas', grenzHinweis), halte, plan.treffer[0].x).catch((err) => protokolliere('karussell', err));
@@ -196,8 +204,8 @@ function aufbauen() {
       const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w });
       const titelBlob = await aus.titelbild(halte, p);
       fort(1);
-      const video = datei(blob, `${name}-reel-${p.laenge}s.mp4`);
-      const titel = datei(titelBlob, `${name}-reel-titelbild.jpg`);
+      const video = datei(blob, 'reel.mp4');
+      const titel = datei(titelBlob, 'reel-cover.jpg');
       return {
         knoepfe: [{ text: T.teilen, dateien: [video], haupt: true }, { text: T.inFotos, dateien: [video, titel] }],
         hinweis: T.reelHinweis,
@@ -224,7 +232,7 @@ function aufbauen() {
     info: plan.verkleinert ? f(T.verkleinert, { b: plan.b, h: plan.h }) : '',
     async bauen(fort, w) {
       const r = await aus.gesamtbild(halte, { fortschritt: fort, waechter: w });
-      return [[datei(r.blob, `${name}-gesamt.jpg`)]];
+      return [[datei(r.blob, 'gesamtbild.jpg')]];
     },
   });
 

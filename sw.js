@@ -18,6 +18,7 @@ const DATEIEN = [
   './src/ideen.mjs',
   './src/ideenquelle.mjs',
   './src/kennzahlen.mjs',
+  './src/metadaten.mjs',
   './src/ausgabe.mjs',
   './src/kamera.mjs',
   './src/kern.mjs',

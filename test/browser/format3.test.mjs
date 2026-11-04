@@ -104,7 +104,7 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
     const masse = async (f) => { const bm = await createImageBitmap(f); const m = `${bm.width}x${bm.height}`; bm.close(); return m; };
     return { karussell: await Promise.all(karussell.map(masse)), gesamt: await masse(gesamt), zipName: zip.name, zipGroesse: zip.size, zip: await (async () => { const u = new Uint8Array(await zip.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768)); return btoa(s); })() };
   });
-  assert.ok(aus.karussell.length <= Math.ceil(BAND / 1296) && aus.karussell.length >= Math.ceil((BAND - 195) / 1296));
+  assert.equal(aus.karussell.length, 5, `genau aufgehende Slides: ${aus.karussell.length}`); // 6687 Pixel: 6 Slides bräuchten 16 % Zoom
   for (const m of aus.karussell) assert.equal(m, '1080x1350');
   assert.match(aus.gesamt, /^\d+x\d+$/);
   const [gb, gh] = aus.gesamt.split('x').map(Number);

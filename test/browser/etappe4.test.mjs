@@ -87,7 +87,7 @@ test('Blindfahrt: Strecke bleibt verdeckt, Ziel erreichen zeigt das Finale', asy
   await ctx.close();
 });
 
-test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', async () => {
+test('50 Fotos: Projekt, Carousel-Aufteilung und Gesamtbild-Verkleinerung', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
   await oeffne(page, s.url);
   await page.evaluate(() => localStorage.setItem('nahtlos-erstlauf', 'fertig'));
@@ -115,7 +115,7 @@ test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', asy
   console.log(`Wischen: ${Date.now() - t0} ms`);
   await page.click('#zur-ausfahrt');
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-punkt');
-  assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Carousel · 37 Bilder für Instagram');
+  assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Carousel · 36 Bilder für Instagram');
   assert.match(await page.locator('.af-punkt').nth(0).textContent(), /Wird auf 2 Beiträge aufgeteilt\./);
   assert.match(await page.locator('.af-punkt').nth(2).textContent(), /Für das iPhone zu groß, deshalb auf \d+ × \d+ verkleinert\./);
   // Reel über 50 Halte in 15 s wäre zu schnell: Vorschlag eines kürzeren Abschnitts
