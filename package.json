@@ -6,6 +6,6 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "test:browser": "node --test --test-concurrency=1 test/browser/*.test.mjs",
-    "icons": "node werkzeuge/icons.mjs"
+    "icons": "python3 werkzeuge/icons.py"
   }
 }

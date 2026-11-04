@@ -51,3 +51,14 @@ test('Icons und Startbilder sind vorhanden', () => {
   const html = lies('index.html');
   for (const m of html.matchAll(/href="(icons\/[^"]+)"/g)) assert.ok(statSync(join(W, m[1])).isFile(), m[1]);
 });
+
+test('Startvideo ist eingebunden und kann den Start nicht blockieren', () => {
+  const html = lies('index.html');
+  for (const a of ['autoplay', 'muted', 'playsinline']) assert.ok(html.includes(a), a);
+  assert.ok(statSync(join(W, 'medien/start.mp4')).size < 1024 * 1024, 'Startvideo zu groß');
+  const css = lies('style.css');
+  assert.match(css, /animation: startvideo-weg/);
+  const sw = lies('sw.js');
+  assert.match(sw, /medien\/start\.mp4/);
+  assert.match(sw, /status: 206/);
+});
