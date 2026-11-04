@@ -106,7 +106,7 @@ Ruhige Liste: Zeit, Name, Passung. Fotos lassen sich benennen, beschädigte lös
 ### 7. Exportieren
 
 - **Carousel:** Das Band in 4:5-Slides für Instagram, ohne Abschluss-Slide: Das Band geht genau in ganze Slides auf. Erst wird bis 8 % vergrößert (oben und unten gleich viel weg). Reicht das nicht, nimmt die App die Slide-Anzahl, die am wenigsten Bild kostet, und schneidet den Rest am Anfang und Ende weg, ohne Motive zu treffen. Die Grenzen rücken weg vom Motiv, wenn das hilft. Die Vorschau zeigt jede Slide genau so, wie sie exportiert wird.
-- **Reel:** MP4 in 1080 × 1920, Länge 15, 30, 60 oder 90 s, Abschnitt von bis. Stile mit kurzer Live-Vorschau:
+- **Reel:** MP4 in 1080 × 1920, Länge 15, 30, 60 oder 90 s (bei Vorlagen auch Auto), Abschnitt von bis. Elf lebhafte Vorlagen mit Schnitten im Takt, dazu Stile mit kurzer Live-Vorschau:
   - **Band:** das fortlaufende Band
   - **Sanft:** weiche Überblendung, dazu langsames Zoomen
   - **Schwung:** schneller Schwenk zum nächsten Foto mit Bewegungsunschärfe

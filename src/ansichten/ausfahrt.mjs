@@ -7,17 +7,20 @@ import * as aus from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
 import { STILE, stileFuer } from '../reelstil.mjs';
+import { VORLAGEN_IDS, istVorlage } from '../reelvorlagen.mjs';
 
 const v = $('#v-ausfahrt');
 const liste = $('.af-liste', v);
 const erinnerung = $('.af-erinnerung', v);
 let reelLaenge = 30;
 let reelStil = 'band';
+let reelAuto = true;
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
   const st = localStorage.getItem('nahtlos-reel-stil');
-  if (STILE.includes(st)) reelStil = st;
+  if (STILE.includes(st) || istVorlage(st)) reelStil = st;
+  if (localStorage.getItem('nahtlos-reel-auto') === '0') reelAuto = false;
 } catch {}
 let vorschauStopp = [];
 const vorschauenStoppen = () => { for (const s of vorschauStopp) s(); vorschauStopp = []; };
@@ -165,15 +168,28 @@ function aufbauen() {
   const bisSel = el('select', { klasse: 'af-wahl', 'aria-label': T.reelBis });
   optionen(vonSel, auswahl.von);
   optionen(bisSel, auswahl.bis);
-  const laengen = el('div', { klasse: 'af-tempi af-laengen', role: 'group' }, ...REEL_LAENGEN.map((l) => el('button', {
-    text: f(T.reelSekunden, { s: l }), 'aria-pressed': String(l === reelLaenge),
-    onclick: (e) => {
-      reelLaenge = l;
-      try { localStorage.setItem('nahtlos-reel-laenge', String(l)); } catch {}
-      for (const b of e.target.parentNode.children) b.setAttribute('aria-pressed', String(b === e.target));
+  const autoAn = () => istVorlage(reelStil) && reelAuto;
+  const autoKnopf = el('button', {
+    text: T.reelAuto, klasse: 'af-auto',
+    onclick: () => {
+      reelAuto = true;
+      try { localStorage.setItem('nahtlos-reel-auto', '1'); } catch {}
       reelAktualisieren();
     },
-  })));
+  });
+  const laengenKnoepfe = REEL_LAENGEN.map((l) => el('button', {
+    text: f(T.reelSekunden, { s: l }), 'data-laenge': l,
+    onclick: () => {
+      reelLaenge = l;
+      reelAuto = false;
+      try {
+        localStorage.setItem('nahtlos-reel-laenge', String(l));
+        localStorage.setItem('nahtlos-reel-auto', '0');
+      } catch {}
+      reelAktualisieren();
+    },
+  }));
+  const laengen = el('div', { klasse: 'af-tempi af-laengen', role: 'group' }, autoKnopf, ...laengenKnoepfe);
   const tempoEl = el('p', { klasse: 'af-tempo' });
   const vorschlagText = el('span');
   const vorschlagEl = el('p', { klasse: 'af-vorschlag' }, vorschlagText, ' ',
@@ -197,24 +213,31 @@ function aufbauen() {
     if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
     reelAktualisieren();
   });
-  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, stil: reelStil });
+  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil });
   // Stil wählen, jede Kachel mit kurzer Live-Vorschau aus den ersten Fotos.
-  const stilKnoepfe = STILE.map((st) => {
+  const kachel = (st, klasse, text) => {
     const cv = el('canvas', { width: 144, height: 256 });
     return el('button', {
-      klasse: 'af-stil', 'data-stil': st, 'aria-pressed': String(st === reelStil),
+      klasse, 'data-stil': st, 'aria-pressed': String(st === reelStil),
       onclick: () => {
         reelStil = st;
         try { localStorage.setItem('nahtlos-reel-stil', st); } catch {}
-        for (const b of stilKnoepfe) b.setAttribute('aria-pressed', String(b.dataset.stil === st));
+        for (const b of [...stilKnoepfe, ...vorlagenKnoepfe]) b.setAttribute('aria-pressed', String(b.dataset.stil === st));
         reelAktualisieren();
       },
-    }, cv, el('span', { text: T[`stil_${st}`] }));
-  });
+    }, cv, el('span', { text }));
+  };
+  const stilKnoepfe = STILE.map((st) => kachel(st, 'af-stil', T[`stil_${st}`]));
+  const vorlagenKnoepfe = VORLAGEN_IDS.map((st) => kachel(st, 'af-vorlage', T[`vorlage_${st.slice(2)}`]));
   const stileEl = el('div', { klasse: 'af-stile', role: 'group', 'aria-label': T.reelStil }, ...stilKnoepfe);
+  const vorlagenEl = el('div', { klasse: 'af-stile af-vorlagen', role: 'group', 'aria-label': T.reelVorlagen }, ...vorlagenKnoepfe);
   vorschauenStoppen();
   for (const b of stilKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil));
+  for (const b of vorlagenKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil, { nurSichtbar: true }));
   const zusatz = el('div', { klasse: 'af-reel' },
+    el('p', { klasse: 'af-gruppe', text: T.reelVorlagen }),
+    vorlagenEl,
+    el('p', { klasse: 'af-gruppe', text: T.reelStil }),
     stileEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
@@ -238,8 +261,15 @@ function aufbauen() {
   function reelAktualisieren() {
     const p = reelPlanJetzt();
     $('.af-titel', reelKarte).textContent = f(T.reel, { laenge: p.laenge });
+    autoKnopf.hidden = !istVorlage(reelStil);
+    autoKnopf.setAttribute('aria-pressed', String(autoAn()));
+    for (const b of laengenKnoepfe) b.setAttribute('aria-pressed', String(!autoAn() && Number(b.dataset.laenge) === reelLaenge));
     const n = p.bis - p.von + 1;
-    if (p.stil === 'band') {
+    if (p.vorlage) {
+      tempoEl.textContent = p.runden > 1 ? f(T.reelRunden, { n, r: p.runden }) : f(T.reelVorlageInfo, { n, s: p.laenge });
+      vorschlagEl.hidden = !p.zuKurz;
+      if (p.vorschlag) vorschlagText.textContent = f(T.reelZuKurz, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    } else if (p.stil === 'band') {
       tempoEl.textContent = f(T.reelTempo, { n, v: Math.round(p.tempo) });
       vorschlagEl.hidden = !p.zuSchnell;
       if (p.vorschlag) vorschlagText.textContent = f(T.reelZuSchnell, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
@@ -255,7 +285,12 @@ function aufbauen() {
     // Ein Stil, der im Ausweichweg (Echtzeit) nicht sauber geht, wird ausgeblendet.
     const moeglich = stileFuer(w);
     for (const b of stilKnoepfe) b.hidden = !moeglich.includes(b.dataset.stil);
-    if (w && !moeglich.includes(reelStil)) stilKnoepfe[0].click();
+    // Die Vorlagen brauchen Bild für Bild genaues Rechnen, das geht nur mit WebCodecs.
+    const vorlagenMoeglich = w?.art === 'webcodecs';
+    for (const b of vorlagenKnoepfe) b.hidden = !vorlagenMoeglich;
+    vorlagenEl.hidden = !vorlagenMoeglich;
+    vorlagenEl.previousElementSibling.hidden = !vorlagenMoeglich;
+    if (w && !(moeglich.includes(reelStil) || (vorlagenMoeglich && istVorlage(reelStil)))) stilKnoepfe[0].click();
     if (w) return;
     $('.af-titel', reelKarte).disabled = true;
     tempoEl.textContent = T.mp4Fehlt;
