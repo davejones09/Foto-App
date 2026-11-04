@@ -35,7 +35,7 @@ test/                 Kern- und Browser-Tests
 docs/                 Konzept, Technik, Etappen, Texte, Entscheidungen
 ```
 
-App-Icon und Splash werden per Skript als PNG erzeugt und eingecheckt (`npm run icons`): zwei Fotoflächen, die weich ineinander übergehen, der Horizont läuft durch, auf neutralem dunklem Grau.
+App-Icon und Startbilder entstehen per Skript aus der Vorlage `werkzeuge/icon-quelle.png` und werden als PNG eingecheckt (`npm run icons`, braucht Pillow).
 
 ### Oberfläche und Ablauf
 
