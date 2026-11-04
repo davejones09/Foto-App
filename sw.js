@@ -1,5 +1,5 @@
 // Service Worker: alles für den Offline-Betrieb vorhalten. Der Name enthält APP_VERSION.
-const APP_VERSION = '0.13.1';
+const APP_VERSION = '0.14.0';
 const CACHE = 'nahtlos-' + APP_VERSION;
 
 const DATEIEN = [
@@ -8,6 +8,7 @@ const DATEIEN = [
   './style.css',
   './manifest.webmanifest',
   './src/app.mjs',
+  './src/startvideo.mjs',
   './src/band.mjs',
   './src/bild.mjs',
   './src/diagnose.mjs',
@@ -55,6 +56,8 @@ const DATEIEN = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './medien/start.mp4',
+  './medien/start.jpg',
 ];
 
 self.addEventListener('install', (e) => {
@@ -73,6 +76,27 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+async function teilantwort(antwort, bereich) {
+  const daten = await antwort.arrayBuffer();
+  const m = /bytes=(\d*)-(\d*)/.exec(bereich);
+  const gesamt = daten.byteLength;
+  let von = m && m[1] !== '' ? Number(m[1]) : null;
+  let bis = m && m[2] !== '' ? Number(m[2]) : null;
+  if (von === null && bis !== null) { von = Math.max(0, gesamt - bis); bis = gesamt - 1; }
+  if (von === null) von = 0;
+  if (bis === null || bis >= gesamt) bis = gesamt - 1;
+  if (von > bis) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${gesamt}` } });
+  return new Response(daten.slice(von, bis + 1), {
+    status: 206,
+    headers: {
+      'Content-Type': antwort.headers.get('Content-Type') || 'video/mp4',
+      'Content-Range': `bytes ${von}-${bis}/${gesamt}`,
+      'Content-Length': String(bis - von + 1),
+      'Accept-Ranges': 'bytes',
+    },
+  });
+}
+
 self.addEventListener('fetch', (e) => {
   const r = e.request;
   if (r.method !== 'GET') return;
@@ -80,6 +104,14 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
   if (r.mode === 'navigate') {
     e.respondWith(caches.match('./index.html', { ignoreSearch: true }).then((a) => a || fetch(r)));
+    return;
+  }
+  // Safari lädt Videos per Range-Anfrage und spielt eine volle Antwort darauf nicht ab.
+  const bereich = r.headers.get('range');
+  if (bereich) {
+    e.respondWith(
+      caches.match(r, { ignoreSearch: true }).then((a) => (a ? teilantwort(a, bereich) : fetch(r))),
+    );
     return;
   }
   e.respondWith(

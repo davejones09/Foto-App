@@ -35,7 +35,9 @@ test/                 Kern- und Browser-Tests
 docs/                 Konzept, Technik, Etappen, Texte, Entscheidungen
 ```
 
-App-Icon und Startbilder entstehen per Skript aus der Vorlage `werkzeuge/icon-quelle.png` und werden als PNG eingecheckt (`npm run icons`, braucht Pillow).
+App-Icon und Startbilder entstehen per Skript aus der Vorlage `werkzeuge/icon-quelle.png` und werden als PNG eingecheckt (`npm run icons`, braucht Pillow). Das Startbild zeigt das Symbol in derselben Größe und Lage wie das erste Bild des Startvideos.
+
+Das Startvideo liegt in `medien/start.mp4` (1080 × 2340, H.264, ohne Ton) und läuft bei jedem Kaltstart. `src/startvideo.mjs` nimmt es nach dem Ende, beim Antippen oder ohne Wiedergabe (Stromsparmodus) weg, die App lädt darunter weiter. Weil Safari Videos per Range-Anfrage lädt, beantwortet der Service Worker diese aus dem Cache mit 206.
 
 ### Oberfläche und Ablauf
 

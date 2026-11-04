@@ -35,7 +35,8 @@ maske = maske.filter(ImageFilter.GaussianBlur(14))
 for w, h in ((750, 1334), (828, 1792), (1125, 2436), (1242, 2688), (1170, 2532), (1179, 2556),
              (1284, 2778), (1290, 2796), (1206, 2622), (1320, 2868)):
     start = Image.new('RGB', (w, h), GRUND)
-    b = round(w * 0.46)
+    # Gleiche Größe und Lage wie im ersten Bild des Startvideos, damit der Übergang nicht springt.
+    b = round(w * SYMBOL.width / GROESSE)
     f = b / SYMBOL.width
     t = SYMBOL.resize((b, round(SYMBOL.height * f)), Image.LANCZOS)
     m = maske.resize(t.size, Image.LANCZOS)

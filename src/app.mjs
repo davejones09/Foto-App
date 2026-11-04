@@ -20,6 +20,7 @@ import './ansichten/ausfahrt.mjs';
 import './ansichten/fahrplan.mjs';
 import { serieErinnern } from './ansichten/serie.mjs';
 import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
+import { startVideo } from './startvideo.mjs';
 import { fotoVergleich, farbBericht } from './vergleich.mjs';
 
 texteEinsetzen();
@@ -196,13 +197,17 @@ function weiterNachHinweis() {
 
 let imBrowser = false;
 try { imBrowser = sessionStorage.getItem('nahtlos-browser') === '1'; } catch {}
-if (!istStandalone() && !imBrowser) {
+if (!istStandalone() && !imBrowser && !new URLSearchParams(location.search).has('startvideo')) {
+  document.getElementById('startvideo')?.remove();
   zeige('install');
   $('#trotzdem').addEventListener('click', () => {
     try { sessionStorage.setItem('nahtlos-browser', '1'); } catch {}
     weiterNachHinweis();
   }, { once: true });
-} else weiterNachHinweis();
+} else {
+  startVideo({ erzwingen: new URLSearchParams(location.search).has('startvideo') });
+  weiterNachHinweis();
+}
 
 // Für Browser-Tests: Zustand lesen.
 window.nahtlos = {
