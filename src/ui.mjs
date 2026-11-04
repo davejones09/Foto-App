@@ -10,6 +10,10 @@ export function texteEinsetzen(wurzel = document) {
     const t = T[e.dataset.t];
     if (typeof t === 'string') e.textContent = t;
   }
+  for (const e of $$('[data-aria]', wurzel)) {
+    const t = T[e.dataset.aria];
+    if (typeof t === 'string') e.setAttribute('aria-label', t);
+  }
   const ol = $('#v-install .schritte');
   ol.replaceChildren(...T.installSchritte.map((s) => Object.assign(document.createElement('li'), { textContent: s })));
 }
@@ -44,7 +48,9 @@ export function frage(text, knoepfe, { eingabe = null, option = null } = {}) {
       text: k.text,
       onclick: () => {
         d.hidden = true;
-        ok({ wert: k.wert, text: inp.value.trim(), option: option ? $('input', opt).checked : false });
+        const r = { wert: k.wert, text: inp.value.trim(), option: option ? $('input', opt).checked : false };
+        k.sofort?.(r); // läuft noch in der Geste, etwa für den Dateidialog
+        ok(r);
       },
     })));
     d.hidden = false;

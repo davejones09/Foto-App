@@ -1,7 +1,7 @@
 // Etappe 2: Erstlauf in Screenshots, Import eines 25-MP-Bilds, Feinjustieren, Strecken, Fehlerzustände.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, zustand, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, zustand, warteAuf, ERGEBNISSE, hauptmenue, bisHauptmenue } from './hilfe.mjs';
 
 let s;
 let b;
@@ -16,7 +16,7 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   await page.waitForSelector('#v-install:not([hidden])');
   await bild(page, '01-installation');
   await page.click('#trotzdem');
-  // Einführung: drei Bildschirme, erst danach die Kamera
+  // Einführung: drei Bildschirme, dann das Hauptmenü, erst danach die Kamera
   await page.waitForSelector('#v-einfuehrung:not([hidden])');
   for (let i = 1; i <= 3; i++) {
     await warteAuf(page, (n) => document.querySelector('#v-einfuehrung').dataset.seite === String(n), i);
@@ -24,6 +24,12 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
     await bild(page, `01-einfuehrung-${i}`);
     await page.click('#einf-weiter');
   }
+  await hauptmenue(page);
+  await bild(page, '01-hauptmenue');
+  await page.click('#v-start .neu-karte[data-art="carousel"]');
+  await page.waitForSelector('#dialog:not([hidden])');
+  await bild(page, '01-neues-carousel');
+  await page.click('#dialog .d-knoepfe button.haupt');
   await page.waitForSelector('.freigabe:not([hidden])');
   assert.equal(await page.evaluate(() => window.__gumAufrufe), 0, 'Kamera erst nach der Einführung');
   await bild(page, '02-freigabe');
@@ -167,26 +173,31 @@ test('Import als erster Halt und kaputte Datei', async () => {
   await ctx.close();
 });
 
-test('Mehrere Strecken: neue Strecke mit Namen, wechseln, löschen', async () => {
+test('Mehrere Projekte: neues Reel mit Namen, wechseln, löschen', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
   await oeffne(page, s.url);
   await ausloesen(page);
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
-  await page.click('#zur-strecke');
-  await page.click('#zu-strecken');
-  await page.waitForSelector('#v-strecken:not([hidden]) .sl-eintrag');
-  await page.click('#sl-neu');
+  await page.click('#su-zurueck');
+  await hauptmenue(page);
+  assert.equal(await page.locator('#v-start .zuletzt-eintrag').count(), 1);
+  assert.match(await page.textContent('#v-start .zuletzt-info'), /^Carousel · 1 Fotos$/);
+  await page.click('#v-start .neu-karte[data-art="reel"]');
+  assert.equal(await page.textContent('#dialog .d-text'), 'Neues Reel');
   assert.match(await page.inputValue('.d-eingabe'), /^Projekt \S+ \d{4}$/);
-  await bild(page, '17-neue-strecke');
-  await page.fill('.d-eingabe', 'Testfahrt');
+  await bild(page, '17-neues-projekt');
+  await page.fill('.d-eingabe', 'Testprojekt');
   await page.click('#dialog button.haupt');
-  await warteAuf(page, () => window.nahtlos.zustand().strecke === 'Testfahrt' && document.body.dataset.ansicht === 'sucher');
+  await warteAuf(page, () => window.nahtlos.zustand().strecke === 'Testprojekt' && document.body.dataset.ansicht === 'sucher');
   assert.equal((await zustand(page)).halte, 0);
   await page.click('#zur-strecke');
   await page.waitForSelector('#v-strecke .band-leer:not([hidden])');
-  await bild(page, '18-strecke-leer');
+  await bild(page, '18-projekt-leer');
   await page.click('#zu-strecken');
+  await hauptmenue(page);
+  await page.click('#start-projekte');
   await warteAuf(page, () => document.querySelectorAll('.sl-eintrag').length === 2);
+  assert.match(await page.locator('.sl-eintrag .sl-info').first().textContent(), /^Reel · 0 Fotos/);
   await page.waitForTimeout(300);
   await bild(page, '19-strecken');
   // Alte Strecke löschen
@@ -202,8 +213,9 @@ test('Kamera verweigert: Text und Ausweg über die Mediathek', async () => {
   const { ctx, page } = await neueSeite(b);
   await ctx.addInitScript(() => { window.__kameraVerweigert = true; });
   await page.goto(s.url);
-  await page.click('#trotzdem');
-  await page.click('#einf-ueberspringen');
+  await bisHauptmenue(page);
+  await page.click('#v-start .neu-karte[data-art="carousel"]');
+  await page.click('#dialog .d-knoepfe button.haupt');
   await page.click('#freigeben');
   await page.waitForSelector('.freigabe:not([hidden]) #frei-mediathek');
   assert.match(await page.textContent('.frei-text'), /Ohne Kamerazugriff sind hier keine Aufnahmen möglich/);
@@ -220,7 +232,10 @@ test('Querformat zeigt den Hinweis', async () => {
   await bild(page, '21-quer');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(!(await page.isVisible('#quer')));
-  // Diagnose: fünfmal auf die Version
+  // Diagnose: über die Einstellungen, auch fünfmal auf die Version
+  await page.click('#su-zurueck');
+  await hauptmenue(page);
+  await page.click('#start-einstellungen');
   for (let i = 0; i < 5; i++) await page.click('#version');
   await page.waitForSelector('#diagnose:not([hidden])');
   await warteAuf(page, () => /Lesetest/.test(document.querySelector('.dg-text').textContent));

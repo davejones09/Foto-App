@@ -270,7 +270,7 @@ async function entfernen(id) {
   await planer('serie-entferne', { fotoId: id });
   fotos = fotos.filter((x) => x.id !== id);
   if (eigene) eigene = eigene.filter((x) => x !== id);
-  if (!fotos.length) { zeige('sucher'); return; }
+  if (!fotos.length) { zurueck(); return; }
   await planen();
 }
 
@@ -482,7 +482,9 @@ async function bauen() {
 
 btnBauen.addEventListener('click', () => bauen());
 btnAnhalten.addEventListener('click', () => { anhalten = true; btnAnhalten.disabled = true; });
-$('#se-zurueck').addEventListener('click', () => { if (!baut) zeige('sucher'); });
+// Zurück: ins Projekt, oder ins Hauptmenü, wenn es noch keine Fotos hat.
+const zurueck = async () => { await zeige(Z.halte.length ? 'strecke' : 'start'); serieErinnern(); };
+$('#se-zurueck').addEventListener('click', () => { if (!baut) zurueck(); });
 btnVerwerfen.addEventListener('click', async () => {
   const r = await frage(T.serieVerwerfenFrage, [
     { text: T.behalten, wert: false },
@@ -493,7 +495,7 @@ btnVerwerfen.addEventListener('click', async () => {
   for (const c of cache.values()) freigeben(c.proxy);
   cache.clear();
   planerGen = -1;
-  zeige('sucher');
+  zurueck();
 });
 
 registriere('serie', {
@@ -510,7 +512,7 @@ registriere('serie', {
       if (dateien) await einlesen(dateien);
       const da = await laden();
       beschaeftigt = false;
-      if (!da) { zeige('sucher'); return; }
+      if (!da) { zurueck(); return; }
       await planen();
     } catch (err) {
       protokolliere('serie', err);

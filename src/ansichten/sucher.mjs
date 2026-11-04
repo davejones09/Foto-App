@@ -448,6 +448,7 @@ async function ausloesen() {
 ausloeser.addEventListener('click', ausloesen);
 
 $('#zur-strecke').addEventListener('click', () => zeige('strecke'));
+$('#su-zurueck').addEventListener('click', () => zeige('start'));
 $('#mediathek').addEventListener('click', waehleBild);
 $('#frei-mediathek').addEventListener('click', waehleBild);
 

@@ -10,6 +10,7 @@ import * as db from './speicher.mjs';
 import { ausbessern, unrettbar } from './naehwerk.mjs';
 import { auftrag } from './rechner.mjs';
 import { setzeTeilwerte, teilwerteSichtbar } from './ansichten/sucher.mjs';
+import { diagnoseKnopf } from './ansichten/start.mjs';
 import './ansichten/aufdeckung.mjs';
 import './ansichten/fein.mjs';
 import './ansichten/strecke.mjs';
@@ -113,6 +114,7 @@ async function diagnoseOeffnen() {
   d.hidden = false;
 }
 $('#dg-schliessen').addEventListener('click', () => ($('#diagnose').hidden = true));
+diagnoseKnopf(diagnoseOeffnen);
 
 // Fotovergleich: ein Foto aus der Mediathek wie beim Bauen durchrechnen, ohne etwas zu speichern.
 const vergleiche = [];
@@ -175,9 +177,10 @@ async function start() {
     try { await ausbessern(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
   }
   await neuLaden();
-  // Beim allerersten Start kommt vor der Kamera-Freigabe die Einführung.
-  if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'sucher' });
-  else await zeige('sucher');
+  // Die App startet im Hauptmenü. Beim allerersten Start kommt davor die Einführung.
+  if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'start' });
+  else await zeige('start');
+  document.body.dataset.gestartet = '1';
   const kaputt = Z.halte.filter((h) => h.beschaedigt || unrettbar(h)).length;
   if (kaputt) melde(f(T.beschaedigtHinweis, { n: kaputt }), [{ text: T.spaeter, haupt: false }, { text: T.fahrplan, aktion: () => zeige('fahrplan') }], 15000);
   else serieErinnern();

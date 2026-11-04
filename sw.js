@@ -44,6 +44,7 @@ const DATEIEN = [
   './src/ansichten/strecke.mjs',
   './src/ansichten/sucher.mjs',
   './src/ansichten/strecken.mjs',
+  './src/ansichten/start.mjs',
   './vendor/mp4-muxer.mjs',
   './icons/icon-180.png',
   './icons/icon-192.png',

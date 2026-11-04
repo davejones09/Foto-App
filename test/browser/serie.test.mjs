@@ -2,7 +2,7 @@
 // Bauen, Abbruch ohne Verlust, höchstens 10 Fotos, Blindfahrt, Migration alter Strecken.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, fotoJpeg } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, fotoJpeg, bisHauptmenue, zumSucher } from './hilfe.mjs';
 
 let s;
 let b;
@@ -138,7 +138,7 @@ test('Abbruch beim Bauen: nichts geht verloren, die Serie läuft mit derselben R
   await page.waitForTimeout(300);
   assert.equal(await wartend(page), 2);
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && window.nahtlos.zustand().fertig === 2, null, 30000);
+  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'start' && window.nahtlos.zustand().fertig === 2, null, 30000);
   await page.waitForSelector('#meldung:not([hidden])');
   assert.equal(await page.textContent('#meldung p'), 'Eine Auswahl aus der Mediathek wartet noch.');
   await page.click('#meldung button.haupt');
@@ -167,7 +167,7 @@ test('Höchstens 10 Fotos, in der Blindfahrt nur ein einzelnes', async () => {
   // Verwerfen löscht nur die wartenden Fotos
   await page.click('#se-verwerfen');
   await page.click('#dialog button.haupt');
-  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
+  await warteAuf(page, () => document.body.dataset.ansicht === 'start');
   assert.equal(await wartend(page), 0);
 
   // Blindfahrt: Auswahl erlaubt nur ein Foto, mehrere führen zum Einzelimport
@@ -176,7 +176,9 @@ test('Höchstens 10 Fotos, in der Blindfahrt nur ein einzelnes', async () => {
     await db.aendereStrecke(localStorage.getItem('nahtlos-aktiv'), { blind: true });
   });
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().blind === true && document.body.dataset.ansicht === 'sucher');
+  await warteAuf(page, () => window.nahtlos?.zustand().blind === true);
+  await bisHauptmenue(page);
+  await zumSucher(page);
   await page.evaluate(() => { HTMLInputElement.prototype.click = function () {}; });
   await page.click('#mediathek');
   assert.equal(await page.evaluate(() => document.querySelector('#datei-bild').multiple), false);

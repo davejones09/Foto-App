@@ -1,7 +1,7 @@
 // Etappe 4: Fahrplan, Blindfahrt mit Finale, Tageswechsel, ganze Strecke.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, neuesProjekt, zumProjekt } from './hilfe.mjs';
 
 let s;
 let b;
@@ -66,14 +66,8 @@ test('Blindfahrt: Strecke bleibt verdeckt, Ziel erreichen zeigt das Finale', asy
   const { ctx, page, fehler } = await neueSeite(b);
   await oeffne(page, s.url);
   await page.evaluate(() => localStorage.setItem('nahtlos-erstlauf', 'fertig'));
-  await page.click('#zur-strecke');
-  await page.click('#zu-strecken');
-  await page.click('#sl-neu');
-  await page.fill('.d-eingabe', 'Zu zweit');
-  await page.check('.d-option input');
-  await page.click('#dialog button.haupt');
+  await neuesProjekt(page, { name: 'Zu zweit', blind: true });
   await warteAuf(page, () => window.nahtlos.zustand().strecke === 'Zu zweit' && window.nahtlos.zustand().blind === true);
-  await warteAuf(page, () => !document.querySelector('#ausloeser').disabled);
   await halte(page, 3, { blind: true });
   await page.click('#zur-strecke');
   await page.waitForSelector('#v-strecke .band-blind:not([hidden])');
@@ -107,7 +101,7 @@ test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', asy
   });
   await page.reload();
   await warteAuf(page, () => window.nahtlos?.zustand().halte === 50);
-  await page.click('#zur-strecke');
+  await zumProjekt(page);
   await warteAuf(page, () => document.querySelector('#v-strecke .band').dataset.breite === String(50 * 933 + 363));
   // Durchwischen: flüssig heißt hier, dass ein Zeichenvorgang klein bleibt
   const r = await page.locator('#v-strecke .band').boundingBox();

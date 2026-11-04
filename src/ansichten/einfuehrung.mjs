@@ -573,7 +573,7 @@ $('#einf-ueberspringen').addEventListener('click', fertig);
 
 registriere('einfuehrung', {
   betreten(d = {}) {
-    danach = d.danach || 'sucher';
+    danach = d.danach || 'start';
     vorbereiten();
     aktiv = true;
     zeigeSeite(0);

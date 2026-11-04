@@ -1,5 +1,5 @@
-// Erzeugt App-Icons und Startbilder als PNG: gelber Faden auf fast Schwarz.
-// Start: npm run icons
+// Erzeugt App-Icons und Startbilder als PNG: zwei Fotoflächen, die nahtlos ineinander übergehen,
+// der Horizont läuft durch. Neutrales dunkles Grau, keine Schrift. Start: npm run icons
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -8,9 +8,13 @@ import { dirname, join } from 'node:path';
 const ZIEL = join(dirname(fileURLToPath(import.meta.url)), '..', 'icons');
 mkdirSync(ZIEL, { recursive: true });
 
-const GRUND = [0x0e, 0x0f, 0x10];
-const GRUND_LINKS = [0x15, 0x17, 0x19];
-const GELB = [0xff, 0xd4, 0x00];
+const GRUND = [0x11, 0x12, 0x13];
+const GRUND_HELL = [0x1b, 0x1c, 0x1f];
+// Links kühl, rechts warm. Oben Himmel, unten Boden.
+const LINKS_OBEN = [0xb9, 0xc8, 0xdc];
+const LINKS_UNTEN = [0x4b, 0x5a, 0x6e];
+const RECHTS_OBEN = [0xe2, 0xd6, 0xc2];
+const RECHTS_UNTEN = [0x6f, 0x5e, 0x4c];
 
 const crcTab = new Uint32Array(256).map((_, n) => {
   let c = n;
@@ -47,34 +51,58 @@ function png(w, h, pixel) {
   ]);
 }
 
-const misch = (a, b, t) => a.map((v, i) => Math.round(v * (1 - t) + b[i] * t));
+const klemme = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
+const weich = (t) => { const u = klemme(t); return u * u * (3 - 2 * u); };
+const misch = (a, b, t) => a.map((v, i) => v * (1 - t) + b[i] * t);
+const rund = (c) => c.map((v) => Math.round(klemme(v, 0, 255)));
 
-// Faden als Kurve x = mx + a·sin(...) zwischen y0 und y1, Breite in Pixeln.
-function faden(mx, y0, y1, a, breite) {
-  const p = (y1 - y0) / 1.6;
-  const fx = (y) => mx + a * Math.sin(((y - y0) / p) * 2 * Math.PI + 0.6) + a * 0.35 * Math.sin(((y - y0) / p) * 5.1 * Math.PI);
-  const fd = (y) => (fx(y + 0.5) - fx(y - 0.5));
+// Abgerundetes Rechteck: Deckung 0..1 mit weicher Kante (1 Pixel).
+function rechteck(x, y, x0, y0, x1, y1, r) {
+  const dx = Math.max(x0 + r - x, 0, x - (x1 - r));
+  const dy = Math.max(y0 + r - y, 0, y - (y1 - r));
+  const d = Math.hypot(dx, dy) - r;
+  const innen = Math.min(x - x0, x1 - x, y - y0, y1 - y);
+  return dx > 0 && dy > 0 ? klemme(0.5 - d) : klemme(innen + 0.5);
+}
+
+// Das Zeichen: ein Band aus zwei Fotos. s = Größe des Zeichens, (cx, cy) = Mitte.
+function zeichen(cx, cy, s) {
+  const x0 = cx - s * 0.5;
+  const x1 = cx + s * 0.5;
+  const y0 = cy - s * 0.3;
+  const y1 = cy + s * 0.3;
+  const horizont = cy + s * 0.04;
+  const naht = (y) => cx + s * 0.035 * Math.sin(((y - y0) / (y1 - y0)) * Math.PI * 1.6 + 0.4);
+  const breite = s * 0.16; // weicher Übergang
   return (x, y) => {
-    if (y < y0 - breite || y > y1 + breite) return 0;
-    const yy = Math.min(y1, Math.max(y0, y));
-    const d = Math.abs(x - fx(yy)) / Math.sqrt(1 + fd(yy) ** 2) + Math.max(0, Math.abs(y - yy));
-    return Math.min(1, Math.max(0, breite / 2 - d + 0.5));
+    const a = rechteck(x, y, x0, y0, x1, y1, s * 0.07);
+    if (a <= 0) return null;
+    const t = weich((x - naht(y) + breite / 2) / breite);
+    const oben = misch(LINKS_OBEN, RECHTS_OBEN, t);
+    const unten = misch(LINKS_UNTEN, RECHTS_UNTEN, t);
+    // Himmel hellt nach oben auf, Boden dunkelt nach unten ab, die Kante ist weich (1 Pixel)
+    const kante = klemme((y - horizont) + 0.5);
+    const himmel = misch(oben, [255, 255, 255], 0.25 * klemme((horizont - y) / (horizont - y0)));
+    const boden = misch(unten, [0, 0, 0], 0.25 * klemme((y - horizont) / (y1 - horizont)));
+    return { farbe: misch(himmel, boden, kante), a };
   };
 }
 
-function icon(gr, rand = 0) {
-  const f = faden(gr * 0.5, -gr * 0.05, gr * 1.05, gr * 0.06, gr * 0.04);
+function icon(gr) {
+  const z = zeichen(gr * 0.5, gr * 0.5, gr * 0.62);
   return png(gr, gr, (x, y) => {
-    const links = x < gr * 0.5 + gr * 0.06 * Math.sin(((y + gr * 0.05) / (gr * 1.1 / 1.6)) * 2 * Math.PI + 0.6);
-    const grund = links ? GRUND_LINKS : GRUND;
-    return misch(grund, GELB, f(x, y));
+    const grund = misch(GRUND_HELL, GRUND, klemme(y / gr));
+    const p = z(x, y);
+    return rund(p ? misch(grund, p.farbe, p.a) : grund);
   });
 }
 
 function splash(w, h) {
-  const l = w * 0.2;
-  const f = faden(w * 0.5, h * 0.5 - l / 2, h * 0.5 + l / 2, w * 0.02, w * 0.014);
-  return png(w, h, (x, y) => misch(GRUND, GELB, f(x, y)));
+  const z = zeichen(w * 0.5, h * 0.5, w * 0.26);
+  return png(w, h, (x, y) => {
+    const p = z(x, y);
+    return rund(p ? misch(GRUND, p.farbe, p.a) : GRUND);
+  });
 }
 
 for (const [name, gr] of [['icon-180.png', 180], ['icon-192.png', 192], ['icon-512.png', 512], ['icon-maskable-512.png', 512]]) {

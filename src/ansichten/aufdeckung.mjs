@@ -85,6 +85,9 @@ const animiere = (e, kf, opt) => {
   return a.finished.catch(() => {});
 };
 
+// Wohin es nach der Aufdeckung geht: in den Sucher, beim Import aus dem Hauptmenü ins Projekt.
+const ziel = () => (letzteDaten?.danach === 'strecke' && Z.halte.length ? 'strecke' : 'sucher');
+
 async function betreten(daten) {
   const meinLauf = ++lauf;
   letzteDaten = daten;
@@ -127,7 +130,7 @@ async function betreten(daten) {
   if (!vor) {
     // Erster Halt: kurz stehen lassen, dann erscheint der Rest im Sucher.
     await warte(fertig ? 0 : 300);
-    if (meinLauf === lauf) zeige('sucher');
+    if (meinLauf === lauf) zeige(ziel());
     return;
   }
 
@@ -207,7 +210,7 @@ async function betreten(daten) {
 
 btnWeiter.addEventListener('click', async () => {
   if (erstlaufEnde) await erstlaufAbschliessen();
-  zeige('sucher');
+  zeige(ziel());
 });
 
 btnFein.addEventListener('click', () => {
@@ -228,13 +231,13 @@ btnStreichen.addEventListener('click', async () => {
     protokolliere('streichen', err);
     melde(T.allgemein);
   }
-  zeige('sucher');
+  zeige(letzteDaten?.danach === 'strecke' ? (Z.halte.length ? 'strecke' : 'start') : 'sucher');
 });
 
 $('#nochmal-naehen').addEventListener('click', async () => {
   if (!letzteDaten) return;
   const frisch = await db.halt(letzteDaten.halt.id).catch(() => null);
-  if (!frisch) { zeige('sucher'); return; }
+  if (!frisch) { zeige(ziel()); return; }
   betreten({ ...letzteDaten, halt: frisch, fertig: false });
 });
 

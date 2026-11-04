@@ -204,7 +204,7 @@ $('#fein-ok').addEventListener('click', async () => {
     Z.halte[h.index] = h;
     const q = roh;
     aufraeumen();
-    zeige('aufdeckung', { halt: h, rohQuelle: q, langsam: !!d.erstlauf && h.index === 1, erstlauf: !!d.erstlauf });
+    zeige('aufdeckung', { halt: h, rohQuelle: q, langsam: !!d.erstlauf && h.index === 1, erstlauf: !!d.erstlauf, danach: d.danach });
   } catch (err) {
     protokolliere('fein', err);
     melde(err instanceof db.SpeicherVoll ? T.speicherVoll : T.allgemein);
@@ -216,7 +216,7 @@ $('#fein-abbrechen').addEventListener('click', () => {
   const d = daten;
   const q = roh;
   aufraeumen();
-  if (d.neu || !d.halt.bild) zeige('aufdeckung', { halt: d.halt, rohQuelle: q, langsam: !!d.erstlauf && d.halt.index === 1, erstlauf: !!d.erstlauf });
+  if (d.neu || !d.halt.bild) zeige('aufdeckung', { halt: d.halt, rohQuelle: q, langsam: !!d.erstlauf && d.halt.index === 1, erstlauf: !!d.erstlauf, danach: d.danach });
   else { freigeben(q); zeige('aufdeckung', { halt: d.halt, fertig: true }); }
 });
 

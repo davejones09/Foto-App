@@ -2,7 +2,7 @@
 // Immer gilt: Kein Foto geht verloren, keines bleibt halbfertig, ohne Neustart.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, fotoJpeg, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, fotoJpeg, ERGEBNISSE, oeffneDiagnose } from './hilfe.mjs';
 
 let s;
 let b;
@@ -106,8 +106,7 @@ test('Dauerhafter Fehler: kein weiteres Foto wird angefasst, nach dem Ende des F
   await page.click('#se-zurueck');
   await warteAuf(page, () => document.querySelector('#meldung p').textContent === 'Eine Auswahl aus der Mediathek wartet noch.' && !document.querySelector('#meldung').hidden);
   await page.click('#meldung button.neben2'); // Später
-  for (let i = 0; i < 5; i++) await page.click('#version');
-  await page.waitForSelector('#diagnose:not([hidden])');
+  await oeffneDiagnose(page);
   await warteAuf(page, () => /Lesetest/.test(document.querySelector('.dg-text').textContent));
   const bericht = await page.textContent('.dg-text');
   assert.match(bericht, /Testfehler: Bild nicht lesbar/);
@@ -116,7 +115,7 @@ test('Dauerhafter Fehler: kein weiteres Foto wird angefasst, nach dem Ende des F
   // Fehler vorbei: weiterbauen. Die Erinnerung kommt beim nächsten Wechsel aus der Serie oder beim Start.
   await page.evaluate(() => { window.__bmFehler = 0; });
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && !document.querySelector('#meldung').hidden, null, 30000);
+  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'start' && !document.querySelector('#meldung').hidden, null, 30000);
   assert.equal(await page.textContent('#meldung p'), 'Eine Auswahl aus der Mediathek wartet noch.');
   await page.click('#meldung button.haupt');
   await page.waitForSelector('#v-serie:not([hidden])');
@@ -150,7 +149,7 @@ test('13 Fotos: zwei Auswahlen, Pausen zwischen den Fotos, Dauer je Foto in der 
   const { ctx, page } = await seite();
   await mitSerie(page, 7, { w: 800, h: 600 });
   await page.click('#se-zurueck');
-  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
+  await warteAuf(page, () => document.body.dataset.ansicht === 'strecke');
   const weitere = [];
   for (let k = 7; k < 13; k++) {
     const j = k % 4;

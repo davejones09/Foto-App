@@ -163,8 +163,9 @@ export function strecke(id) {
   return tx('strecken', 'readonly', (t) => anfrage(t.objectStore('strecken').get(id)));
 }
 
-export async function neueStrecke({ name, blind = false }) {
-  const s = { id: neueId(), name, erstellt: Date.now(), blind: !!blind, ziel: false, formatVersion: FORMAT, gesichertBei: 0 };
+// art: wofür das Projekt angelegt wurde ('carousel' oder 'reel'). Beide Ausgaben gehen immer.
+export async function neueStrecke({ name, blind = false, art = 'carousel' }) {
+  const s = { id: neueId(), name, erstellt: Date.now(), blind: !!blind, ziel: false, formatVersion: FORMAT, gesichertBei: 0, art };
   await tx('strecken', 'readwrite', (t) => anfrage(t.objectStore('strecken').put(s)));
   return s;
 }

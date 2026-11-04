@@ -2,7 +2,7 @@
 // Ausgaben in sRGB, Diagnose-Vergleich, alte Strecken nur nach Rückfrage neu genäht.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, fotoJpeg } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, fotoJpeg, hauptmenue, oeffneDiagnose } from './hilfe.mjs';
 
 let s;
 let b;
@@ -185,8 +185,7 @@ test('Diagnose: Foto vergleichen zeigt mittlere und größte Abweichung je Kanal
   await oeffne(page, s.url);
   const p3 = await fotoP3(page, { a: 0.5, b: 0.5, oben: 'color(display-p3 0.15 0.85 0.25)', unten: 'color(display-p3 0.85 0.2 0.12)', seed: 9 });
   const srgb = await fotoJpeg(page, { a: 0.5, b: 0.4, oben: '#c9b48e', unten: '#5a3522', seed: 5 });
-  for (let i = 0; i < 5; i++) await page.click('#version');
-  await page.waitForSelector('#diagnose:not([hidden])');
+  await oeffneDiagnose(page);
   await warteAuf(page, () => /Farbe: P3-Leinwand/.test(document.querySelector('.dg-text').textContent));
   for (const [name, buffer, raum] of [['p3.jpg', p3, 'Display P3'], ['srgb.jpg', srgb, 'sRGB']]) {
     const vorher = (await page.textContent('.dg-text')).split('Fotovergleich:').length;
@@ -226,7 +225,7 @@ test('Alte Strecke: kein Neurechnen beim Start, Neu nähen nur nach Rückfrage',
     return { laenge: halte[1].bild.laenge, schluessel: halte[1].bild.schluessel };
   });
   await page.reload();
-  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher', null, 30000);
+  await hauptmenue(page);
   const nachStart = await page.evaluate(async () => {
     const db = await import('./src/speicher.mjs');
     const h = (await db.halte(localStorage.getItem('nahtlos-aktiv')))[1];
@@ -243,7 +242,7 @@ test('Alte Strecke: kein Neurechnen beim Start, Neu nähen nur nach Rückfrage',
 
   // Nach dem nächsten Start: Neu nähen, Rückfrage bestätigen
   await page.reload();
-  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher', null, 30000);
+  await hauptmenue(page);
   await page.evaluate(async () => (await import('./src/zustand.mjs')).zeige('strecke'));
   await page.waitForSelector('#meldung:not([hidden]) button:has-text("Neu zusammensetzen")');
   await page.click('#meldung button:has-text("Neu zusammensetzen")');

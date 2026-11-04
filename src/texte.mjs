@@ -6,6 +6,28 @@ export const T = {
   installSchritte: ['Tippe auf Teilen.', 'Wähle „Zum Home-Bildschirm“.', 'Starte Nahtlos über das neue Icon.'],
   installTrotzdem: 'Trotzdem im Browser testen',
 
+  neuErstellen: 'Neu erstellen',
+  artCarousel: 'Carousel',
+  artReel: 'Reel',
+  artCollage: 'Collage',
+  carouselText: 'Bilder, die beim Wischen ineinander übergehen',
+  reelText: 'Ein Video, das durch deine Fotos läuft',
+  collageText: '2 bis 9 Fotos auf einer Fläche',
+  zuletzt: 'Zuletzt bearbeitet',
+  zuletztLeer: 'Noch keine Projekte. Wähle oben, was du erstellen möchtest.',
+  alleProjekte: 'Alle Projekte',
+  einstellungen: 'Einstellungen',
+  hauptmenue: 'Hauptmenü',
+  einspielenText: 'Ein gesichertes Projekt wiederherstellen',
+  einfuehrungText: 'Die drei Bildschirme vom ersten Start',
+  diagnoseText: 'Technischer Bericht, falls etwas nicht klappt',
+  version: 'Version',
+  neuesProjekt: 'Neues {art}',
+  neueCollage: 'Neue Collage',
+  quelleKamera: 'Kamera',
+  quelleMediathek: 'Mediathek',
+  projektInfo: '{art} · {n} Fotos',
+
   einfuehrung: [
     {
       titel: 'Fotos, die ineinander übergehen.',

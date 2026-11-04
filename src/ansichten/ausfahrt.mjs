@@ -242,8 +242,9 @@ function aufbauen() {
     },
   });
 
-  const einspielenKnopf = el('section', { klasse: 'af-punkt' }, el('button', { klasse: 'af-titel neben2', text: T.einspielen, onclick: einspielenWaehlen }));
-  liste.replaceChildren(karussell, reelKarte, gesamt, sicherung, einspielenKnopf);
+  // Ein Reel-Projekt zeigt das Reel zuerst. Beide Ausgaben gehen immer aus demselben Projekt.
+  const erste = Z.strecke.art === 'reel' ? [reelKarte, karussell] : [karussell, reelKarte];
+  liste.replaceChildren(...erste, gesamt, sicherung);
 }
 
 // --- Einspielen ---

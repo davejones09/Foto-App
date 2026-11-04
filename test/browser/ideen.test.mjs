@@ -1,7 +1,7 @@
 // Ideen im Sucher: Knopf, passender Satz, Ort, keine Wiederholung, Richtungshinweis.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, neuGeladen } from './hilfe.mjs';
 
 let s;
 let b;
@@ -35,8 +35,8 @@ test('Idee: passt zum Rest, merkt den Ort, wiederholt sich nicht, Richtung stimm
   }
   assert.equal(new Set(saetze).size, saetze.length, `keine Wiederholung: ${saetze.join(' | ')}`);
   // Der Ort bleibt nach dem Neuladen gemerkt
-  await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && !document.querySelector('#idee').hidden);
+  await neuGeladen(page);
+  await warteAuf(page, () => !document.querySelector('#idee').hidden);
   await page.click('#idee');
   await page.waitForSelector('.idee-orte button[data-ort="essen"][aria-pressed="true"]');
   await page.click('#idee-zu');

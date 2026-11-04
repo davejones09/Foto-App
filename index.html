@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#0E0F10">
+<meta name="theme-color" content="#111213">
 <meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -38,7 +38,7 @@
   </div>
 </section>
 
-<!-- Einführung (erster Start, später über Strecken) -->
+<!-- Einführung (erster Start, später über die Einstellungen) -->
 <section id="v-einfuehrung" class="ansicht" hidden>
   <div class="einf-flaeche"><canvas class="einf-bild" aria-hidden="true"></canvas></div>
   <div class="einf-text" aria-live="polite">
@@ -52,9 +52,50 @@
   </footer>
 </section>
 
+<!-- Hauptmenü -->
+<section id="v-start" class="ansicht" hidden>
+  <header class="start-kopf">
+    <h1 class="app-name">Nahtlos</h1>
+  </header>
+  <div class="start-inhalt">
+    <h2 class="abschnitt" data-t="neuErstellen"></h2>
+    <div class="neu-karten">
+      <button class="neu-karte" data-art="carousel"><span class="nk-bild nk-carousel"><i></i><b></b></span><span class="nk-titel" data-t="artCarousel"></span><span class="nk-text" data-t="carouselText"></span></button>
+      <button class="neu-karte" data-art="reel"><span class="nk-bild nk-reel"></span><span class="nk-titel" data-t="artReel"></span><span class="nk-text" data-t="reelText"></span></button>
+      <button class="neu-karte" data-art="collage"><span class="nk-bild nk-collage"><i></i><i></i><i></i></span><span class="nk-titel" data-t="artCollage"></span><span class="nk-text" data-t="collageText"></span></button>
+    </div>
+    <div class="abschnitt-kopf">
+      <h2 class="abschnitt" data-t="zuletzt"></h2>
+      <button class="link" id="start-alle" data-t="alleProjekte"></button>
+    </div>
+    <div class="zuletzt"></div>
+    <p class="zuletzt-leer" hidden data-t="zuletztLeer"></p>
+  </div>
+  <footer class="start-fuss">
+    <button class="neben2" id="start-projekte" data-t="alleProjekte"></button>
+    <button class="neben2" id="start-einstellungen" data-t="einstellungen"></button>
+  </footer>
+</section>
+
+<!-- Einstellungen -->
+<section id="v-einstellungen" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2 zurueck" id="ei-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="einstellungen"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="ei-liste">
+    <button class="ei-zeile" id="ei-einspielen"><span data-t="einspielen"></span><small data-t="einspielenText"></small></button>
+    <button class="ei-zeile" id="ei-einfuehrung"><span data-t="einfOeffnen"></span><small data-t="einfuehrungText"></small></button>
+    <button class="ei-zeile" id="ei-diagnose"><span data-t="diagnoseTitel"></span><small data-t="diagnoseText"></small></button>
+    <div class="ei-zeile ei-version"><span data-t="version"></span><button class="version" id="version"></button></div>
+  </div>
+</section>
+
 <!-- Sucher -->
 <section id="v-sucher" class="ansicht" hidden>
   <header class="kopf">
+    <button class="zurueck" id="su-zurueck" data-aria="hauptmenue">‹</button>
     <div class="passung" aria-live="off"><span class="wert"></span><span class="bewertung"></span><span class="p-balken" aria-hidden="true"><i></i></span></div>
   </header>
   <div class="rahmen" id="sucher-rahmen">
@@ -93,7 +134,6 @@
     <button class="ausloeser" id="ausloeser" aria-label="Auslösen"><span></span></button>
     <button class="neben" id="zur-strecke"><span class="mini"><img alt=""></span><span data-t="strecke"></span></button>
   </footer>
-  <button class="version" id="version"></button>
 </section>
 
 <!-- Aufdeckung -->
@@ -143,7 +183,7 @@
 <!-- Serie aus der Mediathek: Vorschau vor dem Bauen -->
 <section id="v-serie" class="ansicht" hidden>
   <header class="leiste-oben">
-    <button class="neben2" id="se-zurueck" aria-label="Zurück">‹</button>
+    <button class="neben2 zurueck" id="se-zurueck" aria-label="Zurück">‹</button>
     <h2 data-t="serieTitel"></h2>
     <span class="platz"></span>
   </header>
@@ -178,7 +218,7 @@
 <!-- Strecke -->
 <section id="v-strecke" class="ansicht" hidden>
   <header class="leiste-oben">
-    <button class="neben2" id="zu-strecken" data-t="streckenTitel"></button>
+    <button class="neben2 zurueck" id="zu-strecken" data-aria="hauptmenue">‹</button>
     <h2 class="st-kopf"></h2>
     <span class="platz"></span>
   </header>
@@ -199,9 +239,9 @@
 </section>
 
 <!-- Fahrplan -->
-<section id="v-fahrplan" class="ansicht gelb" hidden>
+<section id="v-fahrplan" class="ansicht" hidden>
   <header class="leiste-oben">
-    <button class="neben2" id="fp-zurueck" aria-label="Zurück">‹</button>
+    <button class="neben2 zurueck" id="fp-zurueck" aria-label="Zurück">‹</button>
     <h2 data-t="fahrplanTitel"></h2>
     <span class="platz"></span>
   </header>
@@ -212,7 +252,7 @@
 <!-- Ausfahrt -->
 <section id="v-ausfahrt" class="ansicht" hidden>
   <header class="leiste-oben">
-    <button class="neben2" id="af-zurueck" aria-label="Zurück">‹</button>
+    <button class="neben2 zurueck" id="af-zurueck" aria-label="Zurück">‹</button>
     <h2 data-t="ausfahrtTitel"></h2>
     <span class="platz"></span>
   </header>
@@ -223,17 +263,12 @@
 <!-- Strecken -->
 <section id="v-strecken" class="ansicht" hidden>
   <header class="leiste-oben">
-    <button class="neben2" id="sl-zurueck" aria-label="Zurück">‹</button>
-    <h2 data-t="streckenTitel"></h2>
+    <button class="neben2 zurueck" id="sl-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="alleProjekte"></h2>
     <span class="platz"></span>
   </header>
   <p class="sl-leer" hidden data-t="streckenLeer"></p>
   <div class="sl-liste"></div>
-  <p class="sl-hilfe"><button class="link" id="sl-einfuehrung" data-t="einfOeffnen"></button></p>
-  <footer class="knopfreihe">
-    <button class="neben2" id="sl-einspielen" data-t="einspielen"></button>
-    <button class="haupt" id="sl-neu" data-t="neueStrecke"></button>
-  </footer>
 </section>
 
 <!-- Finale (Blindfahrt) -->
