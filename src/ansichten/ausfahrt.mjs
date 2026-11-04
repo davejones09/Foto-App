@@ -1,4 +1,4 @@
-// Ausfahrt: Karussell, Reel, Gesamtbild, Sicherung und Einspielen.
+// Exportieren: Carousel, Reel (mit Stil), Gesamtbild, Sicherung und Einspielen.
 import { Z, registriere, zeige, neuLaden, ladeStrecke } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
 import { $, el, melde } from '../ui.mjs';
@@ -6,15 +6,21 @@ import { karussellAnzahl, beitraege, reelPlan, REEL_LAENGEN } from '../kennzahle
 import * as aus from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
+import { STILE, stileFuer } from '../reelstil.mjs';
 
 const v = $('#v-ausfahrt');
 const liste = $('.af-liste', v);
 const erinnerung = $('.af-erinnerung', v);
 let reelLaenge = 30;
+let reelStil = 'band';
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
+  const st = localStorage.getItem('nahtlos-reel-stil');
+  if (STILE.includes(st)) reelStil = st;
 } catch {}
+let vorschauStopp = [];
+const vorschauenStoppen = () => { for (const s of vorschauStopp) s(); vorschauStopp = []; };
 let laeuft = false;
 
 const datei = (blob, name) => new File([blob], name, { type: blob.type });
@@ -191,8 +197,25 @@ function aufbauen() {
     if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
     reelAktualisieren();
   });
-  const reelPlanJetzt = () => reelPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge });
+  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, stil: reelStil });
+  // Stil wählen, jede Kachel mit kurzer Live-Vorschau aus den ersten Fotos.
+  const stilKnoepfe = STILE.map((st) => {
+    const cv = el('canvas', { width: 144, height: 256 });
+    return el('button', {
+      klasse: 'af-stil', 'data-stil': st, 'aria-pressed': String(st === reelStil),
+      onclick: () => {
+        reelStil = st;
+        try { localStorage.setItem('nahtlos-reel-stil', st); } catch {}
+        for (const b of stilKnoepfe) b.setAttribute('aria-pressed', String(b.dataset.stil === st));
+        reelAktualisieren();
+      },
+    }, cv, el('span', { text: T[`stil_${st}`] }));
+  });
+  const stileEl = el('div', { klasse: 'af-stile', role: 'group', 'aria-label': T.reelStil }, ...stilKnoepfe);
+  vorschauenStoppen();
+  for (const b of stilKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil));
   const zusatz = el('div', { klasse: 'af-reel' },
+    stileEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
     tempoEl, vorschlagEl);
@@ -215,12 +238,24 @@ function aufbauen() {
   function reelAktualisieren() {
     const p = reelPlanJetzt();
     $('.af-titel', reelKarte).textContent = f(T.reel, { laenge: p.laenge });
-    tempoEl.textContent = f(T.reelTempo, { n: p.bis - p.von + 1, v: Math.round(p.tempo) });
-    vorschlagEl.hidden = !p.zuSchnell;
-    if (p.vorschlag) vorschlagText.textContent = f(T.reelZuSchnell, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    const n = p.bis - p.von + 1;
+    if (p.stil === 'band') {
+      tempoEl.textContent = f(T.reelTempo, { n, v: Math.round(p.tempo) });
+      vorschlagEl.hidden = !p.zuSchnell;
+      if (p.vorschlag) vorschlagText.textContent = f(T.reelZuSchnell, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    } else {
+      tempoEl.textContent = f(T.reelStand, { n, s: p.stand.toFixed(1).replace('.', ',') });
+      vorschlagEl.hidden = !p.zuKurz;
+      if (p.vorschlag) vorschlagText.textContent = f(T.reelZuKurz, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    }
+    reelKarte.dataset.stil = p.stil;
   }
   reelAktualisieren();
   aus.reelWeg().then((w) => {
+    // Ein Stil, der im Ausweichweg (Echtzeit) nicht sauber geht, wird ausgeblendet.
+    const moeglich = stileFuer(w);
+    for (const b of stilKnoepfe) b.hidden = !moeglich.includes(b.dataset.stil);
+    if (w && !moeglich.includes(reelStil)) stilKnoepfe[0].click();
     if (w) return;
     $('.af-titel', reelKarte).disabled = true;
     tempoEl.textContent = T.mp4Fehlt;
@@ -286,4 +321,5 @@ registriere('ausfahrt', {
     await neuLaden();
     aufbauen();
   },
+  verlassen() { vorschauenStoppen(); },
 });

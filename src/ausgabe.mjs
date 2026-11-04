@@ -7,7 +7,7 @@ import { blobSauber } from './metadaten.mjs';
 import { stuecke, stueckeIm, bandBreite, breiteVon, lagen, HALT_B, HALT_H, UEBER } from './masse.mjs';
 import {
   karussellPlan, bandProfil, slideAusschnitt, KARUSSELL_B, KARUSSELL_H,
-  fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse,
+  fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse, reelPlan as reelPlanBand,
 } from './kennzahlen.mjs';
 import { leinwand, ctx2d, alsBlob, freigeben, ladeBitmap, verkleinere, pixel } from './bild.mjs';
 import { T, f } from './texte.mjs';
@@ -17,6 +17,7 @@ import * as db from './speicher.mjs';
 import { APP_VERSION } from './version.mjs';
 import { auftrag } from './rechner.mjs';
 import { MOTIV } from './serie.mjs';
+import { stilPlan, zustand, lage, reelAusschnitt, nahtGrenze, teilzeiten, RAHMEN, ZEITEN } from './reelstil.mjs';
 
 export class Abgebrochen extends Error {}
 
@@ -47,6 +48,11 @@ async function sauber(blob) { return blobSauber(blob); }
 // Motivprofil des Bands: je Halt die Motivkarte (Schärfe) auf 640 Pixeln, im Worker, zwischengespeichert.
 const profilCache = new Map();
 export async function motivProfil(halte, { fortschritt } = {}) {
+  return bandProfil(halte, await haltProfile(halte, { fortschritt }));
+}
+
+// Spaltenprofile je Halt (Motivdichte über die Breite), für Carousel-Grenzen und Reel-Ausschnitte.
+export async function haltProfile(halte, { fortschritt } = {}) {
   const profile = [];
   for (let i = 0; i < halte.length; i++) {
     const h = halte[i];
@@ -66,7 +72,7 @@ export async function motivProfil(halte, { fortschritt } = {}) {
     profile.push(profilCache.get(sch));
     fortschritt?.((i + 1) / halte.length);
   }
-  return bandProfil(halte, profile);
+  return profile;
 }
 
 let letzterPlan = null;
@@ -324,9 +330,90 @@ function reelBildMaler(strecke, halte, plan) {
   return { male, ende: () => lager.leeren() };
 }
 
+// --- Reel-Stile: jedes Foto formatfüllend in 9:16, der Ausschnitt folgt der Motivkarte ---
+// Zeichnet ein Bild des Stils in einen Rahmen W × H. klein: nur die Vorschauen (für die Live-Vorschau).
+export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = FAHRT_H } = {}) {
+  const lager = new Kachellager(4);
+  const profile = await haltProfile(halte).catch(() => halte.map(() => null));
+  const ausschnitte = halte.map((h, i) => reelAusschnitt(breiteVon(h), profile[i]));
+  const art = klein ? 'vorschau' : 'bild';
+  const kx = W / RAHMEN.w;
+  async function foto(ctx, k, { s = 1, dx = 0, alpha = 1 }) {
+    const bm = await lager.hole(halte[k], art);
+    const a = ausschnitte[k];
+    const f = bm.height / HALT_H;
+    ctx.globalAlpha = alpha;
+    if (s >= 1) {
+      const sw = a.w / s;
+      const sh = HALT_H / s;
+      ctx.drawImage(bm, (a.x0 + (a.w - sw) / 2) * f, ((HALT_H - sh) / 2) * f, sw * f, sh * f, dx * kx, 0, W, H);
+    } else {
+      const dw = W * s;
+      const dh = H * s;
+      ctx.drawImage(bm, a.x0 * f, 0, a.w * f, HALT_H * f, dx * kx + (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
+    ctx.globalAlpha = 1;
+  }
+  async function bildBei(ctx, t, alpha = 1) {
+    const z = zustand(plan, t);
+    const l = lage(plan.stil, z);
+    await foto(ctx, z.i, { ...l.aktuell, alpha: alpha * l.aktuell.alpha });
+    if (z.j == null) return;
+    if (plan.stil === 'naht') {
+      // Die Grenze hat die Form der echten Naht und läuft weich aus: fünf Masken, innen deckend.
+      const pfad = halte[z.j].pfad;
+      const grenze = nahtGrenze(pfad, l.naechstes.kante, { w: W, h: H, schritt: Math.max(4, Math.round(8 * kx)) });
+      const versatz = [-16, -8, 0, 8, 16].map((d) => d * kx);
+      for (let k = 0; k < versatz.length; k++) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(W + 400, 0);
+        for (const pt of grenze) ctx.lineTo(pt.x + versatz[k], pt.y);
+        ctx.lineTo(W + 400, H);
+        ctx.closePath();
+        ctx.clip();
+        await foto(ctx, z.j, { alpha: alpha / (versatz.length - k) });
+        ctx.restore();
+      }
+      return;
+    }
+    await foto(ctx, z.j, { ...l.naechstes, alpha: alpha * l.naechstes.alpha });
+  }
+  async function male(ctx, t) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    const z = zustand(plan, t);
+    if (plan.stil === 'schwung' && z.j != null) {
+      // Bewegungsunschärfe: mehrere Bilder kurz vor t übereinander, im laufenden Mittel.
+      const zeiten = teilzeiten(t);
+      for (let k = 0; k < zeiten.length; k++) await bildBei(ctx, Math.max(0, zeiten[k]), k === 0 ? 1 : 1 / (k + 1));
+      return;
+    }
+    await bildBei(ctx, t);
+  }
+  return { male, ausschnitte, ende: () => lager.leeren() };
+}
+
+// Plan für den gewählten Abschnitt: Band wie bisher, sonst ein Stil-Plan über die Fotos von bis.
+export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band' } = {}) {
+  if (stil === 'band' || !ZEITEN[stil]) return { ...reelPlanBand(halte, { von, bis, laenge }), stil: 'band' };
+  const b = bis == null ? halte.length - 1 : bis;
+  const p = stilPlan(b - von + 1, { laenge, stil });
+  return { ...p, von, bis: b, vorschlag: p.zuKurz ? { von, bis: Math.min(b, von + p.maxFotos - 1) } : null };
+}
+
 export async function reel(strecke, halte, plan, opt = {}) {
   const weg = await reelWeg();
   if (!weg) throw new KeinMp4('Kein MP4');
+  if (plan.stil && plan.stil !== 'band') {
+    const teil = halte.slice(plan.von, plan.bis + 1);
+    const m = await stilMaler(teil, plan);
+    try {
+      return await sauber(await videoBauen(weg, m.male, plan.bilder, opt));
+    } finally {
+      m.ende();
+    }
+  }
   const { male, ende } = reelBildMaler(strecke, halte, plan);
   try {
     return await sauber(await videoBauen(weg, male, plan.bilder, opt));
@@ -354,6 +441,20 @@ export async function titelbild(halte, plan) {
   const c = leinwand(FAHRT_B, FAHRT_H, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
+  if (plan.stil && plan.stil !== 'band') {
+    const teil = halte.slice(plan.von, plan.bis + 1);
+    let k = 0;
+    teil.forEach((h, i) => { if (i > 0 && (h.wert ?? -1) > (teil[k].wert ?? -1)) k = i; });
+    const ruhig = { ...stilPlan(teil.length, { laenge: plan.laenge, stil: 'sanft' }), stil: 'sanft' };
+    const m = await stilMaler(teil, ruhig);
+    try {
+      await m.male(ctx, ruhig.beginn[k] + 0.01);
+      return await sauber(await alsBlob(c, 'image/jpeg', 0.92));
+    } finally {
+      m.ende();
+      freigeben(c);
+    }
+  }
   const lager = new Kachellager(4);
   try {
     ctx.fillStyle = '#000';
@@ -365,6 +466,44 @@ export async function titelbild(halte, plan) {
     lager.leeren();
     freigeben(c);
   }
+}
+
+// Live-Vorschau eines Stils in einer kleinen Leinwand, in Schleife. Liefert eine Funktion zum Stoppen.
+export function stilVorschau(canvas, halte, stil) {
+  let aktiv = true;
+  let maler = null;
+  const teil = halte.slice(0, Math.min(3, halte.length));
+  const W = canvas.width;
+  const H = canvas.height;
+  const ctx = ctx2d(canvas);
+  ctx.imageSmoothingQuality = 'high';
+  (async () => {
+    if (!teil.length) return;
+    let plan;
+    if (stil === 'band') {
+      plan = reelPlanBand(teil, { laenge: 4 });
+      const lager = new Kachellager(4);
+      const s = H / HALT_H;
+      maler = {
+        male: async (c, t) => { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); await zeichneBereich(c, teil, lager, { s, x0: plan.x0 + (plan.xBand(t) - plan.x0), w: W, h: H, klein: true }); },
+        ende: () => lager.leeren(),
+      };
+    } else {
+      const z = ZEITEN[stil];
+      plan = { ...stilPlan(teil.length, { laenge: teil.length * 0.9 + (teil.length - 1) * z.uebergang, stil }), stil };
+      maler = await stilMaler(teil, plan, { klein: true, W, H });
+    }
+    const t0 = performance.now();
+    const schritt = async () => {
+      if (!aktiv) { maler.ende(); return; }
+      const t = ((performance.now() - t0) / 1000) % (plan.dauer + 0.6);
+      await maler.male(ctx, Math.min(plan.dauer - 0.001, t));
+      canvas.dataset.laeuft = '1';
+      requestAnimationFrame(schritt);
+    };
+    requestAnimationFrame(schritt);
+  })().catch(() => {});
+  return () => { aktiv = false; };
 }
 
 // Fahrt live abspielen (Finale der Blindfahrt). Liefert eine Funktion zum Stoppen.

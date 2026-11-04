@@ -18,6 +18,7 @@ const DATEIEN = [
   './src/ideen.mjs',
   './src/ideenquelle.mjs',
   './src/kennzahlen.mjs',
+  './src/reelstil.mjs',
   './src/metadaten.mjs',
   './src/collage.mjs',
   './src/collagewerk.mjs',
