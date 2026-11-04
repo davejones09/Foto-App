@@ -271,7 +271,38 @@
   <div class="sl-liste"></div>
 </section>
 
-<!-- Finale (Blindfahrt) -->
+<!-- Collage -->
+<section id="v-collage" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2 zurueck" id="co-zurueck" data-aria="hauptmenue">‹</button>
+    <h2 class="co-kopf"></h2>
+    <button class="haupt" id="co-export" data-t="exportieren"></button>
+  </header>
+  <div class="co-flaeche"><canvas class="co-bild"></canvas></div>
+  <p class="co-hinweis" aria-live="polite"></p>
+  <div class="co-leiste">
+    <div class="co-vorlagen" role="group"></div>
+    <div class="co-reihe">
+      <div class="af-tempi co-formate" role="group">
+        <button data-format="4:5">4:5</button><button data-format="1:1">1:1</button><button data-format="9:16">9:16</button>
+      </div>
+      <div class="af-tempi co-stile" role="group">
+        <button data-stil="rahmen" data-t="stilRahmen"></button><button data-stil="nahtlos" data-t="stilNahtlos"></button>
+      </div>
+    </div>
+    <div class="co-reihe co-rahmen">
+      <input type="range" class="co-abstand" min="0" max="50" step="1" data-aria="abstand">
+      <div class="co-farben" role="group"></div>
+    </div>
+    <div class="co-reihe">
+      <button class="neben2" id="co-mediathek" data-t="quelleMediathek"></button>
+      <button class="neben2" id="co-kamera" data-t="quelleKamera"></button>
+      <button class="neben2" id="co-entfernen" data-t="fotoEntfernen"></button>
+    </div>
+  </div>
+</section>
+
+<!-- Finale (Überraschungsmodus) -->
 <section id="v-finale" class="ansicht" hidden>
   <canvas class="finale"></canvas>
 </section>
@@ -308,6 +339,8 @@
 
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="dg-datei" accept="image/*" hidden>
+<input type="file" id="datei-collage" accept="image/*" multiple hidden>
+<input type="file" id="datei-collage-kamera" accept="image/*" capture="environment" hidden>
 <input type="file" id="datei-sicherung" accept=".zip,application/zip" hidden>
 
 <script type="module" src="src/app.mjs"></script>

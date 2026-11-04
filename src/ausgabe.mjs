@@ -427,6 +427,10 @@ export async function einspielen(datei, { fortschritt } = {}) {
   const manifest = JSON.parse(await m.blob.text());
   if (manifest.format !== 'nahtlos-sicherung') throw new Error('Keine Sicherung');
   if (manifest.formatVersion > db.FORMAT) throw new Error('Sicherung aus neuerer Version');
+  if (manifest.typ === 'collage') {
+    const { einspielen: collageEinspielen } = await import('./collagewerk.mjs');
+    return { collage: await collageEinspielen(manifest, eintraege, { fortschritt }) };
+  }
   const s = await db.neueStrecke({ name: manifest.strecke.name, blind: manifest.strecke.blind });
   try {
     await db.aendereStrecke(s.id, { ziel: !!manifest.strecke.ziel, erstellt: manifest.strecke.erstellt || s.erstellt, gesichertBei: manifest.halte.length });

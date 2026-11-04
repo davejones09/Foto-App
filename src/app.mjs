@@ -11,6 +11,7 @@ import { ausbessern, unrettbar } from './naehwerk.mjs';
 import { auftrag } from './rechner.mjs';
 import { setzeTeilwerte, teilwerteSichtbar } from './ansichten/sucher.mjs';
 import { diagnoseKnopf } from './ansichten/start.mjs';
+import './ansichten/collage.mjs';
 import './ansichten/aufdeckung.mjs';
 import './ansichten/fein.mjs';
 import './ansichten/strecke.mjs';

@@ -249,7 +249,8 @@ test('Migration: Strecken aus Format 1 bleiben erhalten', async () => {
     const b = await db.blob(h[0], 'bild');
     return { version: d.version, stores: [...d.objectStoreNames], namen: l.map((x) => x.name), halte: h.length, name: h[0]?.name, wartend: await db.zaehleSerienFotos(), bildLesbar: !!b && b.size > 1000, keinBlob: !(h[0].bild instanceof Blob), breite: h[0].breite };
   });
-  assert.equal(r.version, 4);
+  assert.equal(r.version, 5);
+  assert.ok(r.stores.includes('collagen'), 'Format 5: Speicher für Collagen');
   assert.equal(r.breite, 1296, 'alte Halte bekommen die Breite 1296');
   assert.ok(r.stores.includes('serie'));
   assert.ok(r.stores.includes('dateien'));

@@ -265,6 +265,11 @@ eingabe.addEventListener('change', async () => {
   melde(f(T.wirdGebaut, { p: 0 }), [], 0);
   try {
     const s = await aus.einspielen(d, { fortschritt: (p) => melde(f(T.wirdGebaut, { p: Math.round(p * 100) }), [], 0) });
+    if (s.collage) {
+      melde(`${s.collage.name}`, [], 2500);
+      zeige('collage', { id: s.collage.id });
+      return;
+    }
     melde(`${s.name}`, [], 2500);
     await ladeStrecke(s.id);
     zeige('strecke');
