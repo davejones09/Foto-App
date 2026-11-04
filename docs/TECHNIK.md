@@ -23,6 +23,7 @@ src/
   reelstil.mjs        Reel-Stile: Zeitplan, Bewegungen, Ausschnitt 9:16 (reine Rechnung)
   reelvorlagen.mjs    Reel-Vorlagen: Schnitte im Takt, Übergänge, Masken (reine Rechnung)
   reeltipps.mjs       Inhalte der Tipps für Reels, dargestellt in ansichten/reeltipps.mjs
+  desktop.mjs         Browser-Fassung am Computer: Erkennung, Texte, Hereinziehen, Tastenkürzel
   clipreel.mjs        Reel aus Clips: Zeitplan, Suche im Clip, Zeichnen
   exif.mjs            Aufnahmezeit aus EXIF
   ideen.mjs           Ideen: 73 getaggte Sätze, Merkmale, Auswahl, Richtung (reine Rechnung)
@@ -311,3 +312,7 @@ Stand 03.11.2026. Vor dem Festlegen auf ein Verhalten am Gerät selbst prüfen, 
 - WebCodecs: https://caniuse.com/webcodecs, https://caniuse.com/mdn-api_videoencoder_configure
 - Karussell-Grenzen: https://www.stackedmarketer.com/?p=52933, https://adaptlypost.com/de/blog/how-to-schedule-carousel-posts-on-instagram-and-facebook
 - Claude Code in der Cloud: https://code.claude.com/docs/en/web-quickstart.md
+
+## Browser am Computer
+
+Dieselbe App unter derselben Adresse, kein eigener Build. `src/desktop.mjs` erkennt den Computer (feine Maus, kein Mobilgerät, mindestens 700 Pixel breit). Dann entfällt der Hinweis zum Home-Bildschirm, Texte nennen Dateien und Maus, Teilen lädt herunter (mehrere Dateien als `export.zip`), Dateien lassen sich hereinziehen, Leertaste löst aus und Escape geht zurück. Ab 900 Pixel Breite ordnet `style.css` das Layout für große Bildschirme. Reels brauchen H.264 über WebCodecs oder MediaRecorder: In Browsern ohne das meldet die App, dass kein MP4 möglich ist.
