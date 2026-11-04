@@ -120,7 +120,7 @@ Ruhige Liste: Zeit, Name, Passung. Fotos lassen sich benennen, beschädigte lös
 ### 8. Collage
 
 - 2 bis 9 Fotos aus Mediathek oder Kamera. Formate 4:5, 1:1 und 9:16, Ausgabe als JPEG mit 2160 Pixeln Breite.
-- Über 20 Vorlagen passend zur Fotoanzahl: Raster, ein großes Foto mit kleinen, asymmetrische Aufteilungen.
+- Über 50 Vorlagen passend zur Fotoanzahl: Raster, ein großes Foto mit kleinen, asymmetrische Aufteilungen.
 - **Mit Rahmen:** Abstand und Rahmenfarbe einstellbar. **Nahtlos:** Die Felder gehen mit dem weichen Übergang ineinander über.
 - Die Motivkarte schlägt den Ausschnitt vor. Antippen wählt ein Feld, Ziehen und Zoomen ändern den Ausschnitt, Ziehen auf ein anderes Feld tauscht die Fotos. Immer hineingezoomt, nie leere Bereiche. Keine Farbänderung.
 - Eigener Projekttyp mit Sicherung.

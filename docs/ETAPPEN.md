@@ -107,7 +107,7 @@ Das Bahn-Thema fällt weg, der Name „Nahtlos“ bleibt. In sechs Schritten, je
 2. **Oberfläche:** neutrales dunkles Grau, ein zurückhaltender Akzent, neues Icon und neue Startbilder. Die App startet im Hauptmenü.
 3. **Hauptmenü:** Neu erstellen (Carousel, Reel, Collage), Zuletzt bearbeitet, Alle Projekte, Einstellungen. Ablauf: Karte, Fotos, Vorschau, Export.
 4. **Keine Spuren der App:** kein Text im Ergebnis, neutrale Dateinamen, saubere Metadaten, Carousel ohne Abschluss-Slide (Zoom bis 8 % oder Beschnitt an den Enden), Reel endet auf dem letzten Bild.
-5. **Collage:** 2 bis 9 Fotos, drei Formate, 25 Vorlagen, Mit Rahmen oder Nahtlos, Gesten, eigener Projekttyp mit Sicherung (Format 5).
+5. **Collage:** 2 bis 9 Fotos, drei Formate, 55 Vorlagen, Mit Rahmen oder Nahtlos, Gesten, eigener Projekttyp mit Sicherung (Format 5).
 6. **Reel-Stile:** Band, Sanft, Schwung, Zoom, Naht mit Live-Vorschau.
 
 **Fertig, wenn:** `test/texte.test.mjs` keinen Bahnbegriff findet. Die Browser-Tests starten im Hauptmenü, vergleichen jede Carousel-Slide Pixel für Pixel mit dem Band (letzte Slide gefüllt), finden keine App-Hinweise in JPEG und MP4, bauen eine Collage ohne Farbänderung außerhalb der Nähte samt Neuladen, Sicherung und Migration, und erzeugen ein Stil-Reel mit genau 450 Bildern in 15 s.

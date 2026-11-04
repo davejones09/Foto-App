@@ -111,3 +111,11 @@ test('Belegen einer neuen Vorlage behält die Zuordnung', () => {
   const f = belege(fotos, v, [{ foto: 'c' }, { foto: 'a' }]);
   assert.deepEqual(f.map((x) => x.foto), ['c', 'a', 'b']);
 });
+
+test('Über 50 Vorlagen, je Fotoanzahl mindestens fünf, keine zu schmalen Felder', () => {
+  assert.ok(VORLAGEN.length >= 50, `${VORLAGEN.length} Vorlagen`);
+  for (let n = FOTOS_MIN; n <= FOTOS_MAX; n++) assert.ok(vorlagenFuer(n).length >= 5, `zu ${n} Fotos`);
+  for (const v of VORLAGEN) for (const [, , w, h] of v.felder) {
+    assert.ok(w >= 0.2 - 1e-9 && h >= 0.2 - 1e-9, `${v.id}: ${w} × ${h}`);
+  }
+});
