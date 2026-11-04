@@ -311,6 +311,13 @@ async function videoBauen(weg, male, bilder, { fortschritt, waechter } = {}) {
 // --- Reel: immer MP4 ---
 export class KeinMp4 extends Error {}
 
+// Fertiges MP4 aus einem beliebigen Maler. Nur mit WebCodecs, weil Clips nicht in Echtzeit zu berechnen sind.
+export async function videoAusMaler(male, bilder, opt = {}) {
+  const weg = await reelWeg();
+  if (!weg || weg.art !== 'webcodecs') throw new KeinMp4('Kein WebCodecs');
+  return sauber(await videoBauen(weg, male, bilder, opt));
+}
+
 export async function reelWeg() {
   const w = await fahrtWeg();
   if (!w) return null;

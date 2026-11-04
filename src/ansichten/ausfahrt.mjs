@@ -235,7 +235,9 @@ function aufbauen() {
   for (const b of stilKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil));
   for (const b of vorlagenKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil, { nurSichtbar: true }));
   const zusatz = el('div', { klasse: 'af-reel' },
-    el('button', { klasse: 'link af-tipps', text: T.tippTitel, onclick: () => zeige('reeltipps') }),
+    el('div', { klasse: 'af-links' },
+      el('button', { klasse: 'link af-clips', text: T.clipsTitel, onclick: () => zeige('clips') }),
+      el('button', { klasse: 'link af-tipps', text: T.tippTitel, onclick: () => zeige('reeltipps') })),
     el('p', { klasse: 'af-gruppe', text: T.reelVorlagen }),
     vorlagenEl,
     el('p', { klasse: 'af-gruppe', text: T.reelStil }),
