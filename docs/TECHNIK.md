@@ -227,7 +227,7 @@ ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Bilddaten je Foto. 
 ### Collage
 
 - **Speicher** (Format 5, Speicher `collagen`): `{ id, name, erstellt, geaendert, format, vorlage, stil, abstand, farbe, fotos, felder, vorschau }`. Je Foto `{ id, rohB, rohH, farbraum, profil, name, zeit, motiv, roh, vorschau }`, die Bilddaten in `dateien` (Rohbild JPEG 0,95 bis 4000 Pixel, Vorschau 1200 Pixel, Motivraster 24 Spalten). `felder: [{ foto, t: { x, y, zoom } | null }]`, `t = null` heißt: Ausschnitt aus der Motivkarte.
-- **Formate** 4:5, 1:1, 9:16 bei 2160 Pixeln Breite. 25 Vorlagen für 2 bis 9 Fotos (Raster, ein großes mit kleinen, versetzt, Mosaik), alle in Anteilen der Fläche.
+- **Formate** 4:5, 1:1, 9:16 bei 2160 Pixeln Breite. 55 Vorlagen für 2 bis 9 Fotos (Raster, ein großes mit kleinen, versetzt, Mosaik), alle in Anteilen der Fläche.
 - **Mit Rahmen:** gleicher Abstand zwischen den Feldern und am Rand (bis 5 % der Breite), Farbe aus vier ruhigen Tönen.
 - **Nahtlos:** Jede Vorlage lässt sich durchgehend schneiden (Guillotine, `baum`). Die Collage wird entlang des Schnittbaums zusammengesetzt: Jede Hälfte reicht um die halbe Übergangsbreite über die Schnittlinie (22 % des schmaleren Nachbarn, 16 bis 362 Pixel), dann rechnet `uebergang.mjs` den Streifen über die volle Länge. Waagerechte Schnitte werden dafür gedreht. So gibt es an T-Kreuzungen keine Kästchen. Außerhalb der Streifen ist jedes Feld das Foto.
 - **Ausschnitt:** Das Foto füllt sein Feld (Zoom 1 bis 6), der Ausschnitt bleibt immer im Foto, nie leere Bereiche. Der Vorschlag schiebt das Fenster dorthin, wo die Motivkarte am meisten Motiv hat.

@@ -124,7 +124,7 @@ test('Collage: vier Fotos aus der Mediathek, wählen, verschieben, zoomen, tausc
   assert.equal(st.n, 4);
   assert.equal(st.vorlage, 'z4-raster');
   assert.equal(st.format, '4:5');
-  assert.equal(await page.locator('.co-vorlage').count(), 4, 'Vorlagen passend zur Fotoanzahl');
+  assert.equal(await page.locator('.co-vorlage').count(), 8, 'Vorlagen passend zur Fotoanzahl');
   assert.match(await page.textContent('.co-hinweis'), /^Antippen wählt ein Feld/);
 
   // Antippen wählt, Ziehen verschiebt, Mausrad zoomt
@@ -235,12 +235,12 @@ test('Collage aus der Kamera: ein Foto reicht nicht, zwei schon, dann Foto entfe
   await (await mehr).setFiles([zwei, drei]);
   await warteAuf(page, () => !document.querySelector('#co-export').disabled && document.querySelector('.co-bild').dataset.bereit === '1', null, 60000);
   assert.equal((await stand(page))[0].n, 3);
-  assert.equal(await page.locator('.co-vorlage').count(), 5);
+  assert.equal(await page.locator('.co-vorlage').count(), 8);
   const m = await feldMitte(page, 0);
   await page.mouse.click(m.x, m.y);
   await warteAuf(page, () => !document.querySelector('#co-entfernen').disabled);
   await page.click('#co-entfernen');
-  await warteAuf(page, () => document.querySelectorAll('.co-vorlage').length === 4 && document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+  await warteAuf(page, () => document.querySelectorAll('.co-vorlage').length === 6 && document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
   let st = (await stand(page))[0];
   for (let i = 0; i < 50 && st.felder.length !== 2; i++) { await page.waitForTimeout(100); st = (await stand(page))[0]; }
   assert.equal(st.n, 2);
