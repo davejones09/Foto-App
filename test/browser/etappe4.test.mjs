@@ -51,12 +51,12 @@ test('Fahrplan: Kennzahlen, Halt benennen, Tageswechsel, ganze Strecke', async (
   assert.equal(await page.locator('.fp-zeile:not(.kopfz)').count(), 4);
   assert.equal(await page.locator('.fp-tagz').count(), 2);
   const kz = await page.textContent('.fp-kennzahlen');
-  assert.match(kz, /^4 Halte · Durchschnitt \d+ · Pünktlichkeit \d+ %$/);
+  assert.match(kz, /^4 Fotos · Passung im Schnitt \d+$/);
   await page.locator('.fp-name').nth(1).click();
   await page.fill('.d-eingabe', 'Hafenmauer');
   await page.click('#dialog button.haupt');
   await page.waitForSelector('.fp-name:text("Hafenmauer")');
-  assert.equal(await page.locator('.fp-name').nth(0).textContent(), 'Halt 1');
+  assert.equal(await page.locator('.fp-name').nth(0).textContent(), 'Foto 1');
   await page.screenshot({ path: `${ERGEBNISSE}/e4-fahrplan.png` });
   assert.deepEqual(fehler, []);
   await ctx.close();
@@ -81,7 +81,7 @@ test('Blindfahrt: Strecke bleibt verdeckt, Ziel erreichen zeigt das Finale', asy
   assert.ok(!(await page.isVisible('#v-strecke .band')));
   await page.screenshot({ path: `${ERGEBNISSE}/e4-blind-strecke.png` });
   await page.click('#ziel');
-  assert.equal(await page.textContent('.d-text'), 'Ziel erreichen? Danach seht ihr alles.');
+  assert.equal(await page.textContent('.d-text'), 'Jetzt aufdecken? Danach seht ihr alles.');
   await page.click('#dialog button.haupt');
   await page.waitForSelector('#v-finale:not([hidden])');
   await page.waitForTimeout(1500);
@@ -121,14 +121,14 @@ test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', asy
   console.log(`Wischen: ${Date.now() - t0} ms`);
   await page.click('#zur-ausfahrt');
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-punkt');
-  assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Karussell · 37 Bilder für Instagram');
-  assert.match(await page.locator('.af-punkt').nth(0).textContent(), /Wird auf 2 Teile aufgeteilt\./);
+  assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Carousel · 37 Bilder für Instagram');
+  assert.match(await page.locator('.af-punkt').nth(0).textContent(), /Wird auf 2 Beiträge aufgeteilt\./);
   assert.match(await page.locator('.af-punkt').nth(2).textContent(), /Für das iPhone zu groß, deshalb auf \d+ × \d+ verkleinert\./);
   // Reel über 50 Halte in 15 s wäre zu schnell: Vorschlag eines kürzeren Abschnitts
   const reel = page.locator('.af-punkt').nth(1);
   await reel.locator('.af-laengen button', { hasText: '15 s' }).click();
   await reel.locator('.af-vorschlag').waitFor();
-  assert.match(await reel.locator('.af-vorschlag').textContent(), /^Bei 15 s wird es zu schnell\. Vorschlag: Halt 1 bis \d+\./);
+  assert.match(await reel.locator('.af-vorschlag').textContent(), /^Bei 15 s wird es zu schnell\. Vorschlag: Foto 1 bis \d+\./);
   await reel.locator('.af-vorschlag-ok').click();
   assert.ok(await reel.locator('.af-vorschlag').isHidden());
   const bis = Number(await reel.locator('select').nth(1).inputValue());

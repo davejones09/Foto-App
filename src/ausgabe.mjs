@@ -5,8 +5,8 @@
 import { Kachellager, zeichneBand } from './band.mjs';
 import { stuecke, stueckeIm, bandBreite, breiteVon, lagen, HALT_B, HALT_H, UEBER } from './masse.mjs';
 import {
-  kennzahlen, karussellPlan, bandProfil, KARUSSELL_B, KARUSSELL_H,
-  fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse, endstationLayout,
+  karussellPlan, bandProfil, KARUSSELL_B, KARUSSELL_H,
+  fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse,
 } from './kennzahlen.mjs';
 import { leinwand, ctx2d, alsBlob, freigeben, ladeBitmap, verkleinere, pixel } from './bild.mjs';
 import { T, f } from './texte.mjs';
@@ -36,34 +36,6 @@ async function zeichneBereich(ctx, halte, lager, { s, x0, w, h }) {
   const noetig = stueckeIm(halte, x0, x0 + w / s);
   await Promise.all(noetig.map((st) => lager.hole(halte[st.halt], st.art)));
   zeichneBand(ctx, halte, lager, { s, x0, y0: 0, w, h });
-}
-
-export function endstationText(strecke, halte) {
-  const k = kennzahlen(halte);
-  return [
-    T.endstation,
-    strecke.name,
-    halte.length ? f(T.endZeitraum, { von: datumKurz(halte[0].zeit), bis: datumKurz(halte[halte.length - 1].zeit) }) : '',
-    f(T.endHalte, { n: halte.length, p: k.p ?? '–' }),
-  ];
-}
-
-// Endstation in einen Bereich zeichnen (x, y, Breite, Höhe des Bildes), linksbündig.
-function zeichneEndstation(ctx, zeilen, x, mitteY, groesse, maxBreite = groesse * 14) {
-  ctx.save();
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#ffd400';
-  ctx.fillRect(x, mitteY - groesse * 2.6, groesse * 2.2, groesse * 0.22);
-  ctx.font = `700 ${groesse * 1.15}px -apple-system, system-ui, sans-serif`;
-  ctx.fillText(zeilen[0], x, mitteY - groesse * 1.1, maxBreite);
-  ctx.fillStyle = '#dfe1e3';
-  ctx.font = `600 ${groesse * 0.8}px -apple-system, system-ui, sans-serif`;
-  ctx.fillText(zeilen[1], x, mitteY + groesse * 0.1, maxBreite);
-  ctx.fillStyle = '#8d9297';
-  ctx.font = `400 ${groesse * 0.6}px ui-monospace, Menlo, monospace`;
-  ctx.fillText(zeilen[2], x, mitteY + groesse * 1.1, maxBreite);
-  ctx.fillText(zeilen[3], x, mitteY + groesse * 1.9, maxBreite);
-  ctx.restore();
 }
 
 // --- Karussell: 1296×1620-Ausschnitte des Bands als 1080×1350 JPEG ---
@@ -147,20 +119,6 @@ export async function karussell(strecke, halte, { fortschritt, waechter, plan = 
       ctx.fillStyle = '#0e0f10';
       ctx.fillRect(0, 0, KARUSSELL_B, KARUSSELL_H);
       await zeichneBereich(ctx, halte, lager, { s, x0, w: KARUSSELL_B, h: KARUSSELL_H });
-      if (k === anzahl - 1) {
-        // Das Ende läuft in den dunklen Grund aus, dahinter die Endstation.
-        const ende = (breite - x0) * s;
-        const ausVon = Math.max(0, Math.min(ende - 140, KARUSSELL_B * 0.55));
-        const g = ctx.createLinearGradient(ausVon, 0, Math.max(ausVon + 1, ende), 0);
-        g.addColorStop(0, 'rgba(14,15,16,0)');
-        g.addColorStop(1, 'rgba(14,15,16,1)');
-        ctx.fillStyle = g;
-        ctx.fillRect(ausVon, 0, KARUSSELL_B - ausVon, KARUSSELL_H);
-        ctx.fillStyle = '#0e0f10';
-        ctx.fillRect(Math.round(ende), 0, KARUSSELL_B, KARUSSELL_H);
-        const textX = Math.max(ende + 30, KARUSSELL_B * 0.6);
-        zeichneEndstation(ctx, endstationText(strecke, halte), textX, KARUSSELL_H / 2, Math.min(40, (KARUSSELL_B - textX) / 8), KARUSSELL_B - textX - 24);
-      }
       bilder.push(await alsBlob(c, 'image/jpeg', 0.92));
       fortschritt?.((k + 1) / anzahl);
       await kurz();
@@ -254,9 +212,7 @@ export async function fahrtWeg() {
 function fahrtBildMaler(strecke, halte, tempo) {
   const plan = fahrtPlan(halte, tempo);
   const lager = new Kachellager(6);
-  const zeilen = endstationText(strecke, halte);
   const breite = bandBreite(halte) * plan.f;
-  const endeStart = plan.dauer - 2.4;
   async function male(ctx, t) {
     const x = plan.x(t);
     ctx.fillStyle = '#0e0f10';
@@ -264,14 +220,6 @@ function fahrtBildMaler(strecke, halte, tempo) {
     // Kurzes Band: mittig zeigen
     const x0 = breite < FAHRT_B ? -(FAHRT_B - breite) / 2 / plan.f : x / plan.f;
     await zeichneBereich(ctx, halte, lager, { s: plan.f, x0, w: FAHRT_B, h: FAHRT_H });
-    if (t > endeStart) {
-      const a = Math.min(1, (t - endeStart) / 0.8);
-      ctx.fillStyle = `rgba(14,15,16,${(a * 0.88).toFixed(3)})`;
-      ctx.fillRect(0, 0, FAHRT_B, FAHRT_H);
-      ctx.globalAlpha = a;
-      zeichneEndstation(ctx, zeilen, 90, FAHRT_H / 2, 64, FAHRT_B - 180);
-      ctx.globalAlpha = 1;
-    }
   }
   return { plan, male, ende: () => lager.leeren() };
 }
@@ -348,27 +296,15 @@ export async function reelWeg() {
   return w.typ.startsWith('video/mp4') ? w : null;
 }
 
-// Endstation-Zahlen beziehen sich auf den gewählten Abschnitt.
 const abschnittHalte = (halte, plan) => halte.slice(plan.von, plan.bis + 1);
 
 function reelBildMaler(strecke, halte, plan) {
   const lager = new Kachellager(6);
-  const zeilen = endstationText(strecke, abschnittHalte(halte, plan));
-  const layout = endstationLayout();
-  const endeStart = plan.bewegung - 0.2;
   async function male(ctx, t) {
     const xb = plan.xBand(Math.min(t, plan.bewegung));
-    ctx.fillStyle = '#0e0f10';
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, FAHRT_B, FAHRT_H);
     await zeichneBereich(ctx, halte, lager, { s: plan.f, x0: xb, w: FAHRT_B, h: FAHRT_H });
-    if (plan.endstation && t > endeStart) {
-      const a = Math.min(1, (t - endeStart) / 0.8);
-      ctx.fillStyle = `rgba(14,15,16,${(a * 0.88).toFixed(3)})`;
-      ctx.fillRect(0, 0, FAHRT_B, FAHRT_H);
-      ctx.globalAlpha = a;
-      zeichneEndstation(ctx, zeilen, layout.x, layout.mitteY, layout.groesse, layout.maxBreite);
-      ctx.globalAlpha = 1;
-    }
   }
   return { male, ende: () => lager.leeren() };
 }
@@ -504,7 +440,7 @@ export async function einspielen(datei, { fortschritt } = {}) {
         if (!(await pruefe(z))) throw new Error(`Beschädigt: ${name}`);
         bilder[feld] = { daten: await z.blob.arrayBuffer(), typ: 'image/jpeg' };
       }
-      if (!bilder.roh && !bilder.bild) throw new Error('Halt ohne Bild');
+      if (!bilder.roh && !bilder.bild) throw new Error('Foto ohne Bild');
       await db.neuerHalt(h, bilder);
       fortschritt?.((i + 1) / l.length);
     }

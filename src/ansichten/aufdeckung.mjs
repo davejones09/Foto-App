@@ -1,8 +1,7 @@
 // Aufdeckung: einfrieren, Rest ausblenden, Faden zeichnen, herauszoomen, Stempel.
 import { Z, registriere, zeige, neuLaden, erstlaufAbschliessen } from '../zustand.mjs';
 import { T } from '../texte.mjs';
-import { $, Urls, frage, melde, warte } from '../ui.mjs';
-import { bewertung } from '../kern.mjs';
+import { $, Urls, frage, melde, warte, zeigePassung } from '../ui.mjs';
 import { rendere, ctx2d, ladeBitmap, freigeben } from '../bild.mjs';
 import { fertigstellen } from '../naehwerk.mjs';
 import { STANDARD } from '../geometrie.mjs';
@@ -23,7 +22,6 @@ const sFadenLinie = $('.s-faden polyline', v);
 const standbild = $('.standbild', v);
 const sRest = $('.s-rest', v);
 const sRestImg = $('.s-rest img', v);
-const stempel = $('.stempel', v);
 const ansage = $('.auf-ansage', v);
 const aktionen = $('.aktionen', v);
 const naehfehler = $('.naehfehler', v);
@@ -69,8 +67,7 @@ function zuruecksetzen() {
   standbild.hidden = true;
   sRest.hidden = true;
   sRest.style.opacity = '1';
-  stempel.hidden = true;
-  stempel.classList.remove('zeigen');
+  zeigePassung(v, null);
   aktionen.hidden = true;
   naehfehler.hidden = true;
   ansage.textContent = '';
@@ -188,10 +185,7 @@ async function betreten(daten) {
     if (meinLauf !== lauf) return;
   }
 
-  $('.st-wert', stempel).textContent = h.wert == null ? '–' : String(h.wert);
-  $('.st-text', stempel).textContent = h.wert == null ? '' : bewertung(h.wert);
-  stempel.hidden = false;
-  if (!fertig) stempel.classList.add('zeigen');
+  zeigePassung(v, h.wert);
 
   if (erstlauf && i === 1) {
     erstlaufEnde = true;

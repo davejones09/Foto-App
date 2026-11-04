@@ -102,7 +102,7 @@ test('Kontrast: drei gleichfarbige Halte führen zu einer Idee dagegen', () => {
   assert.equal(monotonie(blau.slice(0, 2)), null);
   const r = waehleIdee({ ...m, monoton: monotonie(blau) });
   assert.equal(r.idee.gegen, 'blau');
-  assert.match(r.satz, /^Die letzten drei Halte waren alle blau\. /);
+  assert.match(r.satz, /^Die letzten drei Fotos waren alle blau\. /);
   // Ist die Kontrast-Idee schon benutzt, geht es normal weiter
   const r2 = waehleIdee({ ...m, monoton: 'blau' }, { benutzt: new Set(['gegen-blau']) });
   assert.ok(!r2.idee.gegen);

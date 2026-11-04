@@ -415,7 +415,7 @@ async function bauen() {
       const t0 = performance.now();
       try {
         await offeneFertigstellen(Z.strecke.id);
-        serienEintrag(`Nachgeholt: ${offen} offene Halte, ${Math.round(performance.now() - t0)} ms`);
+        serienEintrag(`Nachgeholt: ${offen} offene Fotos, ${Math.round(performance.now() - t0)} ms`);
       } catch (err) {
         serienEintrag(`Nachholen gescheitert, kein weiteres Foto angefasst: ${fehlerText(err)}`);
         throw err;

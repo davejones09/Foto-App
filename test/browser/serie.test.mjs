@@ -55,7 +55,7 @@ test('Serie: beste Reihenfolge ab dem letzten Halt, Aufnahmezeit, Ziehen, Entfer
   await bereit(page);
   assert.equal(await wartend(page), 4, 'alle Rohbilder gesichert');
   assert.deepEqual(await reihe(page), ['foto0.jpg', 'foto1.jpg', 'foto2.jpg', 'foto3.jpg']);
-  assert.equal(await page.textContent('#v-serie .se-status'), 'Schließt an Halt 1 an.');
+  assert.equal(await page.textContent('#v-serie .se-status'), 'Schließt an Foto 1 an.');
   const werte = await page.$$eval('#v-serie .se-wert', (l) => l.map((x) => Number(x.textContent)));
   console.log(`Werte: ${werte}`);
   assert.ok(werte[0] >= 40, `Anschluss an den Kamera-Halt ${werte}`);
@@ -140,7 +140,7 @@ test('Abbruch beim Bauen: nichts geht verloren, die Serie läuft mit derselben R
   await page.reload();
   await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && window.nahtlos.zustand().fertig === 2, null, 30000);
   await page.waitForSelector('#meldung:not([hidden])');
-  assert.equal(await page.textContent('#meldung p'), 'Eine Serie aus der Mediathek wartet noch.');
+  assert.equal(await page.textContent('#meldung p'), 'Eine Auswahl aus der Mediathek wartet noch.');
   await page.click('#meldung button.haupt');
   await page.waitForSelector('#v-serie:not([hidden])');
   await bereit(page);

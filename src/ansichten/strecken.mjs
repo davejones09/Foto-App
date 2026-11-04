@@ -24,7 +24,7 @@ async function eintrag(s) {
   const knopf = el('button', { klasse: 'sl-oeffnen', onclick: () => oeffnen(s.id) },
     vorschau,
     el('span', { klasse: 'sl-name', text: s.name }),
-    el('span', { klasse: 'sl-info', text: `${f(T.streckeKopf, { name: datum, n: halte.length })}${s.blind && !s.ziel ? ' · Blindfahrt' : ''}` }));
+    el('span', { klasse: 'sl-info', text: `${f(T.streckeKopf, { name: datum, n: halte.length })}${s.blind && !s.ziel ? ` · ${T.ueberraschung}` : ''}` }));
   const loeschen = el('button', { klasse: 'sl-loeschen', text: T.loeschen, onclick: () => loeschenFragen(s, halte.length) });
   return el('div', { klasse: 'sl-eintrag' + (Z.strecke?.id === s.id ? ' aktiv' : '') }, knopf, loeschen);
 }
@@ -73,7 +73,7 @@ export async function neueStreckeFragen() {
     zeige('sucher');
     return true;
   } catch (err) {
-    protokolliere('neue Strecke', err);
+    protokolliere('neues Projekt', err);
     melde(err instanceof db.SpeicherVoll ? T.speicherVoll : T.allgemein);
     return false;
   }

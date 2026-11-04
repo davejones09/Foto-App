@@ -236,7 +236,7 @@ test('Alte Strecke: kein Neurechnen beim Start, Neu nähen nur nach Rückfrage',
 
   await page.evaluate(async () => (await import('./src/zustand.mjs')).zeige('strecke'));
   await page.waitForSelector('#meldung:not([hidden])');
-  assert.match(await page.textContent('#meldung p'), /noch mit Farbangleichung genäht/);
+  assert.match(await page.textContent('#meldung p'), /noch mit Farbangleichung zusammengesetzt/);
   await page.click('#meldung button:has-text("Später")');
   await page.waitForTimeout(300);
   assert.equal((await page.evaluate(async () => (await (await import('./src/speicher.mjs')).halte(localStorage.getItem('nahtlos-aktiv')))[1].verfahren)), null, 'Später ändert nichts');
@@ -245,12 +245,12 @@ test('Alte Strecke: kein Neurechnen beim Start, Neu nähen nur nach Rückfrage',
   await page.reload();
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher', null, 30000);
   await page.evaluate(async () => (await import('./src/zustand.mjs')).zeige('strecke'));
-  await page.waitForSelector('#meldung:not([hidden]) button:has-text("Neu nähen")');
-  await page.click('#meldung button:has-text("Neu nähen")');
+  await page.waitForSelector('#meldung:not([hidden]) button:has-text("Neu zusammensetzen")');
+  await page.click('#meldung button:has-text("Neu zusammensetzen")');
   await page.waitForSelector('#dialog:not([hidden])');
   assert.match(await page.textContent('#dialog .d-text'), /1 Übergänge neu rechnen\?/);
-  await page.click('#dialog button:has-text("Neu nähen")');
-  await warteAuf(page, () => /neu genäht/.test(document.querySelector('#meldung p').textContent), null, 60000);
+  await page.click('#dialog button:has-text("Neu zusammensetzen")');
+  await warteAuf(page, () => /neu zusammengesetzt/.test(document.querySelector('#meldung p').textContent), null, 60000);
   const danach = await page.evaluate(async () => {
     const db = await import('./src/speicher.mjs');
     return (await db.halte(localStorage.getItem('nahtlos-aktiv'))).map((h) => h.verfahren);

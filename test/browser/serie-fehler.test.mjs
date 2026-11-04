@@ -9,7 +9,7 @@ let b;
 before(async () => { s = await server(); b = await browser(); });
 after(async () => { await b?.close(); await s?.schliessen(); });
 
-const FEHLERTEXT = 'Das Nähen hat nicht geklappt. Tippe nochmal auf Bauen.';
+const FEHLERTEXT = 'Das Zusammensetzen hat nicht geklappt. Tippe nochmal auf Zusammensetzen.';
 const HOEHEN = [0.55, 0.4, 0.62, 0.47, 0.34];
 const FARBEN = [['#c9b48e', '#5a3522'], ['#b4c8a0', '#3c5a28'], ['#f0c896', '#46465a'], ['#a0aac8', '#28322d']];
 
@@ -104,7 +104,7 @@ test('Dauerhafter Fehler: kein weiteres Foto wird angefasst, nach dem Ende des F
   assert.match(serienLog, /Nachholen gescheitert, kein weiteres Foto angefasst: Testfehler/);
   // Zurück zum Sucher: Die wartende Serie meldet sich, der Diagnosebericht nennt den echten Fehler.
   await page.click('#se-zurueck');
-  await warteAuf(page, () => document.querySelector('#meldung p').textContent === 'Eine Serie aus der Mediathek wartet noch.' && !document.querySelector('#meldung').hidden);
+  await warteAuf(page, () => document.querySelector('#meldung p').textContent === 'Eine Auswahl aus der Mediathek wartet noch.' && !document.querySelector('#meldung').hidden);
   await page.click('#meldung button.neben2'); // Später
   for (let i = 0; i < 5; i++) await page.click('#version');
   await page.waitForSelector('#diagnose:not([hidden])');
@@ -117,7 +117,7 @@ test('Dauerhafter Fehler: kein weiteres Foto wird angefasst, nach dem Ende des F
   await page.evaluate(() => { window.__bmFehler = 0; });
   await page.reload();
   await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && !document.querySelector('#meldung').hidden, null, 30000);
-  assert.equal(await page.textContent('#meldung p'), 'Eine Serie aus der Mediathek wartet noch.');
+  assert.equal(await page.textContent('#meldung p'), 'Eine Auswahl aus der Mediathek wartet noch.');
   await page.click('#meldung button.haupt');
   await page.waitForSelector('#v-serie:not([hidden])');
   await bereit(page);

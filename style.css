@@ -8,6 +8,7 @@
   --rot: #e8392f;
   --gruen: #12c26b;
   --aus: #26292c;
+  --akzent: #8fb1ff;
   --oben: env(safe-area-inset-top, 0px);
   --unten: env(safe-area-inset-bottom, 0px);
   --links: env(safe-area-inset-left, 0px);
@@ -82,18 +83,15 @@ button:active { filter: brightness(0.85); }
 .einf-knoepfe .haupt { min-width: 140px; min-height: 52px; font-size: 17px; }
 .sl-hilfe { text-align: center; margin: 0; flex: none; }
 
-/* Kopf mit Signal und Wert */
+/* Kopf mit der Passung: Zahl, Text, schmaler Balken */
 .kopf { height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: none; }
-.signal { display: flex; gap: 10px; height: 14px; transition: transform .3s; }
-.signal i { width: 14px; height: 14px; border-radius: 50%; background: var(--aus); transition: background .2s, box-shadow .2s; }
-.signal.an-rot .rot { background: var(--rot); box-shadow: 0 0 10px var(--rot); }
-.signal.an-gelb .gelb { background: var(--gelb); box-shadow: 0 0 10px var(--gelb); }
-.signal.an-gruen .gruen { background: var(--gruen); box-shadow: 0 0 10px var(--gruen); }
-.signal.blinkt .gruen { animation: blinken 1.4s ease-in-out infinite; }
-@keyframes blinken { 50% { background: var(--aus); box-shadow: none; } }
-.wertzeile { display: flex; align-items: baseline; gap: 12px; min-height: 48px; }
-.wert { font: 600 42px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
-.bewertung { font-size: 16px; color: var(--text2); min-width: 10ch; }
+.passung { display: grid; grid-template-columns: auto auto; align-items: baseline; column-gap: 12px; row-gap: 8px; min-height: 58px; transition: transform .3s; }
+.passung .wert { font: 600 40px/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
+.passung .bewertung { font-size: 16px; color: var(--text2); min-width: 9ch; }
+.p-balken { grid-column: 1 / -1; justify-self: center; width: 168px; height: 4px; border-radius: 2px; background: var(--linie); overflow: hidden; }
+.p-balken i { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--text2); transition: width .15s linear, background .3s; }
+.passung.gut .p-balken i { background: var(--akzent); }
+.passung.leer { visibility: hidden; }
 
 /* Rahmen 4:5 */
 .rahmen {
@@ -183,17 +181,6 @@ button:active { filter: brightness(0.85); }
 .standbild { position: absolute; top: 0; height: 100%; }
 .s-rest { position: absolute; top: 0; height: 100%; overflow: hidden; }
 .s-rest img { position: absolute; top: 0; right: 0; height: 100%; width: auto; opacity: var(--deckkraft, .55); }
-.stempel {
-  position: absolute; left: 70%; top: 76%;
-  transform: translate(-50%, -50%) rotate(-7deg);
-  border: 4px solid var(--gelb); color: var(--gelb); border-radius: 10px; padding: 8px 18px 10px;
-  display: flex; flex-direction: column; align-items: center; background: rgba(14, 15, 16, .8);
-  pointer-events: none;
-}
-.stempel.zeigen { animation: stempeln .3s cubic-bezier(.2, 1.5, .4, 1) both; }
-@keyframes stempeln { from { transform: translate(-50%, -50%) rotate(-7deg) scale(1.9); opacity: 0; } }
-.st-wert { font: 700 54px/1 var(--mono); font-variant-numeric: tabular-nums; }
-.st-text { font-size: 15px; font-weight: 600; }
 .aktionen, .knopfreihe { display: flex; gap: 10px; justify-content: center; align-items: center; padding: 12px 16px calc(12px + 0px); flex: none; margin-top: auto; }
 .aktionen .haupt { min-width: 132px; min-height: 52px; font-size: 17px; }
 .naehfehler { text-align: center; padding: 8px 24px; }

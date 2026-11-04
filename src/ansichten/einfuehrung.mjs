@@ -1,5 +1,5 @@
 // Einführung: drei kurze Bildschirme mit gezeichneten, animierten Beispielen. Keine fremden Fotos.
-// Kommt nur beim ersten Start vor der Kamera-Freigabe und lässt sich in den Strecken wieder öffnen.
+// Kommt nur beim ersten Start und lässt sich in den Einstellungen wieder öffnen.
 import { registriere, zeige } from '../zustand.mjs';
 import { T } from '../texte.mjs';
 import { $, el } from '../ui.mjs';
@@ -23,10 +23,11 @@ async function gesehen() {
 
 // --- Gezeichnete Beispielszenen. Jede Linie liegt an beiden Rändern auf Höhe L. ---
 
-const GELB = '#ffd400';
-const GRUEN = '#12c26b';
-const ROT = '#e8392f';
-const GRUND = '#0e0f10';
+const AKZENT = '#8fb1ff';
+const HELL = '#ececee';
+const MATT = '#a3a6ab';
+const LINIE = '#2e3033';
+const GRUND = '#111213';
 const MONO = 'ui-monospace, "SF Mono", Menlo, monospace';
 const SANS = '-apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 
@@ -169,7 +170,7 @@ function faden(ctx, x, y0, y1, alpha, breite = 2, bis = 1) {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.strokeStyle = GELB;
+  ctx.strokeStyle = AKZENT;
   ctx.lineWidth = breite;
   ctx.beginPath();
   const ende = y0 + (y1 - y0) * bis;
@@ -183,7 +184,7 @@ function faden(ctx, x, y0, y1, alpha, breite = 2, bis = 1) {
 
 function abblenden(ctx, cw, ch, a) {
   if (a <= 0) return;
-  ctx.fillStyle = `rgba(14,15,16,${a.toFixed(3)})`;
+  ctx.fillStyle = `rgba(17,18,19,${a.toFixed(3)})`;
   ctx.fillRect(0, 0, cw, ch);
 }
 
@@ -272,17 +273,31 @@ function linieZuZeit(t) {
   return L + Math.sin(t * 7.3) * zittern + Math.sin(t * 3.1) * zittern * 0.6;
 }
 
-function signal(ctx, cx, y, wert, t) {
-  const art = wert >= 70 ? 2 : wert >= 40 ? 1 : 0;
-  const farben = [ROT, GELB, GRUEN];
-  const blinkt = wert >= 90 && Math.sin(t * Math.PI * 1.4) < -0.2;
-  for (let i = 0; i < 3; i++) {
-    const an = i === art && !blinkt;
-    ctx.fillStyle = an ? farben[i] : '#26292c';
-    if (an) { ctx.shadowColor = farben[i]; ctx.shadowBlur = 10; }
-    ctx.beginPath(); ctx.arc(cx + (i - 1) * 24, y, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-  }
+// Passung wie im Sucher: Zahl, Text und ein schmaler Balken darunter.
+function passung(ctx, cw, y, wert) {
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  const zahl = String(wert).padStart(2, ' ');
+  const text = bewertung(wert);
+  ctx.font = `600 34px ${MONO}`;
+  const bz = ctx.measureText('00').width;
+  ctx.font = `15px ${SANS}`;
+  const bt = Math.min(ctx.measureText(text).width, cw - bz - 30);
+  const lx = (cw - (bz + 10 + bt)) / 2;
+  ctx.fillStyle = HELL;
+  ctx.font = `600 34px ${MONO}`;
+  ctx.fillText(zahl, lx, y + 34);
+  ctx.fillStyle = MATT;
+  ctx.font = `15px ${SANS}`;
+  ctx.fillText(text, lx + bz + 10, y + 32, cw - (lx + bz + 10) - 8);
+  const bw = Math.min(170, cw * 0.5);
+  const bx = (cw - bw) / 2;
+  ctx.fillStyle = LINIE;
+  rundRechteck(ctx, bx, y + 46, bw, 4, 2);
+  ctx.fill();
+  ctx.fillStyle = wert >= 70 ? AKZENT : MATT;
+  rundRechteck(ctx, bx, y + 46, Math.max(4, (bw * wert) / 100), 4, 2);
+  ctx.fill();
 }
 
 function bild2(ctx, cw, ch, t) {
@@ -298,23 +313,8 @@ function bild2(ctx, cw, ch, t) {
   const d = Math.abs(L - ZIEL);
   const wert = Math.round(klemme(97 - d * 380, 8, 97));
 
-  // Kopf: Signal, Wert und Bewertung
-  signal(ctx, cw / 2, oy + 14, wert, t);
-  ctx.textBaseline = 'alphabetic';
-  ctx.textAlign = 'left';
-  const zahl = String(wert).padStart(2, ' ');
-  const text = bewertung(wert);
-  ctx.font = `600 34px ${MONO}`;
-  const bz = ctx.measureText('00').width;
-  ctx.font = `15px ${SANS}`;
-  const bt = Math.min(ctx.measureText(text).width, cw - bz - 30);
-  const lx = (cw - (bz + 10 + bt)) / 2;
-  ctx.fillStyle = '#dfe1e3';
-  ctx.font = `600 34px ${MONO}`;
-  ctx.fillText(zahl, lx, oy + 60);
-  ctx.fillStyle = '#8d9297';
-  ctx.font = `15px ${SANS}`;
-  ctx.fillText(text, lx + bz + 10, oy + 58, cw - (lx + bz + 10) - 8);
+  // Kopf: Passung als Zahl mit Balken
+  passung(ctx, cw, oy + 4, wert);
 
   const zoom = phase(t, 6.1, 0.8);
   if (t < aufnahme || zoom === 0) {
@@ -335,9 +335,9 @@ function bild2(ctx, cw, ch, t) {
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.fillRect(fx + rb - 0.5, fy, 1, fh);
       faden(ctx, fx + rb * 0.48, fy, fy + fh, 0.9, 1.5);
-      // Marke: wird grün, wenn die Linie sie trifft
+      // Hilfslinie: leuchtet, wenn die Linie sie trifft
       const my = fy + ZIEL * fh;
-      ctx.fillStyle = d < 0.02 ? GRUEN : GELB;
+      ctx.fillStyle = d < 0.02 ? AKZENT : HELL;
       ctx.beginPath(); ctx.moveTo(fx + rb, my - 10); ctx.lineTo(fx + rb, my + 10); ctx.lineTo(fx + rb - 13, my); ctx.closePath(); ctx.fill();
       // Hinweis: das iPhone wandert, die Linie wandert mit
       if (t < 3.4) {
@@ -371,119 +371,75 @@ function bild2(ctx, cw, ch, t) {
     ctx.drawImage(streifen, sx, 0, quelleB - sx, SH, ursprungX - (SCHRITT - sx) * s, dy, (quelleB - sx) * s, SH * s);
     ctx.restore();
     if (zoom < 1) faden(ctx, ursprungX + (UE * s) / 2, dy, dy + SH * s, 1 - phase(t, 6.0, 0.6), 2, zeichnen);
-    // Stempel
-    const st = klemme((t - 7.0) / 0.3);
-    if (st > 0) {
-      const gross = misch(1.8, 1, weich(st));
-      ctx.save();
-      ctx.globalAlpha = st;
-      ctx.translate(Math.min(cw * 0.66, cw - 90), dy + SH * s * 0.78);
-      ctx.rotate((-7 * Math.PI) / 180);
-      ctx.scale(gross, gross);
-      ctx.font = `600 11px ${SANS}`;
-      const sb = Math.max(124, ctx.measureText(bewertung(wert)).width + 28);
-      ctx.fillStyle = 'rgba(14,15,16,0.82)';
-      rundRechteck(ctx, -sb / 2, -36, sb, 72, 9);
-      ctx.fill();
-      ctx.strokeStyle = GELB;
-      ctx.lineWidth = 3.5;
-      ctx.stroke();
-      ctx.fillStyle = GELB;
-      ctx.textAlign = 'center';
-      ctx.font = `700 32px ${MONO}`;
-      ctx.fillText(String(wert), 0, 2);
-      ctx.font = `600 11px ${SANS}`;
-      ctx.fillText(bewertung(wert), 0, 22);
-      ctx.restore();
-    }
   }
   abblenden(ctx, cw, ch, phase(t, DAUER2 - 0.7, 0.7));
 }
 
-// --- Bildschirm 3: was am Ende rauskommt ---
+// --- Bildschirm 3: was am Ende rauskommt: Carousel, Reel und Collage ---
 const DAUER3 = 10;
 function bild3(ctx, cw, ch, t) {
   const sw = cw * 0.94;
   const sh = (sw * SH) / streifen.width;
   const sx0 = (cw - sw) / 2;
-  // Höhe der unteren Geräte vorab, damit alles senkrecht mittig steht
-  const hUnten = Math.min(ch - sh - 76, ((cw * 0.94) / (0.8 + 9 / 16 + 26 / Math.max(1, ch))) * 1);
+  const hUnten = Math.min(ch - sh - 76, (cw * 0.94) / (0.8 + 9 / 16 + 0.8 + 0.12));
   const sy0 = Math.max(8, (ch - (sh + 30 + hUnten + 32)) / 2);
   const f = sw / streifen.width;
-  const kachel = SH * 0.8; // 4:5-Ausschnitt in Streifenpixeln
-  const kacheln = Math.ceil(streifen.width / kachel);
+  // Das Band geht genau in ganze Slides auf (in der App per Zoom oder Beschnitt).
+  const kacheln = Math.max(1, Math.round(streifen.width / (SH * 0.8)));
+  const kachel = streifen.width / kacheln;
   ctx.drawImage(streifen, sx0, sy0, sw, sh);
-  // Schnittlinien fürs Karussell
   ctx.save();
   ctx.setLineDash([5, 4]);
   ctx.lineWidth = 2;
   for (let k = 1; k < kacheln; k++) {
     const a = klemme((t - 0.4 - k * 0.25) / 0.3);
-    ctx.strokeStyle = `rgba(255,212,0,${a.toFixed(3)})`;
+    ctx.strokeStyle = `rgba(143,177,255,${a.toFixed(3)})`;
     const x = sx0 + k * kachel * f;
     ctx.beginPath(); ctx.moveTo(x, sy0 - 4); ctx.lineTo(x, sy0 + sh + 4); ctx.stroke();
   }
   ctx.restore();
 
-  // Unten: Karussell (4:5) und Fahrt (9:16)
+  // Unten: Carousel (4:5), Reel (9:16) und Collage (4:5)
   const oben = sy0 + sh + 30;
-  const verfuegbar = Math.min(ch - oben - 32, hUnten);
-  let kh = verfuegbar;
+  let kh = Math.min(ch - oben - 32, hUnten);
   let kw = kh * 0.8;
   let vw = (kh * 9) / 16;
-  const luecke = 26;
-  const passt = (cw * 0.94) / (kw + luecke + vw);
-  if (passt < 1) { kh *= passt; kw *= passt; vw *= passt; }
-  const gesamtB = kw + luecke + vw;
+  let luecke = 18;
+  const passt = (cw * 0.94) / (kw + luecke + vw + luecke + kw);
+  if (passt < 1) { kh *= passt; kw *= passt; vw *= passt; luecke *= passt; }
+  const gesamtB = kw + luecke + vw + luecke + kw;
   const kx = (cw - gesamtB) / 2;
   const vx = kx + kw + luecke;
-  const erscheinen = phase(t, 1.3, 0.5);
+  const cx = vx + vw + luecke;
   ctx.save();
-  ctx.globalAlpha = erscheinen;
+  ctx.globalAlpha = phase(t, 1.3, 0.5);
 
-  // Karussell: wischt Bild für Bild durch, ohne Stufe
+  // Carousel: wischt Slide für Slide durch, die letzte Slide ist voll
   const takt = 1.7;
   const lauf = Math.max(0, t - 1.8);
   const k = Math.floor(lauf / takt);
   const im = lauf - k * takt;
   const pos = Math.min(kacheln - 1, k + weich((im - 1.1) / 0.55));
-  const posKlar = Math.min(kacheln - 1, pos);
+  const ks = kh / SH;
+  const kz = kw / (kachel * ks); // kleiner Zoom, damit die Slide genau passt
   ctx.save();
   rundRechteck(ctx, kx, oben, kw, kh, 8);
   ctx.clip();
-  ctx.fillStyle = GRUND;
-  ctx.fillRect(kx, oben, kw, kh);
-  const ks = kh / SH;
-  ctx.drawImage(streifen, kx - posKlar * kachel * ks, oben, streifen.width * ks, kh);
-  // Hinter dem Bandende: Endstation
-  const ende = kx - posKlar * kachel * ks + streifen.width * ks;
-  if (ende < kx + kw) {
-    ctx.fillStyle = GRUND;
-    ctx.fillRect(ende, oben, kx + kw - ende, kh);
-    ctx.font = `700 12px ${SANS}`;
-    ctx.textAlign = 'left';
-    if (kx + kw - ende >= ctx.measureText(T.endstation).width + 18) {
-      ctx.fillStyle = GELB;
-      ctx.fillRect(ende + 9, oben + kh / 2 - 16, 22, 3);
-      ctx.fillText(T.endstation, ende + 9, oben + kh / 2 + 2);
-    }
-  }
+  ctx.drawImage(streifen, kx - pos * kachel * ks * kz, oben - (kh * (kz - 1)) / 2, streifen.width * ks * kz, kh * kz);
   ctx.restore();
-  ctx.strokeStyle = '#3a3e42';
+  ctx.strokeStyle = LINIE;
   ctx.lineWidth = 2;
   rundRechteck(ctx, kx, oben, kw, kh, 8);
   ctx.stroke();
-  // Punkte unter dem Karussell
   for (let i = 0; i < kacheln; i++) {
-    ctx.fillStyle = Math.round(posKlar) === i ? GELB : '#3a3e42';
-    ctx.beginPath(); ctx.arc(kx + kw / 2 + (i - (kacheln - 1) / 2) * 12, oben + kh + 10, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = Math.round(pos) === i ? HELL : LINIE;
+    ctx.beginPath(); ctx.arc(kx + kw / 2 + (i - (kacheln - 1) / 2) * 10, oben + kh + 10, 2.5, 0, Math.PI * 2); ctx.fill();
   }
-  // Oben zeigt ein Rahmen, welcher Ausschnitt gerade dran ist.
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 2;
-  ctx.strokeRect(sx0 + posKlar * kachel * f, sy0, Math.min(kachel, streifen.width - posKlar * kachel) * f, sh);
+  ctx.strokeRect(sx0 + pos * kachel * f, sy0, kachel * f, sh);
 
-  // Fahrt: fährt gleichmäßig durch die ganze Strecke
+  // Reel: fährt gleichmäßig durch alle Fotos
   ctx.save();
   rundRechteck(ctx, vx, oben, vw, kh, 8);
   ctx.clip();
@@ -494,16 +450,41 @@ function bild3(ctx, cw, ch, t) {
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.beginPath(); ctx.moveTo(vx + 10, oben + 10); ctx.lineTo(vx + 10, oben + 26); ctx.lineTo(vx + 23, oben + 18); ctx.closePath(); ctx.fill();
   ctx.restore();
-  ctx.strokeStyle = '#3a3e42';
+  ctx.strokeStyle = LINIE;
   rundRechteck(ctx, vx, oben, vw, kh, 8);
   ctx.stroke();
 
-  // Beschriftung
-  ctx.fillStyle = '#8d9297';
+  // Collage: vier Felder aus den Szenen, eines groß
+  ctx.save();
+  rundRechteck(ctx, cx, oben, kw, kh, 8);
+  ctx.clip();
+  ctx.fillStyle = '#f2f2f3';
+  ctx.fillRect(cx, oben, kw, kh);
+  const g = Math.max(2, kw * 0.025);
+  const felder = [[0, 0, 1, 0.58], [0, 0.58, 0.5, 0.42], [0.5, 0.58, 0.5, 0.42]];
+  felder.forEach(([fx, fy, fw, fh], i) => {
+    const q = szenenBilder[(i + Math.floor(t / 3)) % szenenBilder.length];
+    const x = cx + fx * kw + g / 2;
+    const y = oben + fy * kh + g / 2;
+    const w = fw * kw - g;
+    const h = fh * kh - g;
+    const s = Math.max(w / SW, h / SH);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.drawImage(q, x + (w - SW * s) / 2, y + (h - SH * s) / 2, SW * s, SH * s);
+    ctx.restore();
+  });
+  ctx.restore();
+  ctx.strokeStyle = LINIE;
+  rundRechteck(ctx, cx, oben, kw, kh, 8);
+  ctx.stroke();
+
+  ctx.fillStyle = MATT;
   ctx.font = `13px ${SANS}`;
   ctx.textAlign = 'center';
   ctx.fillText(T.einfKarussell, kx + kw / 2, oben + kh + 28);
   ctx.fillText(T.einfReel, vx + vw / 2, oben + kh + 28);
+  ctx.fillText(T.einfCollage, cx + kw / 2, oben + kh + 28);
   ctx.restore();
   abblenden(ctx, cw, ch, phase(t, DAUER3 - 0.7, 0.7));
 }

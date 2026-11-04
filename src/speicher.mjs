@@ -146,7 +146,7 @@ export async function blob(meta, feld) {
 // Wie blob(), aber mit klarer Fehlermeldung, wenn die Daten fehlen.
 export async function blobPflicht(meta, feld) {
   const b = await blob(meta, feld);
-  if (!b) throw new Error(`Bilddaten fehlen oder sind unlesbar: ${feld} von Halt ${(meta?.index ?? 0) + 1}`);
+  if (!b) throw new Error(`Bilddaten fehlen oder sind unlesbar: ${feld} von Foto ${(meta?.index ?? 0) + 1}`);
   return b;
 }
 
@@ -173,7 +173,7 @@ export async function aendereStrecke(id, felder) {
   return tx('strecken', 'readwrite', async (t) => {
     const st = t.objectStore('strecken');
     const s = await anfrage(st.get(id));
-    if (!s) throw new Error('Strecke fehlt');
+    if (!s) throw new Error('Projekt fehlt');
     Object.assign(s, felder);
     await anfrage(st.put(s));
     return s;
@@ -233,7 +233,7 @@ export async function aendereHalt(id, felder = {}, dateien = null) {
   const h = await tx(['halte', 'dateien'], 'readwrite', async (t) => {
     const st = t.objectStore('halte');
     const alt = await anfrage(st.get(id));
-    if (!alt) throw new Error('Halt fehlt');
+    if (!alt) throw new Error('Foto fehlt');
     for (const [feld, v] of Object.entries(verweise)) {
       if (v === null && istVerweis(alt[feld])) t.objectStore('dateien').delete(alt[feld].schluessel);
     }

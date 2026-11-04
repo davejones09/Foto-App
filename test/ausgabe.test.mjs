@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { kennzahlen, karussellAnzahl, beitraege, fahrtPlan, gesamtGroesse, TEMPI, FAHRT_B } from '../src/kennzahlen.mjs';
 import { bandBreite } from '../src/masse.mjs';
 
-test('Kennzahlen: Durchschnitt und Pünktlichkeit zählen nur Anschlüsse', () => {
+test('Kennzahlen: Durchschnitt zählt nur Passungen ab dem zweiten Foto', () => {
   const h = [{ index: 0, wert: null }, { index: 1, wert: 90 }, { index: 2, wert: 50 }, { index: 3, wert: 70 }, { index: 4, wert: 10 }];
-  assert.deepEqual(kennzahlen(h), { n: 5, anschluesse: 4, schnitt: 55, p: 50 });
-  assert.deepEqual(kennzahlen([{ index: 0, wert: null }]), { n: 1, anschluesse: 0, schnitt: null, p: null });
+  assert.deepEqual(kennzahlen(h), { n: 5, anschluesse: 4, schnitt: 55 });
+  assert.deepEqual(kennzahlen([{ index: 0, wert: null }]), { n: 1, anschluesse: 0, schnitt: null });
 });
 
 test('Karussell: Anzahl und Aufteilung in Beiträge', () => {
@@ -54,17 +54,15 @@ test('Gesamtbild: verkleinert nur, wenn es nötig ist', () => {
   assert.ok(Math.abs(gross.b / gross.h / (bandBreite(50) / 1620) - 1) < 0.005);
 });
 
-import { reelPlan, abschnittBereich, endstationLayout, REEL_LAENGEN, REEL_MAX_TEMPO, REEL_RAND, FAHRT_FPS as FPS } from '../src/kennzahlen.mjs';
+import { reelPlan, abschnittBereich, REEL_LAENGEN, REEL_MAX_TEMPO, FAHRT_FPS as FPS } from '../src/kennzahlen.mjs';
 
 test('Reel: Länge bestimmt das Tempo, Dauer und Bildzahl stimmen', () => {
   for (const laenge of REEL_LAENGEN) {
-    for (const endstation of [true, false]) {
-      const p = reelPlan(10, { laenge, endstation });
-      assert.equal(p.dauer, laenge);
-      assert.equal(p.bilder, laenge * FPS);
-      assert.ok(Math.abs(p.xBand(p.bewegung) - (p.x1 - p.sicht)) < 1e-6, 'endet am Abschnittsende');
-      assert.equal(p.bewegung, laenge - (endstation ? 3 : 0));
-    }
+    const p = reelPlan(10, { laenge });
+    assert.equal(p.dauer, laenge);
+    assert.equal(p.bilder, laenge * FPS);
+    assert.ok(Math.abs(p.xBand(p.bewegung) - (p.x1 - p.sicht)) < 1e-6, 'endet am Abschnittsende, auf dem letzten Bild');
+    assert.equal(p.bewegung, laenge, 'kein Abspann');
   }
   assert.ok(reelPlan(10, { laenge: 15 }).tempo > reelPlan(10, { laenge: 90 }).tempo, 'kürzer heißt schneller');
 });
@@ -104,16 +102,6 @@ test('Reel: Abschnitt von bis Halt und Vorschlag bei zu hohem Tempo', () => {
   assert.ok(reelPlan(50, { von: v.von, bis: v.bis + 1, laenge: 15 }).zuSchnell, 'Vorschlag ist der längste mögliche');
   assert.equal(reelPlan(50, { laenge: 90 }).zuSchnell, false);
   assert.equal(reelPlan(5, { laenge: 15 }).vorschlag, null);
-});
-
-test('Reel: Endstation hält oben und unten 250, rechts 60 Pixel Abstand', () => {
-  const l = endstationLayout();
-  for (const z of l.zeilen) {
-    assert.ok(z.oben >= REEL_RAND.oben, `${z.art} oben ${z.oben}`);
-    assert.ok(z.unten <= 1920 - REEL_RAND.unten, `${z.art} unten ${z.unten}`);
-  }
-  assert.ok(l.x >= REEL_RAND.links);
-  assert.ok(l.x + l.maxBreite <= 1080 - REEL_RAND.rechts);
 });
 
 import { karussellPlan, bandProfil, KARUSSELL_VERSATZ_MAX } from '../src/kennzahlen.mjs';

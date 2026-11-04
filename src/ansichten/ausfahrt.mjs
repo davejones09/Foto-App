@@ -11,11 +11,9 @@ const v = $('#v-ausfahrt');
 const liste = $('.af-liste', v);
 const erinnerung = $('.af-erinnerung', v);
 let reelLaenge = 30;
-let reelEndstation = true;
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
-  reelEndstation = localStorage.getItem('nahtlos-reel-endstation') !== '0';
 } catch {}
 let laeuft = false;
 
@@ -109,7 +107,7 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
 function aufbauen() {
   const halte = Z.halte.filter((h) => h.bild);
   const n = halte.length;
-  const name = (Z.strecke.name || 'Strecke').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'strecke';
+  const name = (Z.strecke.name || 'projekt').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'projekt';
   const seit = Z.halte.length - (Z.strecke.gesichertBei || 0);
   erinnerung.hidden = !(seit > 5);
   erinnerung.textContent = f(T.erinnerung, { n: seit });
@@ -162,12 +160,6 @@ function aufbauen() {
       reelAktualisieren();
     },
   })));
-  const endSchalter = el('input', { type: 'checkbox', checked: reelEndstation });
-  endSchalter.addEventListener('change', () => {
-    reelEndstation = endSchalter.checked;
-    try { localStorage.setItem('nahtlos-reel-endstation', reelEndstation ? '1' : '0'); } catch {}
-    reelAktualisieren();
-  });
   const tempoEl = el('p', { klasse: 'af-tempo' });
   const vorschlagText = el('span');
   const vorschlagEl = el('p', { klasse: 'af-vorschlag' }, vorschlagText, ' ',
@@ -191,11 +183,10 @@ function aufbauen() {
     if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
     reelAktualisieren();
   });
-  const reelPlanJetzt = () => reelPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, endstation: reelEndstation });
+  const reelPlanJetzt = () => reelPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge });
   const zusatz = el('div', { klasse: 'af-reel' },
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
-    el('label', { klasse: 'schalter' }, endSchalter, el('span', { text: T.reelEndstation })),
     tempoEl, vorschlagEl);
   const reelKarte = punkt({
     titel: f(T.reel, { laenge: reelLaenge }),

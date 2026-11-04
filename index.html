@@ -55,8 +55,7 @@
 <!-- Sucher -->
 <section id="v-sucher" class="ansicht" hidden>
   <header class="kopf">
-    <div class="signal" aria-hidden="true"><i class="rot"></i><i class="gelb"></i><i class="gruen"></i></div>
-    <div class="wertzeile"><span class="wert"></span><span class="bewertung"></span></div>
+    <div class="passung" aria-live="off"><span class="wert"></span><span class="bewertung"></span><span class="p-balken" aria-hidden="true"><i></i></span></div>
   </header>
   <div class="rahmen" id="sucher-rahmen">
     <video id="video" playsinline muted autoplay></video>
@@ -99,7 +98,7 @@
 
 <!-- Aufdeckung -->
 <section id="v-aufdeckung" class="ansicht" hidden>
-  <header class="kopf"></header>
+  <header class="kopf"><div class="passung" aria-live="off"><span class="wert"></span><span class="bewertung"></span><span class="p-balken" aria-hidden="true"><i></i></span></div></header>
   <div class="buehne">
     <div class="streifen" hidden>
       <img class="s-vor" alt=""><img class="s-neu" alt="">
@@ -108,7 +107,6 @@
     </div>
     <canvas class="standbild"></canvas>
     <div class="s-rest"><img alt=""></div>
-    <div class="stempel" hidden><span class="st-wert"></span><span class="st-text"></span></div>
   </div>
   <p class="ansage auf-ansage" aria-live="polite"></p>
   <div class="naehfehler" hidden>
@@ -125,8 +123,7 @@
 <!-- Feinjustieren -->
 <section id="v-fein" class="ansicht" hidden>
   <header class="kopf">
-    <div class="signal" aria-hidden="true"><i class="rot"></i><i class="gelb"></i><i class="gruen"></i></div>
-    <div class="wertzeile"><span class="wert"></span><span class="bewertung"></span></div>
+    <div class="passung" aria-live="off"><span class="wert"></span><span class="bewertung"></span><span class="p-balken" aria-hidden="true"><i></i></span></div>
   </header>
   <div class="rahmen" id="fein-rahmen">
     <canvas class="fein-bild"></canvas>
@@ -209,7 +206,6 @@
     <span class="platz"></span>
   </header>
   <p class="fp-kennzahlen"></p>
-  <p class="fp-spruch"></p>
   <div class="fp-tabelle" role="table"></div>
 </section>
 

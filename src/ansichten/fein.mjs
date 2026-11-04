@@ -1,8 +1,7 @@
 // Feinjustieren: das neue Foto unter dem Rest schieben, zoomen, drehen. Nur der letzte Halt.
 import { Z, registriere, zeige } from '../zustand.mjs';
 import { T } from '../texte.mjs';
-import { $, melde } from '../ui.mjs';
-import { bewertung } from '../kern.mjs';
+import { $, melde, zeigePassung } from '../ui.mjs';
 import { auftrag, beschaeftigt } from '../rechner.mjs';
 import { leinwand, ctx2d, pixel, ladeBitmap, ladeBild, freigeben, verkleinere } from '../bild.mjs';
 import { begrenze, zeichneTransformiert, STANDARD } from '../geometrie.mjs';
@@ -17,7 +16,6 @@ const bildC = $('.fein-bild', rahmen);
 const restEl = $('.rest', rahmen);
 const restImg = $('img', restEl);
 const fadenLinie = $('.faden polyline', restEl);
-const signal = $('.signal', v);
 const wertEl = $('.wert', v);
 const bewEl = $('.bewertung', v);
 const ladenEl = $('.kamerastatus', rahmen);
@@ -73,9 +71,7 @@ async function analysieren() {
     if (r.leer || !daten) return;
     glatt = glatt == null ? r.wert : glatt * 0.5 + r.wert * 0.5;
     const w = Math.round(glatt);
-    wertEl.textContent = String(w);
-    bewEl.textContent = bewertung(w);
-    signal.className = 'signal ' + (w >= 90 ? 'an-gruen blinkt' : w >= 70 ? 'an-gruen' : w >= 40 ? 'an-gelb' : 'an-rot');
+    zeigePassung(v, w);
     fadenLinie.setAttribute('points', r.pfad.map((x, y) => `${x + 0.5},${y + 0.5}`).join(' '));
   } catch (err) {
     protokolliere('fein', err);
@@ -150,7 +146,7 @@ async function betreten(d) {
   glatt = null;
   wertEl.textContent = '';
   bewEl.textContent = '';
-  signal.className = 'signal';
+  zeigePassung(v, null);
   fadenLinie.setAttribute('points', '');
   ladenEl.hidden = false;
   const { halt } = d;

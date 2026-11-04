@@ -61,14 +61,14 @@ async function speicherBericht() {
   } catch (e) { zeilen.push(`Dateien: Fehler ${e.message}`); }
   try {
     const b = await db.beschaedigteHalte();
-    zeilen.push(`Beschädigte Halte: ${b.length}${b.length ? ` (${b.map((h) => `Halt ${h.index + 1}: ${(h.beschaedigt?.felder || ['bild', 'roh']).join(', ')}${h.beschaedigt?.grund ? ` – ${h.beschaedigt.grund}` : ''}`).join('; ')})` : ''}`);
-  } catch (e) { zeilen.push(`Beschädigte Halte: Fehler ${e.message}`); }
+    zeilen.push(`Beschädigte Fotos: ${b.length}${b.length ? ` (${b.map((h) => `Foto ${h.index + 1}: ${(h.beschaedigt?.felder || ['bild', 'roh']).join(', ')}${h.beschaedigt?.grund ? ` – ${h.beschaedigt.grund}` : ''}`).join('; ')})` : ''}`);
+  } catch (e) { zeilen.push(`Beschädigte Fotos: Fehler ${e.message}`); }
   if (Z.strecke) {
     try {
       const t = await db.lesetest(Z.strecke.id);
       const gut = t.filter((x) => !x.fehlt.length).length;
-      zeilen.push(`Lesetest: ${gut} von ${t.length} Halten vollständig lesbar`);
-      for (const x of t) zeilen.push(`  Halt ${x.index + 1}: ${x.ok} Dateien ok${x.fehlt.length ? `, unlesbar: ${x.fehlt.join(', ')}` : ''}${x.beschaedigt.length ? `, beim Umzug verloren: ${x.beschaedigt.join(', ')}` : ''}`);
+      zeilen.push(`Lesetest: ${gut} von ${t.length} Fotos vollständig lesbar`);
+      for (const x of t) zeilen.push(`  Foto ${x.index + 1}: ${x.ok} Dateien ok${x.fehlt.length ? `, unlesbar: ${x.fehlt.join(', ')}` : ''}${x.beschaedigt.length ? `, beim Umzug verloren: ${x.beschaedigt.join(', ')}` : ''}`);
     } catch (e) { zeilen.push(`Lesetest: Fehler ${e.message}`); }
   }
   return zeilen;
@@ -90,7 +90,7 @@ async function bericht() {
     `Nähen: ${werte.naehenMs ? werte.naehenMs.toFixed(0) + ' ms' : '-'}`,
     `Speicher: ${mb(s.belegt)} von ${mb(s.frei)}, dauerhaft: ${s.dauerhaft}`,
     await farbBericht().catch((e) => `Farbe: Fehler ${e.message}`),
-    `Strecken: ${strecken.length}, aktiv: ${Z.halte.length} Halte`,
+    `Projekte: ${strecken.length}, aktiv: ${Z.halte.length} Fotos`,
     ...(await speicherBericht()),
     `Ansicht: ${Z.ansicht}`,
     ...(vergleiche.length ? ['', ...vergleiche] : []),

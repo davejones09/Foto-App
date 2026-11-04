@@ -24,7 +24,7 @@ test('Kommt beim ersten Start vor der Kamera, animiert, wischbar, überspringbar
   await page.click('#trotzdem');
   await page.waitForSelector('#v-einfuehrung:not([hidden])');
   assert.equal(await page.locator('.einf-punkte button').count(), 3);
-  assert.equal(await page.textContent('.einf-titel'), 'Eine Reise, ein Bild.');
+  assert.equal(await page.textContent('.einf-titel'), 'Fotos, die ineinander übergehen.');
   assert.equal(await page.evaluate(() => window.__gumAufrufe), 0);
   await page.waitForTimeout(1200);
   const a = await abdruck(page);
@@ -42,11 +42,11 @@ test('Kommt beim ersten Start vor der Kamera, animiert, wischbar, überspringbar
   };
   await wisch(r.width - 40, 40);
   assert.equal(await seite(page), '2');
-  assert.equal(await page.textContent('.einf-titel'), 'Anschluss suchen.');
+  assert.equal(await page.textContent('.einf-titel'), 'Die Passung finden.');
   await wisch(40, r.width - 40);
   assert.equal(await seite(page), '1');
   await page.locator('.einf-punkte button').nth(2).click();
-  assert.equal(await page.textContent('#einf-weiter'), 'Einsteigen');
+  assert.equal(await page.textContent('#einf-weiter'), "Los geht's");
   assert.match(await page.textContent('.einf-absatz'), /Reel/);
   await page.locator('.einf-punkte button').nth(0).click();
   assert.match(await page.textContent('.einf-absatz'), /10 Fotos aus der Mediathek/);
@@ -67,7 +67,7 @@ test('Lässt sich in den Strecken wieder aufrufen und führt dorthin zurück', a
   await page.click('#zur-strecke');
   await page.click('#zu-strecken');
   await page.waitForSelector('#v-strecken:not([hidden])');
-  assert.equal(await page.textContent('#sl-einfuehrung'), "So funktioniert's");
+  assert.equal(await page.textContent('#sl-einfuehrung'), 'Einführung ansehen');
   await page.screenshot({ path: `${ERGEBNISSE}/ef-strecken.png` });
   await page.click('#sl-einfuehrung');
   await page.waitForSelector('#v-einfuehrung:not([hidden])');

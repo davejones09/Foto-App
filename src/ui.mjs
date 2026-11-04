@@ -1,5 +1,6 @@
 // Kleine Oberflächen-Helfer: Dialoge, Meldungen, Texte einsetzen.
 import { T } from './texte.mjs';
+import { bewertung } from './kern.mjs';
 
 export const $ = (sel, wurzel = document) => wurzel.querySelector(sel);
 export const $$ = (sel, wurzel = document) => Array.from(wurzel.querySelectorAll(sel));
@@ -64,6 +65,18 @@ export function melde(text, knoepfe = [], dauer = knoepfe.length ? 0 : 4000) {
   m.hidden = false;
   clearTimeout(meldungTimer);
   if (dauer) meldungTimer = setTimeout(() => (m.hidden = true), dauer);
+}
+
+// Passung als Zahl mit schmalem Balken (statt Signallichtern). w = null blendet alles aus.
+export function zeigePassung(wurzel, w, { text = true } = {}) {
+  const p = wurzel.classList?.contains('passung') ? wurzel : $('.passung', wurzel);
+  if (!p) return;
+  const an = w != null;
+  p.classList.toggle('leer', !an);
+  p.classList.toggle('gut', an && w >= 70);
+  $('.wert', p).textContent = an ? String(Math.round(w)) : '';
+  if (text) $('.bewertung', p).textContent = an ? bewertung(Math.round(w)) : '';
+  $('.p-balken i', p).style.width = an ? Math.max(0, Math.min(100, w)).toFixed(1) + '%' : '0%';
 }
 
 export function meldungWeg() { $('#meldung').hidden = true; }

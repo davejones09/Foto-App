@@ -109,7 +109,7 @@ export async function fotoVergleich(datei) {
       name: datei.name || 'Foto', profil, raum, bezugRaum, breite, aussen, nurJpeg, unveraendert, randL, randR,
       bildProfil, farbTest: t, gut: mittelMax <= 3 && Math.max(...unveraendert.max) === 0,
       text: [
-        `Fotovergleich: ${datei.name || 'Foto'} (${w}x${h}, Halt ${breite}x${HALT_H})`,
+        `Fotovergleich: ${datei.name || 'Foto'} (${w}x${h}, gerahmt ${breite}x${HALT_H})`,
         `  Profil der Datei: ${profil.name || 'keins'} (${profil.art}), gerechnet in ${raumText(raum)}, Bezug in ${raumText(bezugRaum)}`,
         `  Profil im gespeicherten Bild: ${bildProfil ? `${bildProfil.name} (${bildProfil.art})` : 'keins (gilt als sRGB)'}`,
         `  Außerhalb der Überlappung (x ${x0} bis ${x0 + bw}), vorher gegen nachher:`,

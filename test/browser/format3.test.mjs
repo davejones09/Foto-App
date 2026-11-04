@@ -74,8 +74,8 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
   await warteAuf(page, () => /Lesetest:/.test(document.querySelector('.dg-text').textContent));
   const bericht = await page.textContent('.dg-text');
   assert.match(bericht, /Dateien: \d+ Einträge, [\d.]+ MB/);
-  assert.match(bericht, /Beschädigte Halte: 0/);
-  assert.match(bericht, /Lesetest: 4 von 4 Halten vollständig lesbar/);
+  assert.match(bericht, /Beschädigte Fotos: 0/);
+  assert.match(bericht, /Lesetest: 4 von 4 Fotos vollständig lesbar/);
   await page.click('#dg-schliessen');
 
   // Strecke zeichnet aus der Datenbank
@@ -217,8 +217,8 @@ test('Migration aus Format 2: Blobs ziehen um, unlesbare markieren den Halt, Ret
   });
   await oeffne(page, s.url);
   // Hinweis auf beschädigte Halte
-  await warteAuf(page, () => !document.querySelector('#meldung').hidden && /Halte sind beschädigt/.test(document.querySelector('#meldung p').textContent), null, 60000);
-  assert.equal(await page.textContent('#meldung p'), '2 Halte sind beschädigt. Im Fahrplan kannst du sie löschen, der Rest bleibt.');
+  await warteAuf(page, () => !document.querySelector('#meldung').hidden && /Fotos sind beschädigt/.test(document.querySelector('#meldung p').textContent), null, 60000);
+  assert.equal(await page.textContent('#meldung p'), '2 Fotos sind beschädigt. Unter „Fotos“ kannst du sie löschen, der Rest bleibt.');
   assert.equal((await rohDurchsicht(page)).blobs, 0, 'alle Blobs umgezogen');
   const nach = await page.evaluate(async () => {
     const db = await import('./src/speicher.mjs');

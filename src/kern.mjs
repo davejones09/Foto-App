@@ -261,10 +261,10 @@ export function hauptlinien(bild, n = 3, cfg = KONFIG) {
 }
 
 export function bewertung(wert) {
-  if (wert >= 90) return 'Planmäßig. Auf die Sekunde.';
-  if (wert >= 70) return 'Anschluss erreicht';
-  if (wert >= 40) return 'Knapp, läuft aber';
-  return 'Anschluss verpasst';
+  if (wert >= 90) return 'Perfekt';
+  if (wert >= 70) return 'Passt gut';
+  if (wert >= 40) return 'Passt teilweise';
+  return 'Passt nicht';
 }
 
 // Hilfsfunktion: Ausschnitt aus einem Bild.

@@ -30,31 +30,31 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   await page.click('#freigeben');
   await warteAuf(page, () => !document.querySelector('#ausloeser').disabled);
   await page.waitForTimeout(600);
-  assert.equal(await page.textContent('#v-sucher .ansage'), 'Mach ein Foto. Egal wovon.');
+  assert.equal(await page.textContent('#v-sucher .ansage'), 'Mach ein erstes Foto. Das Motiv ist egal.');
   await bild(page, '03-leer');
   await ausloesen(page);
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
   await page.waitForTimeout(700);
-  assert.equal(await page.textContent('#v-sucher .ansage'), 'Das ist das Ende deines letzten Fotos.');
+  assert.equal(await page.textContent('#v-sucher .ansage'), 'Links siehst du das Ende deines letzten Fotos.');
   await bild(page, '04-rest');
   await warteAuf(page, () => document.querySelector('#v-sucher .ansage').textContent.startsWith('Such etwas'));
   await page.waitForTimeout(500);
   await bild(page, '05-such');
-  await warteAuf(page, () => document.querySelector('#v-sucher .ansage').textContent.startsWith('Hier kommen Linien'));
+  await warteAuf(page, () => document.querySelector('#v-sucher .ansage').textContent.startsWith('Die Hilfslinien'));
   await page.waitForTimeout(500);
   await bild(page, '06-marken');
   // Ein anderes Motiv mit der Linie auf gleicher Höhe: so sieht ein gefundener Anschluss aus.
   await page.evaluate(() => Object.assign(window.__szene, { farbeOben: [205, 190, 165], farbeUnten: [90, 55, 35] }));
-  await warteAuf(page, () => document.querySelector('#v-sucher .ansage').textContent.startsWith('Grün heißt'));
+  await warteAuf(page, () => document.querySelector('#v-sucher .ansage').textContent.startsWith('Die Zahl zeigt'));
   await page.waitForTimeout(600);
-  await bild(page, '07-signal');
+  await bild(page, '07-passung');
   const wert = Number(await page.textContent('#v-sucher .wert'));
   assert.ok(wert >= 70, `gefundener Anschluss: ${wert}`);
   const t0 = Date.now();
   await page.click('#ausloeser');
   await page.waitForTimeout(1500);
   await bild(page, '08-aufdeckung-mitte');
-  await page.waitForSelector('#v-aufdeckung .stempel:not([hidden])', { timeout: 20000 });
+  await page.waitForSelector('#v-aufdeckung .passung:not(.leer)', { timeout: 20000 });
   const dauer = Date.now() - t0;
   // Ohne die Nähzeit bleibt die reine Animation. Das Test-Chromium kodiert JPEGs nach
   // Screenshots mal schneller, mal langsamer, deshalb zählt nur die Animation.
@@ -63,7 +63,7 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   await page.waitForTimeout(900);
   await bild(page, '09-kein-schnitt');
   await page.waitForSelector('#v-aufdeckung .aktionen:not([hidden])', { timeout: 10000 });
-  assert.equal(await page.textContent('#auf-weiter'), 'Weiterfahren');
+  assert.equal(await page.textContent('#auf-weiter'), 'Weiter');
   await bild(page, '10-deine-strecke');
   await page.click('#auf-weiter');
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
@@ -72,7 +72,7 @@ test('Erstlauf: jeder Schritt als Screenshot', async () => {
   // Nach dem Erstlauf: normale, schnelle Aufdeckung mit allen Knöpfen
   const t1 = Date.now();
   await page.click('#ausloeser');
-  await page.waitForSelector('#v-aufdeckung .stempel:not([hidden])', { timeout: 20000 });
+  await page.waitForSelector('#v-aufdeckung .passung:not(.leer)', { timeout: 20000 });
   const dauer2 = Date.now() - t1;
   const anim2 = dauer2 - (await zustand(page)).naehenMs;
   await page.waitForSelector('#v-aufdeckung .aktionen:not([hidden])', { timeout: 20000 });
@@ -176,7 +176,7 @@ test('Mehrere Strecken: neue Strecke mit Namen, wechseln, löschen', async () =>
   await page.click('#zu-strecken');
   await page.waitForSelector('#v-strecken:not([hidden]) .sl-eintrag');
   await page.click('#sl-neu');
-  assert.match(await page.inputValue('.d-eingabe'), /^Strecke \S+ \d{4}$/);
+  assert.match(await page.inputValue('.d-eingabe'), /^Projekt \S+ \d{4}$/);
   await bild(page, '17-neue-strecke');
   await page.fill('.d-eingabe', 'Testfahrt');
   await page.click('#dialog button.haupt');
@@ -191,7 +191,7 @@ test('Mehrere Strecken: neue Strecke mit Namen, wechseln, löschen', async () =>
   await bild(page, '19-strecken');
   // Alte Strecke löschen
   await page.locator('.sl-eintrag:not(.aktiv) .sl-loeschen').click();
-  assert.match(await page.textContent('.d-text'), /wirklich löschen\? 1 Halte sind dann weg\./);
+  assert.match(await page.textContent('.d-text'), /wirklich löschen\? 1 Fotos sind dann weg\./);
   await page.click('#dialog button.haupt');
   await warteAuf(page, () => document.querySelectorAll('.sl-eintrag').length === 1);
   assert.deepEqual(fehler, []);
@@ -206,7 +206,7 @@ test('Kamera verweigert: Text und Ausweg über die Mediathek', async () => {
   await page.click('#einf-ueberspringen');
   await page.click('#freigeben');
   await page.waitForSelector('.freigabe:not([hidden]) #frei-mediathek');
-  assert.match(await page.textContent('.frei-text'), /Ohne Kamera bleibt der Zug stehen/);
+  assert.match(await page.textContent('.frei-text'), /Ohne Kamerazugriff sind hier keine Aufnahmen möglich/);
   await bild(page, '20-verweigert');
   await ctx.close();
 });

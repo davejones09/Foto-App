@@ -51,7 +51,7 @@ async function bauenUndTeilen(i, timeout = 60000) {
 
 test('Karussell: Anzahl stimmt, Bilder ergeben aneinandergelegt das Band ohne Stufe', async () => {
   await page.screenshot({ path: `${ERGEBNISSE}/e3-ausfahrt.png` });
-  assert.match(await punkt(0).locator('.af-titel').textContent(), /^Karussell · 3 Bilder für Instagram$/);
+  assert.match(await punkt(0).locator('.af-titel').textContent(), /^Carousel · 3 Bilder für Instagram$/);
   await bauenUndTeilen(0);
   await bauenUndTeilen(2);
   const r = await page.evaluate(async () => {
@@ -150,7 +150,7 @@ test('Reel: 15 s, Abschnitt von Halt 2 bis 3, MP4, Titelbild, ab dem ersten Bild
   assert.equal(await karte.locator('.af-titel').textContent(), 'Reel · Video für Instagram · 15 s');
   await karte.locator('select').nth(0).selectOption('1');
   assert.equal(await karte.locator('select').nth(1).inputValue(), '2');
-  assert.match(await karte.locator('.af-tempo').textContent(), /^2 Halte · Tempo \d+ Pixel pro Sekunde$/);
+  assert.match(await karte.locator('.af-tempo').textContent(), /^2 Fotos · \d+ Pixel pro Sekunde$/);
   assert.ok(await karte.locator('.af-vorschlag').isHidden());
   await karte.locator('.af-titel').click();
   await karte.locator('.af-reihe button', { hasText: 'In Fotos speichern' }).waitFor({ timeout: 180000 });
@@ -194,7 +194,7 @@ test('Reel: 15 s, Abschnitt von Halt 2 bis 3, MP4, Titelbild, ab dem ersten Bild
     };
   });
   const { writeFileSync } = await import('node:fs');
-  writeFileSync(`${ERGEBNISSE}/e3-reel-endstation.png`, Buffer.from(r.endBild.split(',')[1], 'base64'));
+  writeFileSync(`${ERGEBNISSE}/e3-reel-ende.png`, Buffer.from(r.endBild.split(',')[1], 'base64'));
   writeFileSync(`${ERGEBNISSE}/e3-reel-titelbild.jpg`, Buffer.from(r.titelBild.split(',')[1], 'base64'));
   delete r.endBild; delete r.titelBild;
   console.log(JSON.stringify(r));
@@ -218,7 +218,7 @@ test('Geht die App in den Hintergrund, bricht die Ausgabe mit Hinweis ab', async
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  await punkt(1).locator('.af-status', { hasText: 'Abgebrochen, weil die App in den Hintergrund ging.' }).waitFor({ timeout: 20000 });
+  await punkt(1).locator('.af-status', { hasText: 'Abgebrochen, weil Nahtlos in den Hintergrund ging.' }).waitFor({ timeout: 20000 });
   await page.evaluate(() => { delete document.hidden; });
   assert.equal(await punkt(1).locator('.af-reihe button').textContent(), 'Nochmal');
 });

@@ -54,7 +54,7 @@ const UE = 27;
 const meer = szene(W, H, { oben: [135, 175, 215], unten: [30, 75, 110], linieY: 0.55, seed: 3 });
 const rest = ausschnitt(meer, W - UE, UE);
 
-test('Fortsetzung derselben Szene erreicht "Planmäßig"', () => {
+test('Fortsetzung derselben Szene erreicht "Perfekt"', () => {
   const live = szene(W, H, { oben: [135, 175, 215], unten: [30, 75, 110], linieY: 0.55, seed: 9 });
   const r = analysiere(rest, ausschnitt(live, 0, UE));
   assert.ok(r.wert >= 90, `Wert ${r.wert}`);
@@ -95,10 +95,10 @@ test('Live-Analyse ist schnell genug für 15 Bilder pro Sekunde', () => {
 });
 
 test('bewertung liefert die vier Texte', () => {
-  assert.equal(bewertung(95), 'Planmäßig. Auf die Sekunde.');
-  assert.equal(bewertung(75), 'Anschluss erreicht');
-  assert.equal(bewertung(50), 'Knapp, läuft aber');
-  assert.equal(bewertung(10), 'Anschluss verpasst');
+  assert.equal(bewertung(95), 'Perfekt');
+  assert.equal(bewertung(75), 'Passt gut');
+  assert.equal(bewertung(50), 'Passt teilweise');
+  assert.equal(bewertung(10), 'Passt nicht');
 });
 
 test('Identische Überlappung ergibt 100', () => {
