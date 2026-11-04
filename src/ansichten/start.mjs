@@ -98,6 +98,7 @@ for (const k of $$('.neu-karte', v)) k.addEventListener('click', () => neuHandle
 $('#start-alle').addEventListener('click', () => zeige('strecken'));
 $('#start-projekte').addEventListener('click', () => zeige('strecken'));
 $('#start-einstellungen').addEventListener('click', () => zeige('einstellungen'));
+$('#start-tipps').addEventListener('click', () => zeige('reeltipps'));
 
 registriere('start', {
   betreten: aufbauen,
