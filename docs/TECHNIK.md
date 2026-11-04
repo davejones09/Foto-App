@@ -21,6 +21,7 @@ src/
   collage.mjs         Collage: Formate, Vorlagen, Felder, Ausschnitte, Schnittbaum (reine Rechnung)
   collagewerk.mjs     Collage: Fotos einlesen, zeichnen, Ausgabe, Sicherung
   reelstil.mjs        Reel-Stile: Zeitplan, Bewegungen, Ausschnitt 9:16 (reine Rechnung)
+  reelvorlagen.mjs    Reel-Vorlagen: Schnitte im Takt, Übergänge, Masken (reine Rechnung)
   exif.mjs            Aufnahmezeit aus EXIF
   ideen.mjs           Ideen: 73 getaggte Sätze, Merkmale, Auswahl, Richtung (reine Rechnung)
   ideenquelle.mjs     Ideen im Sucher: Rest messen, Farben der letzten Fotos, Ort, benutzte Ideen
@@ -192,6 +193,7 @@ Jede Ausgabe läuft mit Fortschrittsanzeige und über den LRU-Lader. Geteilt wir
 - 1080 × 1920, 30 Bilder pro Sekunde, H.264 als MP4. Ohne MP4-Weg (WebCodecs oder `MediaRecorder` mit `video/mp4`) gibt es kein Reel, nie WebM.
 - Länge 15, 30, 60 oder 90 s, Abschnitt von Foto a bis b. Das Reel endet auf dem letzten Bild, kein Abspann.
 - **Band:** Weg = Bandbereich × 1920/1620 − 1080. Ab dem ersten Bild mit vollem Tempo, die letzten 1,6 s bremsen gleichmäßig auf null. Über 900 Pixel pro Sekunde: Vorschlag des längsten Abschnitts ab „Von“, der darunter bleibt.
+- **Vorlagen** (`reelvorlagen.mjs`, gezeichnet in `stilMaler`): elf lebhafte Abläufe (Beat, Blitz, Slide, Swipe, Rush, Spotlight, Streifen, Mosaik, Wirbel, Drop, Mix) mit Schnitten im 120-BPM-Takt. Länge „Auto“ zeigt jedes Foto einmal im Originaltakt. Bei fester Länge wird das Tempo gestreckt, ab Faktor 1,8 kommt eine weitere Runde über die Fotos, unter 0,6 schlägt die App weniger Fotos vor. Nur mit WebCodecs. Kein Text und kein Logo, Farben ändern sich nur im Blitz. Die Vorschauen rechnen nur, solange sie sichtbar sind.
 - **Übergangsstile** (`reelstil.mjs`, gezeichnet in `stilMaler`): Jedes Foto füllt den 9:16-Rahmen, der Ausschnitt (911 × 1620 aus dem Foto) liegt dort, wo das Spaltenprofil der Motivkarte am meisten Motiv zeigt. Standzeit = (Länge − (n − 1) × Übergang) / n.
 
   | Stil | Übergang | kleinste Standzeit | Bewegung |

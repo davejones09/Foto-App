@@ -18,6 +18,7 @@ import { APP_VERSION } from './version.mjs';
 import { auftrag } from './rechner.mjs';
 import { MOTIV } from './serie.mjs';
 import { stilPlan, zustand, lage, reelAusschnitt, nahtGrenze, teilzeiten, RAHMEN, ZEITEN } from './reelstil.mjs';
+import { istVorlage, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
 
 export class Abgebrochen extends Error {}
 
@@ -338,21 +339,60 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
   const ausschnitte = halte.map((h, i) => reelAusschnitt(breiteVon(h), profile[i]));
   const art = klein ? 'vorschau' : 'bild';
   const kx = W / RAHMEN.w;
-  async function foto(ctx, k, { s = 1, dx = 0, alpha = 1 }) {
+  // qx, qy: Versatz innerhalb des Ausschnitts in Rahmenpixeln, nur so weit, wie der Zoom Spielraum lässt.
+  async function foto(ctx, k, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }) {
     const bm = await lager.hole(halte[k], art);
     const a = ausschnitte[k];
     const f = bm.height / HALT_H;
+    ctx.save();
     ctx.globalAlpha = alpha;
-    if (s >= 1) {
+    ctx.translate(W / 2 + dx * kx, H / 2 + dy * kx);
+    if (rot) ctx.rotate(rot);
+    // Gedreht muss die Zielfläche selbst größer werden, sonst liegen die Ecken frei.
+    if (s >= 1 && !rot) {
       const sw = a.w / s;
       const sh = HALT_H / s;
-      ctx.drawImage(bm, (a.x0 + (a.w - sw) / 2) * f, ((HALT_H - sh) / 2) * f, sw * f, sh * f, dx * kx, 0, W, H);
+      const rx = (a.w - sw) / 2;
+      const ry = (HALT_H - sh) / 2;
+      const ox = Math.max(-rx, Math.min(rx, (qx * sw) / RAHMEN.w));
+      const oy = Math.max(-ry, Math.min(ry, (qy * sh) / RAHMEN.h));
+      ctx.drawImage(bm, (a.x0 + rx + ox) * f, (ry + oy) * f, sw * f, sh * f, -W / 2, -H / 2, W, H);
     } else {
       const dw = W * s;
       const dh = H * s;
-      ctx.drawImage(bm, a.x0 * f, 0, a.w * f, HALT_H * f, dx * kx + (W - dw) / 2, (H - dh) / 2, dw, dh);
+      ctx.drawImage(bm, a.x0 * f, 0, a.w * f, HALT_H * f, -dw / 2, -dh / 2, dw, dh);
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  async function vorlagenBild(ctx, t) {
+    const z = vorlagenZustand(plan, t);
+    const b = bewegung(plan.bewegung, z.seit, plan.takt, z.lauf);
+    if (z.j == null) { await foto(ctx, z.i, b); return; }
+    const u = uebergangLage(z.art, z.p);
+    // Das nächste Foto setzt die Bewegung des Halts danach bei seinem Beginn an, damit nichts springt.
+    const bn = bewegung(plan.bewegung, 0, plan.takt, 0);
+    const mit = (basis, teil) => ({ ...basis, ...teil, s: basis.s * (teil.faktor ?? 1) });
+    if (u.a) await foto(ctx, z.i, mit(b, u.a));
+    if (u.maske && u.b) {
+      ctx.save();
+      ctx.beginPath();
+      if (u.maske === 'kreis') {
+        const m = kreisMaske(z.p, W, H);
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      } else {
+        const l = u.maske === 'streifen' ? streifenMaske(z.p, W, H) : kachelMaske(z.p, W, H);
+        for (const r of l) ctx.rect(r.x, r.y, r.w, r.h);
+      }
+      ctx.clip();
+      await foto(ctx, z.j, bn);
+      ctx.restore();
+    } else if (u.b) {
+      await foto(ctx, z.j, mit(bn, u.b));
+    }
+    if (u.blitz) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${u.blitz})`;
+      ctx.fillRect(0, 0, W, H);
+    }
   }
   async function bildBei(ctx, t, alpha = 1) {
     const z = zustand(plan, t);
@@ -382,6 +422,7 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
   async function male(ctx, t) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
+    if (plan.vorlage) { await vorlagenBild(ctx, t); return; }
     const z = zustand(plan, t);
     if (plan.stil === 'schwung' && z.j != null) {
       // Bewegungsunschärfe: mehrere Bilder kurz vor t übereinander, im laufenden Mittel.
@@ -396,8 +437,12 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
 
 // Plan für den gewählten Abschnitt: Band wie bisher, sonst ein Stil-Plan über die Fotos von bis.
 export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band' } = {}) {
-  if (stil === 'band' || !ZEITEN[stil]) return { ...reelPlanBand(halte, { von, bis, laenge }), stil: 'band' };
   const b = bis == null ? halte.length - 1 : bis;
+  if (istVorlage(stil)) {
+    const p = vorlagenPlan(b - von + 1, { laenge, vorlage: stil });
+    return { ...p, von, bis: b, vorschlag: p.zuKurz ? { von, bis: Math.min(b, von + p.maxFotos - 1) } : null };
+  }
+  if (stil === 'band' || !ZEITEN[stil]) return { ...reelPlanBand(halte, { von, bis, laenge }), stil: 'band' };
   const p = stilPlan(b - von + 1, { laenge, stil });
   return { ...p, von, bis: b, vorschlag: p.zuKurz ? { von, bis: Math.min(b, von + p.maxFotos - 1) } : null };
 }
@@ -445,7 +490,7 @@ export async function titelbild(halte, plan) {
     const teil = halte.slice(plan.von, plan.bis + 1);
     let k = 0;
     teil.forEach((h, i) => { if (i > 0 && (h.wert ?? -1) > (teil[k].wert ?? -1)) k = i; });
-    const ruhig = { ...stilPlan(teil.length, { laenge: plan.laenge, stil: 'sanft' }), stil: 'sanft' };
+    const ruhig = { ...stilPlan(teil.length, { laenge: Math.max(plan.laenge, teil.length * 3), stil: 'sanft' }), stil: 'sanft' };
     const m = await stilMaler(teil, ruhig);
     try {
       await m.male(ctx, ruhig.beginn[k] + 0.01);
@@ -469,8 +514,16 @@ export async function titelbild(halte, plan) {
 }
 
 // Live-Vorschau eines Stils in einer kleinen Leinwand, in Schleife. Liefert eine Funktion zum Stoppen.
-export function stilVorschau(canvas, halte, stil) {
+export function stilVorschau(canvas, halte, stil, { nurSichtbar = false } = {}) {
   let aktiv = true;
+  // Viele Vorschauen gleichzeitig wären am iPhone zu viel: Nur rechnen, was gerade zu sehen ist.
+  let sichtbar = true;
+  let beobachter = null;
+  if (nurSichtbar && typeof IntersectionObserver !== 'undefined') {
+    sichtbar = false;
+    beobachter = new IntersectionObserver((e) => { sichtbar = e.some((x) => x.isIntersecting); });
+    beobachter.observe(canvas);
+  }
   let maler = null;
   const teil = halte.slice(0, Math.min(3, halte.length));
   const W = canvas.width;
@@ -480,7 +533,10 @@ export function stilVorschau(canvas, halte, stil) {
   (async () => {
     if (!teil.length) return;
     let plan;
-    if (stil === 'band') {
+    if (istVorlage(stil)) {
+      plan = vorlagenPlan(teil.length, { vorlage: stil });
+      maler = await stilMaler(teil, plan, { klein: true, W, H });
+    } else if (stil === 'band') {
       plan = reelPlanBand(teil, { laenge: 4 });
       const lager = new Kachellager(4);
       const s = H / HALT_H;
@@ -495,10 +551,12 @@ export function stilVorschau(canvas, halte, stil) {
     }
     const t0 = performance.now();
     const schritt = async () => {
-      if (!aktiv) { maler.ende(); return; }
-      const t = ((performance.now() - t0) / 1000) % (plan.dauer + 0.6);
-      await maler.male(ctx, Math.min(plan.dauer - 0.001, t));
-      canvas.dataset.laeuft = '1';
+      if (!aktiv) { maler.ende(); beobachter?.disconnect(); return; }
+      if (sichtbar) {
+        const t = ((performance.now() - t0) / 1000) % (plan.dauer + 0.6);
+        await maler.male(ctx, Math.min(plan.dauer - 0.001, t));
+        canvas.dataset.laeuft = '1';
+      }
       requestAnimationFrame(schritt);
     };
     requestAnimationFrame(schritt);
