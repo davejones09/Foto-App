@@ -1,2 +1,2 @@
 // Jede Auslieferung erhöht diese Nummer und den Cache-Namen in sw.js (Test prüft beides).
-export const APP_VERSION = '0.17.0';
+export const APP_VERSION = '0.18.0';

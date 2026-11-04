@@ -413,3 +413,22 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .rt-klappe summary > span { margin-right: auto; }
 .rt-klappe summary::after { content: '›'; color: var(--text2); font-size: 20px; line-height: 1; transition: transform 0.15s ease; }
 .rt-klappe[open] summary::after { transform: rotate(90deg); }
+
+/* Reel aus Clips */
+.cl-inhalt { padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1; min-height: 0; }
+.cl-liste { display: flex; flex-direction: column; gap: 8px; }
+.cl-zeile { display: flex; align-items: center; gap: 12px; background: var(--flaeche); border-radius: 14px; padding: 8px; }
+.cl-zeile canvas { width: 45px; height: 80px; border-radius: 8px; background: #000; flex: none; }
+.cl-mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 15px; }
+.cl-mitte small { color: var(--text2); font-size: 12px; }
+.cl-mitte input[type="range"] { width: 100%; margin: 4px 0 0; }
+.cl-knoepfe { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.cl-knoepfe button { min-height: 28px; min-width: 40px; padding: 0; border-radius: 8px; }
+.cl-stile { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.cl-stil { flex: none; padding: 8px 14px; min-height: 40px; border-radius: 12px; background: var(--flaeche); color: var(--text2); font-size: 14px; }
+.cl-stil[aria-pressed="true"] { background: var(--text); color: var(--grund); }
+.cl-info, .cl-fort { margin: 0; color: var(--text2); font-size: 14px; }
+.cl-ergebnis { display: flex; flex-direction: column; gap: 10px; }
+.cl-video { width: 60%; align-self: center; border-radius: 12px; background: #000; }
+.af-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.cl-inhalt > * { flex: none; }

@@ -84,6 +84,26 @@
 </section>
 
 <!-- Einstellungen -->
+<section id="v-clips" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2 zurueck" id="cl-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="clipsTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="cl-inhalt">
+    <p class="rt-hinweis" data-t="clipsHinweis"></p>
+    <button class="neben2" id="cl-waehlen" data-t="clipsWaehlen"></button>
+    <div class="cl-liste"></div>
+    <p class="af-gruppe" data-t="reelStil"></p>
+    <div class="cl-stile"></div>
+    <div class="af-tempi cl-laengen" role="group" hidden></div>
+    <p class="cl-info"></p>
+    <button class="haupt" id="cl-bauen" data-t="clipsBauen" disabled></button>
+    <p class="cl-fort" hidden></p>
+    <div class="cl-ergebnis"></div>
+  </div>
+</section>
+
 <section id="v-reeltipps" class="ansicht" hidden>
   <header class="leiste-oben">
     <button class="neben2 zurueck" id="rt-zurueck" aria-label="Zurück">‹</button>
@@ -353,6 +373,7 @@
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
+<input type="file" id="datei-clips" accept="video/*,image/*" multiple hidden>
 <input type="file" id="dg-datei" accept="image/*" hidden>
 <input type="file" id="datei-collage" accept="image/*" multiple hidden>
 <input type="file" id="datei-collage-kamera" accept="image/*" capture="environment" hidden>
