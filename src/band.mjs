@@ -4,7 +4,7 @@ import { ladeBild, freigeben } from './bild.mjs';
 import { protokolliere } from './diagnose.mjs';
 import { blobPflicht } from './speicher.mjs';
 
-const KLEIN = { bild: 'vorschau', naht: 'nahtVorschau' };
+export const KLEIN = { bild: 'vorschau', naht: 'nahtVorschau' };
 
 // Farbraum, in dem ein gespeichertes Stück vorliegt. Die Ausgaben rechnen es beim Zeichnen sauber nach sRGB.
 const raumFuer = (halt, art) => (art === 'naht' || art === 'nahtVorschau' ? halt.nahtFarbraum || halt.farbraum : halt.farbraum) || 'srgb';

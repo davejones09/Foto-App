@@ -16,17 +16,34 @@ const eingabe = $('#datei-bild');
 // In der Blindfahrt bleibt es beim einzelnen Foto.
 const nurEinzeln = () => !!(Z.strecke?.blind && !Z.strecke?.ziel);
 
-eingabe.addEventListener('change', () => {
+// Aus dem Hauptmenü: Das neue Projekt entsteht erst, wenn wirklich Fotos gewählt sind.
+let vorgemerkt = null;
+export function vormerken(anlegen) { vorgemerkt = anlegen; }
+eingabe.addEventListener('cancel', () => { vorgemerkt = null; });
+
+eingabe.addEventListener('change', async () => {
   let dateien = [...(eingabe.files || [])];
   eingabe.value = '';
+  const anlegen = vorgemerkt;
+  vorgemerkt = null;
+  if (!dateien.length) return;
+  if (anlegen) {
+    try { await anlegen(); } catch (err) {
+      protokolliere('neues Projekt', err);
+      melde(err instanceof SpeicherVoll ? T.speicherVoll : T.allgemein);
+      return;
+    }
+  }
+  if (!Z.strecke) return;
   if (nurEinzeln()) dateien = dateien.slice(0, 1);
   if (dateien.length > 1) zeige('serie', { dateien });
-  else if (dateien.length === 1) importieren(dateien[0]);
+  else importieren(dateien[0]);
 });
 
 // Öffnet die Auswahl der Mediathek. Das Ergebnis kommt über das change-Ereignis.
-export function waehleBild() {
-  eingabe.multiple = !nurEinzeln();
+export function waehleBild(einzeln = nurEinzeln()) {
+  vorgemerkt = null;
+  eingabe.multiple = !einzeln;
   eingabe.click();
 }
 
@@ -84,6 +101,7 @@ export async function dekodiere(datei) {
 export const raumName = (r) => (r === 'display-p3' ? 'Display P3' : 'sRGB');
 
 export async function importieren(datei) {
+  const herkunft = Z.ansicht;
   try {
     let c;
     try {
@@ -99,7 +117,7 @@ export async function importieren(datei) {
     const halt = await sichereRoh({ streckeId: Z.strecke.id, index, quelle: 'import', roh, rohB: c.width, rohH: c.height, farbraum: raumVon(c), profil: c.profil });
     if (c.umgerechnet) melde(f(T.farbUmgerechnet, { profil: c.profil?.name || '?', raum: raumName(raumVon(c)) }), [], 6000);
     Z.halte.push(halt);
-    await zeige('fein', { halt, rohQuelle: c, neu: true, erstlauf: erst });
+    await zeige('fein', { halt, rohQuelle: c, neu: true, erstlauf: erst, danach: herkunft === 'sucher' ? 'sucher' : 'strecke' });
   } catch (err) {
     protokolliere('import', err);
     melde(err instanceof SpeicherVoll ? T.speicherVoll : err instanceof NichtGesichert ? T.nichtGesichert : T.allgemein);

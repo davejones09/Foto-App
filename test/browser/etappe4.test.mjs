@@ -1,7 +1,7 @@
 // Etappe 4: Fahrplan, Blindfahrt mit Finale, Tageswechsel, ganze Strecke.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, neuesProjekt, zumProjekt } from './hilfe.mjs';
 
 let s;
 let b;
@@ -51,12 +51,12 @@ test('Fahrplan: Kennzahlen, Halt benennen, Tageswechsel, ganze Strecke', async (
   assert.equal(await page.locator('.fp-zeile:not(.kopfz)').count(), 4);
   assert.equal(await page.locator('.fp-tagz').count(), 2);
   const kz = await page.textContent('.fp-kennzahlen');
-  assert.match(kz, /^4 Halte · Durchschnitt \d+ · Pünktlichkeit \d+ %$/);
+  assert.match(kz, /^4 Fotos · Passung im Schnitt \d+$/);
   await page.locator('.fp-name').nth(1).click();
   await page.fill('.d-eingabe', 'Hafenmauer');
   await page.click('#dialog button.haupt');
   await page.waitForSelector('.fp-name:text("Hafenmauer")');
-  assert.equal(await page.locator('.fp-name').nth(0).textContent(), 'Halt 1');
+  assert.equal(await page.locator('.fp-name').nth(0).textContent(), 'Foto 1');
   await page.screenshot({ path: `${ERGEBNISSE}/e4-fahrplan.png` });
   assert.deepEqual(fehler, []);
   await ctx.close();
@@ -66,14 +66,8 @@ test('Blindfahrt: Strecke bleibt verdeckt, Ziel erreichen zeigt das Finale', asy
   const { ctx, page, fehler } = await neueSeite(b);
   await oeffne(page, s.url);
   await page.evaluate(() => localStorage.setItem('nahtlos-erstlauf', 'fertig'));
-  await page.click('#zur-strecke');
-  await page.click('#zu-strecken');
-  await page.click('#sl-neu');
-  await page.fill('.d-eingabe', 'Zu zweit');
-  await page.check('.d-option input');
-  await page.click('#dialog button.haupt');
+  await neuesProjekt(page, { name: 'Zu zweit', blind: true });
   await warteAuf(page, () => window.nahtlos.zustand().strecke === 'Zu zweit' && window.nahtlos.zustand().blind === true);
-  await warteAuf(page, () => !document.querySelector('#ausloeser').disabled);
   await halte(page, 3, { blind: true });
   await page.click('#zur-strecke');
   await page.waitForSelector('#v-strecke .band-blind:not([hidden])');
@@ -81,7 +75,7 @@ test('Blindfahrt: Strecke bleibt verdeckt, Ziel erreichen zeigt das Finale', asy
   assert.ok(!(await page.isVisible('#v-strecke .band')));
   await page.screenshot({ path: `${ERGEBNISSE}/e4-blind-strecke.png` });
   await page.click('#ziel');
-  assert.equal(await page.textContent('.d-text'), 'Ziel erreichen? Danach seht ihr alles.');
+  assert.equal(await page.textContent('.d-text'), 'Jetzt aufdecken? Danach seht ihr alles.');
   await page.click('#dialog button.haupt');
   await page.waitForSelector('#v-finale:not([hidden])');
   await page.waitForTimeout(1500);
@@ -93,7 +87,7 @@ test('Blindfahrt: Strecke bleibt verdeckt, Ziel erreichen zeigt das Finale', asy
   await ctx.close();
 });
 
-test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', async () => {
+test('50 Fotos: Projekt, Carousel-Aufteilung und Gesamtbild-Verkleinerung', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
   await oeffne(page, s.url);
   await page.evaluate(() => localStorage.setItem('nahtlos-erstlauf', 'fertig'));
@@ -107,7 +101,7 @@ test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', asy
   });
   await page.reload();
   await warteAuf(page, () => window.nahtlos?.zustand().halte === 50);
-  await page.click('#zur-strecke');
+  await zumProjekt(page);
   await warteAuf(page, () => document.querySelector('#v-strecke .band').dataset.breite === String(50 * 933 + 363));
   // Durchwischen: flüssig heißt hier, dass ein Zeichenvorgang klein bleibt
   const r = await page.locator('#v-strecke .band').boundingBox();
@@ -121,14 +115,14 @@ test('50 Halte: Strecke, Karussell-Aufteilung und Gesamtbild-Verkleinerung', asy
   console.log(`Wischen: ${Date.now() - t0} ms`);
   await page.click('#zur-ausfahrt');
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-punkt');
-  assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Karussell · 37 Bilder für Instagram');
-  assert.match(await page.locator('.af-punkt').nth(0).textContent(), /Wird auf 2 Teile aufgeteilt\./);
+  assert.equal(await page.locator('.af-punkt').nth(0).locator('.af-titel').textContent(), 'Carousel · 36 Bilder für Instagram');
+  assert.match(await page.locator('.af-punkt').nth(0).textContent(), /Wird auf 2 Beiträge aufgeteilt\./);
   assert.match(await page.locator('.af-punkt').nth(2).textContent(), /Für das iPhone zu groß, deshalb auf \d+ × \d+ verkleinert\./);
   // Reel über 50 Halte in 15 s wäre zu schnell: Vorschlag eines kürzeren Abschnitts
   const reel = page.locator('.af-punkt').nth(1);
   await reel.locator('.af-laengen button', { hasText: '15 s' }).click();
   await reel.locator('.af-vorschlag').waitFor();
-  assert.match(await reel.locator('.af-vorschlag').textContent(), /^Bei 15 s wird es zu schnell\. Vorschlag: Halt 1 bis \d+\./);
+  assert.match(await reel.locator('.af-vorschlag').textContent(), /^Bei 15 s wird es zu schnell\. Vorschlag: Foto 1 bis \d+\./);
   await reel.locator('.af-vorschlag-ok').click();
   assert.ok(await reel.locator('.af-vorschlag').isHidden());
   const bis = Number(await reel.locator('select').nth(1).inputValue());

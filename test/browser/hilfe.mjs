@@ -131,17 +131,100 @@ export async function warteAuf(page, fn, arg, timeout = 20000) {
   await page.waitForFunction(fn, arg, { timeout, polling: 100 });
 }
 
-// Öffnet die App, wählt "im Browser testen", überspringt die Einführung und gibt die Kamera frei.
-export async function oeffne(page, url) {
-  await page.goto(url);
-  const trotzdem = page.locator('#trotzdem');
-  if (await trotzdem.isVisible().catch(() => false)) await trotzdem.click();
-  await warteAuf(page, () => ['sucher', 'einfuehrung'].includes(document.body.dataset.ansicht));
-  if (await page.evaluate(() => document.body.dataset.ansicht === 'einfuehrung')) await page.click('#einf-ueberspringen');
+// Wartet aufs Hauptmenü, bis die Liste der Projekte aufgebaut ist.
+export async function hauptmenue(page) {
+  await warteAuf(page, () => document.body.dataset.gestartet === '1' && document.body.dataset.ansicht === 'start' && document.querySelector('#v-start').dataset.bereit === '1', null, 30000);
+}
+
+// Erst wenn die App fertig gestartet ist, darf ein Test selbst navigieren.
+export async function gestartet(page) {
+  await warteAuf(page, () => document.body.dataset.gestartet === '1', null, 30000);
+}
+
+// Vom Hauptmenü in den Sucher: das zuletzt bearbeitete Projekt öffnen oder ein neues Carousel anlegen.
+export async function zumSucher(page, { neu = false, art = 'carousel' } = {}) {
+  await hauptmenue(page);
+  if (!neu && (await page.locator('#v-start .zuletzt-eintrag').count())) {
+    await page.locator('#v-start .zuletzt-eintrag').first().click();
+    await warteAuf(page, () => document.body.dataset.ansicht === 'strecke');
+    await page.click('#zum-sucher');
+  } else {
+    await page.click(`#v-start .neu-karte[data-art="${art}"]`);
+    await page.waitForSelector('#dialog:not([hidden])');
+    await page.click('#dialog .d-knoepfe button.haupt');
+  }
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
   const frei = page.locator('#freigeben');
   try { await frei.waitFor({ state: 'visible', timeout: 1500 }); await frei.click(); } catch {}
   await warteAuf(page, () => document.querySelector('#video').videoWidth > 0 && !document.querySelector('#ausloeser').disabled);
+}
+
+// Neues Carousel oder Reel über das Hauptmenü, auf Wunsch mit Namen und Überraschungsmodus, dann in den Sucher.
+export async function neuesProjekt(page, { name = null, blind = false, art = 'carousel' } = {}) {
+  await gestartet(page);
+  if (await page.evaluate(() => document.body.dataset.ansicht !== 'start')) {
+    await page.evaluate(async () => (await import('./src/zustand.mjs')).zeige('start'));
+  }
+  await hauptmenue(page);
+  await page.click(`#v-start .neu-karte[data-art="${art}"]`);
+  await page.waitForSelector('#dialog:not([hidden])');
+  if (name) await page.fill('.d-eingabe', name);
+  if (blind) await page.check('.d-option input');
+  await page.click('#dialog .d-knoepfe button.haupt');
+  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
+  const frei = page.locator('#freigeben');
+  try { await frei.waitFor({ state: 'visible', timeout: 1500 }); await frei.click(); } catch {}
+  await warteAuf(page, () => document.querySelector('#video').videoWidth > 0 && !document.querySelector('#ausloeser').disabled);
+}
+
+// Diagnose über die Einstellungen öffnen.
+export async function oeffneDiagnose(page) {
+  await gestartet(page);
+  await page.evaluate(async () => (await import('./src/zustand.mjs')).zeige('einstellungen'));
+  await page.waitForSelector('#v-einstellungen:not([hidden])');
+  await page.click('#ei-diagnose');
+  await page.waitForSelector('#diagnose:not([hidden])');
+}
+
+// Im Sucher: Kamera freigeben, falls gefragt, und warten, bis sie läuft.
+export async function kameraBereit(page) {
+  const frei = page.locator('#freigeben');
+  try { await frei.waitFor({ state: 'visible', timeout: 1500 }); await frei.click(); } catch {}
+  await warteAuf(page, () => document.querySelector('#video').videoWidth > 0 && !document.querySelector('#ausloeser').disabled);
+}
+
+// Öffnet das zuletzt bearbeitete Projekt aus dem Hauptmenü (Vorschau des Bands).
+export async function zumProjekt(page) {
+  await gestartet(page);
+  if (await page.evaluate(() => document.body.dataset.ansicht !== 'start')) {
+    await page.evaluate(async () => (await import('./src/zustand.mjs')).zeige('start'));
+  }
+  await hauptmenue(page);
+  await page.locator('#v-start .zuletzt-eintrag').first().click();
+  await warteAuf(page, () => document.body.dataset.ansicht === 'strecke');
+}
+
+// Öffnet die App, wählt "im Browser testen", überspringt die Einführung, landet im Hauptmenü
+// und geht von dort in den Sucher (zuletzt bearbeitetes Projekt oder ein neues Carousel).
+export async function oeffne(page, url, opt = {}) {
+  await page.goto(url);
+  await bisHauptmenue(page);
+  await zumSucher(page, opt);
+}
+
+export async function bisHauptmenue(page) {
+  const trotzdem = page.locator('#trotzdem');
+  if (await trotzdem.isVisible().catch(() => false)) await trotzdem.click();
+  await warteAuf(page, () => ['start', 'einfuehrung'].includes(document.body.dataset.ansicht), null, 30000);
+  if (await page.evaluate(() => document.body.dataset.ansicht === 'einfuehrung')) await page.click('#einf-ueberspringen');
+  await hauptmenue(page);
+}
+
+// Neu laden und wieder in den Sucher des aktiven Projekts.
+export async function neuGeladen(page) {
+  await page.reload();
+  await bisHauptmenue(page);
+  await zumSucher(page);
 }
 
 export async function ausloesen(page) {

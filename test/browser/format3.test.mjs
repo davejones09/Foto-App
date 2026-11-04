@@ -2,7 +2,7 @@
 // Die Hülle aus hilfe.mjs lässt jeden Test scheitern, der doch einen Blob schreiben will.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, fotoJpeg, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, fotoJpeg, ERGEBNISSE, hauptmenue, oeffneDiagnose, zumProjekt, bisHauptmenue, kameraBereit } from './hilfe.mjs';
 
 let s;
 let b;
@@ -44,7 +44,7 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
 
   // Neu laden: Alles muss aus der Datenbank kommen
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher');
+  await hauptmenue(page);
   const roh = await rohDurchsicht(page);
   assert.equal(roh.blobs, 0, 'kein Blob in halte oder serie');
   assert.equal(roh.halte, 4);
@@ -70,16 +70,16 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
   assert.ok(lese.statistik.bytes > 100000);
 
   // Diagnose zeigt Dateien, beschädigte Halte und den Lesetest
-  for (let i = 0; i < 5; i++) await page.click('#version');
+  await oeffneDiagnose(page);
   await warteAuf(page, () => /Lesetest:/.test(document.querySelector('.dg-text').textContent));
   const bericht = await page.textContent('.dg-text');
   assert.match(bericht, /Dateien: \d+ Einträge, [\d.]+ MB/);
-  assert.match(bericht, /Beschädigte Halte: 0/);
-  assert.match(bericht, /Lesetest: 4 von 4 Halten vollständig lesbar/);
+  assert.match(bericht, /Beschädigte Fotos: 0/);
+  assert.match(bericht, /Lesetest: 4 von 4 Fotos vollständig lesbar/);
   await page.click('#dg-schliessen');
 
-  // Strecke zeichnet aus der Datenbank
-  await page.click('#zur-strecke');
+  // Das Projekt zeichnet aus der Datenbank
+  await zumProjekt(page);
   const BAND = 1296 + 3 * 2160 - 3 * 363; // Kamerahalt plus drei ganze 4:3-Fotos
   await warteAuf(page, (b) => document.querySelector('#v-strecke .band').dataset.breite === String(b), BAND);
   await page.waitForTimeout(600);
@@ -104,7 +104,7 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
     const masse = async (f) => { const bm = await createImageBitmap(f); const m = `${bm.width}x${bm.height}`; bm.close(); return m; };
     return { karussell: await Promise.all(karussell.map(masse)), gesamt: await masse(gesamt), zipName: zip.name, zipGroesse: zip.size, zip: await (async () => { const u = new Uint8Array(await zip.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768)); return btoa(s); })() };
   });
-  assert.ok(aus.karussell.length <= Math.ceil(BAND / 1296) && aus.karussell.length >= Math.ceil((BAND - 195) / 1296));
+  assert.equal(aus.karussell.length, 5, `genau aufgehende Slides: ${aus.karussell.length}`); // 6687 Pixel: 6 Slides bräuchten 16 % Zoom
   for (const m of aus.karussell) assert.equal(m, '1080x1350');
   assert.match(aus.gesamt, /^\d+x\d+$/);
   const [gb, gh] = aus.gesamt.split('x').map(Number);
@@ -215,10 +215,11 @@ test('Migration aus Format 2: Blobs ziehen um, unlesbare markieren den Halt, Ret
     await new Promise((ok) => (t.oncomplete = ok));
     db.close();
   });
-  await oeffne(page, s.url);
+  await page.goto(s.url);
+  await bisHauptmenue(page);
   // Hinweis auf beschädigte Halte
-  await warteAuf(page, () => !document.querySelector('#meldung').hidden && /Halte sind beschädigt/.test(document.querySelector('#meldung p').textContent), null, 60000);
-  assert.equal(await page.textContent('#meldung p'), '2 Halte sind beschädigt. Im Fahrplan kannst du sie löschen, der Rest bleibt.');
+  await warteAuf(page, () => !document.querySelector('#meldung').hidden && /Fotos sind beschädigt/.test(document.querySelector('#meldung p').textContent), null, 60000);
+  assert.equal(await page.textContent('#meldung p'), '2 Fotos sind beschädigt. Unter „Fotos“ kannst du sie löschen, der Rest bleibt.');
   assert.equal((await rohDurchsicht(page)).blobs, 0, 'alle Blobs umgezogen');
   const nach = await page.evaluate(async () => {
     const db = await import('./src/speicher.mjs');
@@ -264,7 +265,7 @@ test('Migration aus Format 2: Blobs ziehen um, unlesbare markieren den Halt, Ret
   await page.click('#fp-zurueck');
   await warteAuf(page, () => document.querySelector('#v-strecke .band').dataset.breite === String(2 * 933 + 363));
   await page.click('#zum-sucher');
-  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher' && !document.querySelector('#ausloeser').disabled);
+  await kameraBereit(page);
   await ausloesen(page);
   await page.waitForSelector('#v-aufdeckung .aktionen:not([hidden])', { timeout: 30000 });
   assert.equal((await page.evaluate(() => window.nahtlos.zustand())).fertig, 3);

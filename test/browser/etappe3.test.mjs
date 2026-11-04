@@ -1,4 +1,5 @@
-// Etappe 3: Karussell ohne Stufe, Sicherung verlustfrei, Fahrt als abspielbares MP4, Abbruch.
+// Ausgaben: Carousel ohne Stufe und ohne Abschluss-Slide, keine Spuren der App (kein Text, saubere Metadaten,
+// neutrale Dateinamen), Sicherung verlustfrei, Reel als MP4 bis aufs letzte Bild, Abbruch.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE } from './hilfe.mjs';
@@ -49,9 +50,31 @@ async function bauenUndTeilen(i, timeout = 60000) {
   await warteAuf(page, (n) => window.__geteilt.length > n, vorher);
 }
 
-test('Karussell: Anzahl stimmt, Bilder ergeben aneinandergelegt das Band ohne Stufe', async () => {
+// Prüft eine Ausgabedatei im Browser: kein Hinweis auf die App in den Bytes, nur erlaubte JPEG-Abschnitte.
+async function metadaten(page, idx) {
+  return page.evaluate(async (i) => {
+    const m = await import('./src/metadaten.mjs');
+    const dateien = window.__geteilt.at(i);
+    const aus = [];
+    for (const f of dateien) {
+      const b = new Uint8Array(await f.arrayBuffer());
+      const t = new TextDecoder('latin1').decode(b);
+      aus.push({
+        name: f.name,
+        app: /nahtlos|mp4-muxer|lavf|webkit|chrome|claude/i.test(t),
+        abschnitte: f.type === 'image/jpeg' ? m.jpegAbschnitte(b).map((a) => (a.kennung || a.marker.toString(16))) : null,
+      });
+    }
+    return aus;
+  }, idx);
+}
+
+test('Carousel: genau aufgehende Slides ohne Abschluss, ohne Text, ohne Stufe, saubere Metadaten', async () => {
+  await warteAuf(page, () => document.querySelector('.af-slides')?.dataset.fertig === '1', null, 30000);
   await page.screenshot({ path: `${ERGEBNISSE}/e3-ausfahrt.png` });
-  assert.match(await punkt(0).locator('.af-titel').textContent(), /^Karussell · 3 Bilder für Instagram$/);
+  // Drei Kamerafotos (3162 Pixel): 3 Slides bräuchten 23 % Zoom, also 2 Slides mit Beschnitt an den Enden
+  assert.match(await punkt(0).locator('.af-titel').textContent(), /^Carousel · 2 Bilder für Instagram$/);
+  assert.equal(await page.locator('.af-slides canvas').count(), 2, 'Vorschau zeigt jede Slide');
   await bauenUndTeilen(0);
   await bauenUndTeilen(2);
   const r = await page.evaluate(async () => {
@@ -66,20 +89,26 @@ test('Karussell: Anzahl stimmt, Bilder ergeben aneinandergelegt das Band ohne St
       stufen.push(diff(spalte(bilder[k], bilder[k].w - 1), spalte(bilder[k + 1], 0)));
       innen.push(diff(spalte(bilder[k], bilder[k].w - 2), spalte(bilder[k], bilder[k].w - 1)));
     }
-    // Gegenprobe zum Gesamtbild: jedes Karussellbild ist der passende Ausschnitt des Bands.
+    // Gegenprobe zum Gesamtbild: jedes Carouselbild, auch das letzte, ist genau der passende Ausschnitt des
+    // Bands. Pixel für Pixel: kein eingezeichneter Text, keine leere Fläche.
     const g = await createImageBitmap(gesamt);
-    const versatz = (await import('./src/ausgabe.mjs')).letzterKarussellPlan().versatz;
+    const plan = (await import('./src/ausgabe.mjs')).letzterKarussellPlan();
+    const f = g.height / 1620;
     const abw = [];
-    for (let k = 0; k < bilder.length - 1; k++) {
+    for (let k = 0; k < bilder.length; k++) {
       const c = new OffscreenCanvas(1080, 1350);
       const x = c.getContext('2d');
-      x.drawImage(g, (versatz + k * 1296) * (g.height / 1620), 0, 1296 * (g.height / 1620), g.height, 0, 0, 1080, 1350);
+      x.drawImage(g, (plan.versatz + k * plan.sicht) * f, plan.y0 * f, plan.sicht * f, plan.hoehe * f, 0, 0, 1080, 1350);
       const d = x.getImageData(0, 0, 1080, 1350).data;
       let sum = 0;
       for (let i = 0; i < d.length; i += 4 * 7) sum += Math.abs(d[i] - bilder[k].d[i]) + Math.abs(d[i + 1] - bilder[k].d[i + 1]) + Math.abs(d[i + 2] - bilder[k].d[i + 2]);
       abw.push(sum / (d.length / (4 * 7)) / 3);
     }
-    return { anzahl: bilder.length, masse: bilder.map((b) => `${b.w}x${b.h}`), stufen, innen, abw, gesamt: `${g.width}x${g.height}` };
+    // Letzte Slide vollständig gefüllt: auch die rechte Kante zeigt Bild, keinen Grund.
+    const letzte = bilder[bilder.length - 1];
+    const rand = spalte(letzte, letzte.w - 1);
+    const randHell = rand.reduce((s, v) => s + v, 0) / rand.length;
+    return { anzahl: bilder.length, masse: bilder.map((b) => `${b.w}x${b.h}`), stufen, innen, abw, randHell, gesamt: `${g.width}x${g.height}`, namen: karussell.map((d) => d.name), gname: gesamt.name, zoom: plan.zoom };
   });
   console.log(JSON.stringify(r));
   // Zum Ansehen ablegen
@@ -90,9 +119,19 @@ test('Karussell: Anzahl stimmt, Bilder ergeben aneinandergelegt das Band ohne St
     return Promise.all([...karussell, gesamt].map(b64));
   });
   dateien.forEach((d, i) => writeFileSync(`${ERGEBNISSE}/e3-${i === dateien.length - 1 ? 'gesamt' : 'karussell-' + (i + 1)}.jpg`, Buffer.from(d, 'base64')));
-  assert.equal(r.anzahl, 3);
+  assert.equal(r.anzahl, 2);
+  assert.deepEqual(r.namen, ['carousel-01.jpg', 'carousel-02.jpg']);
+  assert.equal(r.gname, 'gesamtbild.jpg');
   for (const m of r.masse) assert.equal(m, '1080x1350');
   assert.equal(r.gesamt, '3162x1620');
+  assert.ok(r.zoom >= 1 && r.zoom <= 1.08);
+  assert.ok(r.randHell > 25, `letzte Slide bis zum Rand gefüllt: ${r.randHell}`);
+  for (const i of [-2, -1]) {
+    for (const d of await metadaten(page, i)) {
+      assert.equal(d.app, false, `${d.name}: kein Hinweis auf die App`);
+      assert.ok(d.abschnitte.every((a) => ['JFIF', 'ICC_PROFILE', 'db', 'c0', 'c2', 'c4', 'dd'].includes(a)), `${d.name}: ${d.abschnitte}`);
+    }
+  }
   for (let i = 0; i < r.stufen.length; i++) assert.ok(r.stufen[i] < r.innen[i] + 6, `Stufe ${r.stufen[i]} gegen ${r.innen[i]}`);
   for (const a of r.abw) assert.ok(a < 4, `Abweichung zum Band ${a}`);
 });
@@ -143,14 +182,14 @@ test('Sicherung lässt sich verlustfrei einspielen', async () => {
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-punkt');
 });
 
-test('Reel: 15 s, Abschnitt von Halt 2 bis 3, MP4, Titelbild, ab dem ersten Bild in Bewegung', async () => {
+test('Reel: 15 s, Abschnitt von Foto 2 bis 3, MP4, Titelbild, ab dem ersten Bild in Bewegung, endet auf dem letzten Bild', async () => {
   const karte = punkt(1);
   assert.match(await karte.locator('.af-titel').textContent(), /^Reel · Video für Instagram · \d+ s$/);
   await karte.locator('.af-laengen button', { hasText: '15 s' }).click();
   assert.equal(await karte.locator('.af-titel').textContent(), 'Reel · Video für Instagram · 15 s');
   await karte.locator('select').nth(0).selectOption('1');
   assert.equal(await karte.locator('select').nth(1).inputValue(), '2');
-  assert.match(await karte.locator('.af-tempo').textContent(), /^2 Halte · Tempo \d+ Pixel pro Sekunde$/);
+  assert.match(await karte.locator('.af-tempo').textContent(), /^2 Fotos · \d+ Pixel pro Sekunde$/);
   assert.ok(await karte.locator('.af-vorschlag').isHidden());
   await karte.locator('.af-titel').click();
   await karte.locator('.af-reihe button', { hasText: 'In Fotos speichern' }).waitFor({ timeout: 180000 });
@@ -181,6 +220,10 @@ test('Reel: 15 s, Abschnitt von Halt 2 bis 3, MP4, Titelbild, ab dem ersten Bild
     const ende = unterschied(await bildBei(14.4), await bildBei(14.6));
     k.drawImage(v, 0, 0, 270, 480);
     const endBild = c.toDataURL('image/png');
+    const letzt = await bildBei(14.95);
+    let letzteHell = 0;
+    for (let i = 0; i < letzt.length; i += 4) letzteHell += (letzt[i] + letzt[i + 1] + letzt[i + 2]) / 3;
+    letzteHell /= letzt.length / 4;
     const tb = await createImageBitmap(titel);
     const tc = new OffscreenCanvas(tb.width, tb.height);
     const tk = tc.getContext('2d');
@@ -188,26 +231,28 @@ test('Reel: 15 s, Abschnitt von Halt 2 bis 3, MP4, Titelbild, ab dem ersten Bild
     const zeile = (y) => { const d = tk.getImageData(0, y, tb.width, 1).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 4) / 3; };
     return {
       typ: video.type, name: video.name, ftyp: String.fromCharCode(...kopf.subarray(4, 8)), dauer: v.duration, b: v.videoWidth, h: v.videoHeight,
-      anfang, ende, endBild, titelBild: tc.convertToBlob ? await new Promise(async (ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(titel); }) : null,
+      anfang, ende, endBild, letzteHell, titelBild: tc.convertToBlob ? await new Promise(async (ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(titel); }) : null,
       titel: `${tb.width}x${tb.height}`, titelName: titel.name,
       oben: zeile(100), mitte: zeile(960), unten: zeile(1800),
     };
   });
   const { writeFileSync } = await import('node:fs');
-  writeFileSync(`${ERGEBNISSE}/e3-reel-endstation.png`, Buffer.from(r.endBild.split(',')[1], 'base64'));
+  writeFileSync(`${ERGEBNISSE}/e3-reel-ende.png`, Buffer.from(r.endBild.split(',')[1], 'base64'));
   writeFileSync(`${ERGEBNISSE}/e3-reel-titelbild.jpg`, Buffer.from(r.titelBild.split(',')[1], 'base64'));
   delete r.endBild; delete r.titelBild;
   console.log(JSON.stringify(r));
   assert.equal(r.typ, 'video/mp4');
   assert.equal(r.ftyp, 'ftyp');
-  assert.match(r.name, /-reel-15s\.mp4$/);
+  assert.equal(r.name, 'reel.mp4');
+  assert.equal(r.titelName, 'reel-cover.jpg');
+  for (const d of await metadaten(page, -1)) assert.equal(d.app, false, `${d.name}: kein Hinweis auf die App`);
   assert.equal(r.b, 1080);
   assert.equal(r.h, 1920);
   assert.ok(Math.abs(r.dauer - 15) < 0.2, `Dauer ${r.dauer}`);
   assert.ok(r.anfang > 3 * r.ende + 0.5, `in Bewegung ab dem ersten Bild: ${r.anfang}, am Ende ruhig: ${r.ende}`);
   assert.equal(r.titel, '1080x1920');
-  assert.ok(r.mitte > 40, 'Titelbild trägt das Band in der Mitte');
-  assert.ok(r.oben < 20 && r.unten < 20, 'außerhalb der mittleren 1080×1350 nur Grund');
+  assert.ok(r.mitte > 40 && r.oben > 40 && r.unten > 20, `Titelbild ganz mit Bild gefüllt: ${r.oben} ${r.mitte} ${r.unten}`);
+  assert.ok(r.letzteHell > 20, `das Reel endet auf dem letzten Bild, ohne Abspann: ${r.letzteHell}`);
 });
 
 test('Geht die App in den Hintergrund, bricht die Ausgabe mit Hinweis ab', async () => {
@@ -218,7 +263,7 @@ test('Geht die App in den Hintergrund, bricht die Ausgabe mit Hinweis ab', async
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  await punkt(1).locator('.af-status', { hasText: 'Abgebrochen, weil die App in den Hintergrund ging.' }).waitFor({ timeout: 20000 });
+  await punkt(1).locator('.af-status', { hasText: 'Abgebrochen, weil Nahtlos in den Hintergrund ging.' }).waitFor({ timeout: 20000 });
   await page.evaluate(() => { delete document.hidden; });
   assert.equal(await punkt(1).locator('.af-reihe button').textContent(), 'Nochmal');
 });

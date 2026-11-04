@@ -10,6 +10,8 @@ import * as db from './speicher.mjs';
 import { ausbessern, unrettbar } from './naehwerk.mjs';
 import { auftrag } from './rechner.mjs';
 import { setzeTeilwerte, teilwerteSichtbar } from './ansichten/sucher.mjs';
+import { diagnoseKnopf } from './ansichten/start.mjs';
+import './ansichten/collage.mjs';
 import './ansichten/aufdeckung.mjs';
 import './ansichten/fein.mjs';
 import './ansichten/strecke.mjs';
@@ -61,14 +63,14 @@ async function speicherBericht() {
   } catch (e) { zeilen.push(`Dateien: Fehler ${e.message}`); }
   try {
     const b = await db.beschaedigteHalte();
-    zeilen.push(`Beschädigte Halte: ${b.length}${b.length ? ` (${b.map((h) => `Halt ${h.index + 1}: ${(h.beschaedigt?.felder || ['bild', 'roh']).join(', ')}${h.beschaedigt?.grund ? ` – ${h.beschaedigt.grund}` : ''}`).join('; ')})` : ''}`);
-  } catch (e) { zeilen.push(`Beschädigte Halte: Fehler ${e.message}`); }
+    zeilen.push(`Beschädigte Fotos: ${b.length}${b.length ? ` (${b.map((h) => `Foto ${h.index + 1}: ${(h.beschaedigt?.felder || ['bild', 'roh']).join(', ')}${h.beschaedigt?.grund ? ` – ${h.beschaedigt.grund}` : ''}`).join('; ')})` : ''}`);
+  } catch (e) { zeilen.push(`Beschädigte Fotos: Fehler ${e.message}`); }
   if (Z.strecke) {
     try {
       const t = await db.lesetest(Z.strecke.id);
       const gut = t.filter((x) => !x.fehlt.length).length;
-      zeilen.push(`Lesetest: ${gut} von ${t.length} Halten vollständig lesbar`);
-      for (const x of t) zeilen.push(`  Halt ${x.index + 1}: ${x.ok} Dateien ok${x.fehlt.length ? `, unlesbar: ${x.fehlt.join(', ')}` : ''}${x.beschaedigt.length ? `, beim Umzug verloren: ${x.beschaedigt.join(', ')}` : ''}`);
+      zeilen.push(`Lesetest: ${gut} von ${t.length} Fotos vollständig lesbar`);
+      for (const x of t) zeilen.push(`  Foto ${x.index + 1}: ${x.ok} Dateien ok${x.fehlt.length ? `, unlesbar: ${x.fehlt.join(', ')}` : ''}${x.beschaedigt.length ? `, beim Umzug verloren: ${x.beschaedigt.join(', ')}` : ''}`);
     } catch (e) { zeilen.push(`Lesetest: Fehler ${e.message}`); }
   }
   return zeilen;
@@ -90,7 +92,7 @@ async function bericht() {
     `Nähen: ${werte.naehenMs ? werte.naehenMs.toFixed(0) + ' ms' : '-'}`,
     `Speicher: ${mb(s.belegt)} von ${mb(s.frei)}, dauerhaft: ${s.dauerhaft}`,
     await farbBericht().catch((e) => `Farbe: Fehler ${e.message}`),
-    `Strecken: ${strecken.length}, aktiv: ${Z.halte.length} Halte`,
+    `Projekte: ${strecken.length}, aktiv: ${Z.halte.length} Fotos`,
     ...(await speicherBericht()),
     `Ansicht: ${Z.ansicht}`,
     ...(vergleiche.length ? ['', ...vergleiche] : []),
@@ -113,6 +115,7 @@ async function diagnoseOeffnen() {
   d.hidden = false;
 }
 $('#dg-schliessen').addEventListener('click', () => ($('#diagnose').hidden = true));
+diagnoseKnopf(diagnoseOeffnen);
 
 // Fotovergleich: ein Foto aus der Mediathek wie beim Bauen durchrechnen, ohne etwas zu speichern.
 const vergleiche = [];
@@ -175,9 +178,10 @@ async function start() {
     try { await ausbessern(s.id); } catch (e) { protokolliere('wiederaufnahme', e); }
   }
   await neuLaden();
-  // Beim allerersten Start kommt vor der Kamera-Freigabe die Einführung.
-  if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'sucher' });
-  else await zeige('sucher');
+  // Die App startet im Hauptmenü. Beim allerersten Start kommt davor die Einführung.
+  if (await einfuehrungNoetig()) await zeige('einfuehrung', { danach: 'start' });
+  else await zeige('start');
+  document.body.dataset.gestartet = '1';
   const kaputt = Z.halte.filter((h) => h.beschaedigt || unrettbar(h)).length;
   if (kaputt) melde(f(T.beschaedigtHinweis, { n: kaputt }), [{ text: T.spaeter, haupt: false }, { text: T.fahrplan, aktion: () => zeige('fahrplan') }], 15000);
   else serieErinnern();

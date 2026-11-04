@@ -106,7 +106,7 @@ async function neuNaehenFragen(s, n) {
 $('#zum-sucher').addEventListener('click', () => zeige('sucher'));
 $('#zum-fahrplan').addEventListener('click', () => zeige('fahrplan'));
 $('#zur-ausfahrt').addEventListener('click', () => zeige('ausfahrt'));
-$('#zu-strecken').addEventListener('click', () => zeige('strecken'));
+$('#zu-strecken').addEventListener('click', () => zeige('start'));
 $('#ziel').addEventListener('click', async () => {
   const r = await frage(T.zielFrage, [
     { text: T.weiterfahren, wert: false },

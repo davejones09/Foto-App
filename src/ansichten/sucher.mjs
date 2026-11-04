@@ -4,7 +4,7 @@ import * as kamera from '../kamera.mjs';
 import { auftrag, beschaeftigt, generation } from '../rechner.mjs';
 import { bewertung } from '../kern.mjs';
 import { T } from '../texte.mjs';
-import { $, $$, el, Urls, melde } from '../ui.mjs';
+import { $, $$, el, Urls, melde, zeigePassung } from '../ui.mjs';
 import { leinwand, ctx2d, pixel, ladeBitmap, freigeben } from '../bild.mjs';
 import { rohAusVideo, sichereRoh, kleinRest } from '../naehwerk.mjs';
 import { KLEIN_B, KLEIN_H, KLEIN_UE } from '../masse.mjs';
@@ -22,7 +22,7 @@ const restEl = $('.rest', rahmen);
 const restImg = $('img', restEl);
 const fadenLinie = $('.faden polyline', restEl);
 const markenEl = $('.marken', restEl);
-const signal = $('.signal', v);
+const passungEl = $('.passung', v);
 const wertEl = $('.wert', v);
 const bewEl = $('.bewertung', v);
 const ansage = $('.ansage', v);
@@ -135,7 +135,7 @@ function erstlaufSchritt() {
     } else erstlaufSchritt();
   } else if (erstSchritt === 3) {
     sage(T.erstSignal);
-    hervorheben(signal);
+    hervorheben(passungEl);
     erstSchritt = 4;
     erstTimer = setTimeout(() => { sage(T.erstSuch); erstSchritt = 5; }, 5000);
   }
@@ -182,28 +182,20 @@ async function setzeRest() {
 function zeigeWert(an) {
   for (const e of [wertEl, bewEl]) e.style.visibility = an ? '' : 'hidden';
   if (!an) {
-    signal.className = 'signal';
+    zeigePassung(passungEl, null);
     zustandAngezeigt = null;
-    wertEl.textContent = '';
-    bewEl.textContent = '';
   }
 }
 
 const kategorie = (w) => (w >= 90 ? 'top' : w >= 70 ? 'gruen' : w >= 40 ? 'gelb' : 'rot');
 
+// Zahl und Balken folgen dem Wert sofort, der Text wechselt erst nach 300 ms stabilem Zustand.
 function aktualisiereAnzeige(w, jetzt) {
-  wertEl.textContent = String(Math.round(w));
+  zeigePassung(passungEl, w, { text: false });
   const k = kategorie(w);
   if (k !== zustandKandidat) { zustandKandidat = k; kandidatSeit = jetzt; }
-  if (k !== zustandAngezeigt && jetzt - kandidatSeit >= 300) {
+  if (zustandAngezeigt === null || (k !== zustandAngezeigt && jetzt - kandidatSeit >= 300)) {
     zustandAngezeigt = k;
-    signal.className = 'signal ' + (k === 'top' ? 'an-gruen blinkt' : 'an-' + k);
-    bewEl.textContent = bewertung(Math.round(w));
-  }
-  if (zustandAngezeigt === null) {
-    // Erster Wert sofort anzeigen
-    zustandAngezeigt = k;
-    signal.className = 'signal ' + (k === 'top' ? 'an-gruen blinkt' : 'an-' + k);
     bewEl.textContent = bewertung(Math.round(w));
   }
 }
@@ -456,6 +448,7 @@ async function ausloesen() {
 ausloeser.addEventListener('click', ausloesen);
 
 $('#zur-strecke').addEventListener('click', () => zeige('strecke'));
+$('#su-zurueck').addEventListener('click', () => zeige('start'));
 $('#mediathek').addEventListener('click', waehleBild);
 $('#frei-mediathek').addEventListener('click', waehleBild);
 

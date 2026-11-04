@@ -2,7 +2,7 @@
 // Bauen, Abbruch ohne Verlust, höchstens 10 Fotos, Blindfahrt, Migration alter Strecken.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, fotoJpeg } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, fotoJpeg, bisHauptmenue, zumSucher } from './hilfe.mjs';
 
 let s;
 let b;
@@ -55,7 +55,7 @@ test('Serie: beste Reihenfolge ab dem letzten Halt, Aufnahmezeit, Ziehen, Entfer
   await bereit(page);
   assert.equal(await wartend(page), 4, 'alle Rohbilder gesichert');
   assert.deepEqual(await reihe(page), ['foto0.jpg', 'foto1.jpg', 'foto2.jpg', 'foto3.jpg']);
-  assert.equal(await page.textContent('#v-serie .se-status'), 'Schließt an Halt 1 an.');
+  assert.equal(await page.textContent('#v-serie .se-status'), 'Schließt an Foto 1 an.');
   const werte = await page.$$eval('#v-serie .se-wert', (l) => l.map((x) => Number(x.textContent)));
   console.log(`Werte: ${werte}`);
   assert.ok(werte[0] >= 40, `Anschluss an den Kamera-Halt ${werte}`);
@@ -138,9 +138,9 @@ test('Abbruch beim Bauen: nichts geht verloren, die Serie läuft mit derselben R
   await page.waitForTimeout(300);
   assert.equal(await wartend(page), 2);
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher' && window.nahtlos.zustand().fertig === 2, null, 30000);
+  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'start' && window.nahtlos.zustand().fertig === 2, null, 30000);
   await page.waitForSelector('#meldung:not([hidden])');
-  assert.equal(await page.textContent('#meldung p'), 'Eine Serie aus der Mediathek wartet noch.');
+  assert.equal(await page.textContent('#meldung p'), 'Eine Auswahl aus der Mediathek wartet noch.');
   await page.click('#meldung button.haupt');
   await page.waitForSelector('#v-serie:not([hidden])');
   await bereit(page);
@@ -167,7 +167,7 @@ test('Höchstens 10 Fotos, in der Blindfahrt nur ein einzelnes', async () => {
   // Verwerfen löscht nur die wartenden Fotos
   await page.click('#se-verwerfen');
   await page.click('#dialog button.haupt');
-  await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
+  await warteAuf(page, () => document.body.dataset.ansicht === 'start');
   assert.equal(await wartend(page), 0);
 
   // Blindfahrt: Auswahl erlaubt nur ein Foto, mehrere führen zum Einzelimport
@@ -176,7 +176,9 @@ test('Höchstens 10 Fotos, in der Blindfahrt nur ein einzelnes', async () => {
     await db.aendereStrecke(localStorage.getItem('nahtlos-aktiv'), { blind: true });
   });
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().blind === true && document.body.dataset.ansicht === 'sucher');
+  await warteAuf(page, () => window.nahtlos?.zustand().blind === true);
+  await bisHauptmenue(page);
+  await zumSucher(page);
   await page.evaluate(() => { HTMLInputElement.prototype.click = function () {}; });
   await page.click('#mediathek');
   assert.equal(await page.evaluate(() => document.querySelector('#datei-bild').multiple), false);
@@ -247,7 +249,8 @@ test('Migration: Strecken aus Format 1 bleiben erhalten', async () => {
     const b = await db.blob(h[0], 'bild');
     return { version: d.version, stores: [...d.objectStoreNames], namen: l.map((x) => x.name), halte: h.length, name: h[0]?.name, wartend: await db.zaehleSerienFotos(), bildLesbar: !!b && b.size > 1000, keinBlob: !(h[0].bild instanceof Blob), breite: h[0].breite };
   });
-  assert.equal(r.version, 4);
+  assert.equal(r.version, 5);
+  assert.ok(r.stores.includes('collagen'), 'Format 5: Speicher für Collagen');
   assert.equal(r.breite, 1296, 'alte Halte bekommen die Breite 1296');
   assert.ok(r.stores.includes('serie'));
   assert.ok(r.stores.includes('dateien'));

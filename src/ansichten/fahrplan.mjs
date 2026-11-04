@@ -12,7 +12,6 @@ import { ausbessern, unrettbar } from '../naehwerk.mjs';
 const v = $('#v-fahrplan');
 const tabelle = $('.fp-tabelle', v);
 const zahlen = $('.fp-kennzahlen', v);
-const spruch = $('.fp-spruch', v);
 const WOCHENTAG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
 
 const haltName = (h) => h.name || f(T.unbenannt, { n: h.index + 1 });
@@ -36,8 +35,7 @@ async function aufbauen() {
   await neuLaden();
   const halte = Z.halte;
   const k = kennzahlen(halte);
-  zahlen.textContent = f(T.kennzahlen, { n: k.n, x: k.schnitt ?? '–', p: k.p ?? '–' });
-  spruch.textContent = k.p == null ? '' : k.p === 100 ? T.puenktlich100 : k.p < 50 ? T.puenktlichSchlecht : '';
+  zahlen.textContent = f(T.kennzahlen, { n: k.n, x: k.schnitt ?? '–' });
   const zeilen = [el('div', { klasse: 'fp-zeile kopfz', role: 'row' }, ...T.spalten.map((s, i) => el('span', { text: s, role: 'columnheader', style: i === 2 ? 'text-align:right' : '' })))];
   let tag = null;
   for (const h of halte) {

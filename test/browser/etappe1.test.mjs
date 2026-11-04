@@ -1,7 +1,7 @@
 // Etappe 1: zwei Aufnahmen ergeben 2229 Pixel, Neuladen stellt alles her, offline, Absturz beim Nähen.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, zustand, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, zustand, warteAuf, ERGEBNISSE, bisHauptmenue, zumSucher, neuGeladen } from './hilfe.mjs';
 
 let s;
 let b;
@@ -36,11 +36,11 @@ test('Zwei Aufnahmen ergeben ein Band von 2229 Pixeln, Neuladen stellt alles wie
   });
   assert.ok(hell > 50, `Band gezeichnet: ${hell}`);
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher');
+  await bisHauptmenue(page);
   const z = await zustand(page);
   assert.equal(z.halte, 2);
   assert.equal(z.fertig, 2);
-  await page.click('#zur-strecke');
+  await page.locator('#v-start .zuletzt-eintrag').first().click();
   await warteAuf(page, () => document.querySelector('#v-strecke .band')?.dataset.breite === '2229');
   assert.deepEqual(fehler, []);
   await ctx.close();
@@ -55,7 +55,8 @@ test('Die App lädt offline', async () => {
   await warteAuf(page, () => !!navigator.serviceWorker.controller);
   await ctx.setOffline(true);
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher');
+  await bisHauptmenue(page);
+  await zumSucher(page);
   assert.equal(await page.evaluate(() => typeof window.nahtlos.version), 'string');
   // Auch der Worker und alle Module kommen aus dem Cache: eine Aufnahme gelingt.
   await warteAuf(page, () => document.querySelector('#video').videoWidth > 0 && !document.querySelector('#ausloeser').disabled);
@@ -70,9 +71,7 @@ test('Absturz beim Nähen verliert kein Foto', async () => {
   await ausloesen(page);
   await warteAuf(page, () => document.body.dataset.ansicht === 'sucher');
   await page.evaluate(() => localStorage.setItem('nahtlos-test-haenger', '1'));
-  await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher');
-  await warteAuf(page, () => !document.querySelector('#ausloeser').disabled && document.querySelector('#video').videoWidth > 0);
+  await neuGeladen(page);
   await page.click('#ausloeser');
   await warteAuf(page, () => window.nahtlos.zustand().halte === 2);
   await page.waitForTimeout(800);

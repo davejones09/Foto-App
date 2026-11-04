@@ -136,7 +136,7 @@ export async function fertigstellen(halt, vorgaenger, { rohQuelle = null } = {})
 // weiterverwenden: iOS kann sie nach dem Löschen des Quelldatensatzes womöglich nicht mehr lesen.
 async function ausDb(haltId) {
   const halt = await db.halt(haltId);
-  if (!halt) throw new Error('Halt fehlt in der Datenbank');
+  if (!halt) throw new Error('Foto fehlt in der Datenbank');
   if (halt.index === 0) return { halt, vor: null };
   const vor = (await db.halte(halt.streckeId)).find((h) => h.index === halt.index - 1) || null;
   if (!vor) throw new Error('Vorgänger fehlt in der Datenbank');
@@ -153,7 +153,7 @@ export async function fertigstellenMitWiederholung(haltId, { versuche = 2, neu =
       return await fertigstellen(halt, vor);
     } catch (err) {
       letzter = err;
-      protokolliere('naehen', `Versuch ${v} von ${versuche} für Halt ${halt.index + 1}: ${err && (err.stack || err.message) || err}`);
+      protokolliere('naehen', `Versuch ${v} von ${versuche} für Foto ${halt.index + 1}: ${err && (err.stack || err.message) || err}`);
     }
   }
   throw letzter;

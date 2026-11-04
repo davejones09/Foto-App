@@ -1,4 +1,4 @@
-// Ausfahrt: Karussell, Reel, Gesamtbild, Sicherung und Einspielen.
+// Exportieren: Carousel, Reel (mit Stil), Gesamtbild, Sicherung und Einspielen.
 import { Z, registriere, zeige, neuLaden, ladeStrecke } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
 import { $, el, melde } from '../ui.mjs';
@@ -6,17 +6,21 @@ import { karussellAnzahl, beitraege, reelPlan, REEL_LAENGEN } from '../kennzahle
 import * as aus from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
+import { STILE, stileFuer } from '../reelstil.mjs';
 
 const v = $('#v-ausfahrt');
 const liste = $('.af-liste', v);
 const erinnerung = $('.af-erinnerung', v);
 let reelLaenge = 30;
-let reelEndstation = true;
+let reelStil = 'band';
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
-  reelEndstation = localStorage.getItem('nahtlos-reel-endstation') !== '0';
+  const st = localStorage.getItem('nahtlos-reel-stil');
+  if (STILE.includes(st)) reelStil = st;
 } catch {}
+let vorschauStopp = [];
+const vorschauenStoppen = () => { for (const s of vorschauStopp) s(); vorschauStopp = []; };
 let laeuft = false;
 
 const datei = (blob, name) => new File([blob], name, { type: blob.type });
@@ -109,26 +113,29 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
 function aufbauen() {
   const halte = Z.halte.filter((h) => h.bild);
   const n = halte.length;
-  const name = (Z.strecke.name || 'Strecke').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'strecke';
+  const name = (Z.strecke.name || 'projekt').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'projekt';
   const seit = Z.halte.length - (Z.strecke.gesichertBei || 0);
   erinnerung.hidden = !(seit > 5);
   erinnerung.textContent = f(T.erinnerung, { n: seit });
 
-  // Karussell: Der Plan (Versatz gegen Grenzen im Motiv) rechnet im Hintergrund, die Zahl kann dadurch
-  // noch kleiner werden. Liegt trotzdem eine Grenze im Motiv, zeigt ein Hinweis die Stelle.
+  // Carousel: Der Plan (genau aufgehende Slides, Versatz gegen Grenzen im Motiv) rechnet im Hintergrund.
+  // Die Vorschau zeigt jede Slide genau so, wie sie exportiert wird. Liegt trotzdem eine Grenze im Motiv,
+  // zeigt ein Hinweis die Stelle.
   const anzahl = karussellAnzahl(halte);
   const teile = beitraege(anzahl);
   const grenzHinweis = el('div', { klasse: 'af-grenze' }, el('p', { text: T.karussellGrenze }), el('canvas', { klasse: 'af-grenze-bild' }));
   grenzHinweis.hidden = true;
+  const slides = el('div', { klasse: 'af-slides', 'aria-label': T.karussellVorschau });
+  const zusatzKarussell = el('div', { klasse: 'af-reel' }, slides, grenzHinweis);
   const karussellPlan = aus.karussellPlanen(halte).catch((err) => { protokolliere('karussell', err); return null; });
   const karussell = punkt({
     titel: f(T.karussell, { n: anzahl }),
     info: teile.length > 1 ? f(T.mehrereBeitraege, { t: teile.length }) : '',
-    zusatz: grenzHinweis,
+    zusatz: zusatzKarussell,
     async bauen(fort, w) {
       const plan = await karussellPlan;
       const bilder = await aus.karussell(Z.strecke, halte, { fortschritt: fort, waechter: w, plan });
-      const dateien = bilder.map((b, i) => datei(b, `${name}-${String(i + 1).padStart(2, '0')}.jpg`));
+      const dateien = bilder.map((b, i) => datei(b, `carousel-${String(i + 1).padStart(2, '0')}.jpg`));
       return beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
     },
   });
@@ -139,6 +146,11 @@ function aufbauen() {
     const info = $('p', karussell);
     info.textContent = t > 1 ? f(T.mehrereBeitraege, { t }) : '';
     info.hidden = t <= 1;
+    const leinwaende = Array.from({ length: plan.anzahl }, () => Object.assign(document.createElement('canvas'), { width: 128, height: 160 }));
+    slides.replaceChildren(...leinwaende);
+    slides.dataset.anzahl = String(plan.anzahl);
+    await aus.karussellVorschau(leinwaende, halte, plan).catch((err) => protokolliere('karussell', err));
+    slides.dataset.fertig = '1';
     if (plan.treffer.length) {
       grenzHinweis.hidden = false;
       await aus.grenzVorschau($('canvas', grenzHinweis), halte, plan.treffer[0].x).catch((err) => protokolliere('karussell', err));
@@ -162,12 +174,6 @@ function aufbauen() {
       reelAktualisieren();
     },
   })));
-  const endSchalter = el('input', { type: 'checkbox', checked: reelEndstation });
-  endSchalter.addEventListener('change', () => {
-    reelEndstation = endSchalter.checked;
-    try { localStorage.setItem('nahtlos-reel-endstation', reelEndstation ? '1' : '0'); } catch {}
-    reelAktualisieren();
-  });
   const tempoEl = el('p', { klasse: 'af-tempo' });
   const vorschlagText = el('span');
   const vorschlagEl = el('p', { klasse: 'af-vorschlag' }, vorschlagText, ' ',
@@ -191,11 +197,27 @@ function aufbauen() {
     if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
     reelAktualisieren();
   });
-  const reelPlanJetzt = () => reelPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, endstation: reelEndstation });
+  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: reelLaenge, stil: reelStil });
+  // Stil wählen, jede Kachel mit kurzer Live-Vorschau aus den ersten Fotos.
+  const stilKnoepfe = STILE.map((st) => {
+    const cv = el('canvas', { width: 144, height: 256 });
+    return el('button', {
+      klasse: 'af-stil', 'data-stil': st, 'aria-pressed': String(st === reelStil),
+      onclick: () => {
+        reelStil = st;
+        try { localStorage.setItem('nahtlos-reel-stil', st); } catch {}
+        for (const b of stilKnoepfe) b.setAttribute('aria-pressed', String(b.dataset.stil === st));
+        reelAktualisieren();
+      },
+    }, cv, el('span', { text: T[`stil_${st}`] }));
+  });
+  const stileEl = el('div', { klasse: 'af-stile', role: 'group', 'aria-label': T.reelStil }, ...stilKnoepfe);
+  vorschauenStoppen();
+  for (const b of stilKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil));
   const zusatz = el('div', { klasse: 'af-reel' },
+    stileEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
-    el('label', { klasse: 'schalter' }, endSchalter, el('span', { text: T.reelEndstation })),
     tempoEl, vorschlagEl);
   const reelKarte = punkt({
     titel: f(T.reel, { laenge: reelLaenge }),
@@ -205,8 +227,8 @@ function aufbauen() {
       const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w });
       const titelBlob = await aus.titelbild(halte, p);
       fort(1);
-      const video = datei(blob, `${name}-reel-${p.laenge}s.mp4`);
-      const titel = datei(titelBlob, `${name}-reel-titelbild.jpg`);
+      const video = datei(blob, 'reel.mp4');
+      const titel = datei(titelBlob, 'reel-cover.jpg');
       return {
         knoepfe: [{ text: T.teilen, dateien: [video], haupt: true }, { text: T.inFotos, dateien: [video, titel] }],
         hinweis: T.reelHinweis,
@@ -216,12 +238,24 @@ function aufbauen() {
   function reelAktualisieren() {
     const p = reelPlanJetzt();
     $('.af-titel', reelKarte).textContent = f(T.reel, { laenge: p.laenge });
-    tempoEl.textContent = f(T.reelTempo, { n: p.bis - p.von + 1, v: Math.round(p.tempo) });
-    vorschlagEl.hidden = !p.zuSchnell;
-    if (p.vorschlag) vorschlagText.textContent = f(T.reelZuSchnell, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    const n = p.bis - p.von + 1;
+    if (p.stil === 'band') {
+      tempoEl.textContent = f(T.reelTempo, { n, v: Math.round(p.tempo) });
+      vorschlagEl.hidden = !p.zuSchnell;
+      if (p.vorschlag) vorschlagText.textContent = f(T.reelZuSchnell, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    } else {
+      tempoEl.textContent = f(T.reelStand, { n, s: p.stand.toFixed(1).replace('.', ',') });
+      vorschlagEl.hidden = !p.zuKurz;
+      if (p.vorschlag) vorschlagText.textContent = f(T.reelZuKurz, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
+    }
+    reelKarte.dataset.stil = p.stil;
   }
   reelAktualisieren();
   aus.reelWeg().then((w) => {
+    // Ein Stil, der im Ausweichweg (Echtzeit) nicht sauber geht, wird ausgeblendet.
+    const moeglich = stileFuer(w);
+    for (const b of stilKnoepfe) b.hidden = !moeglich.includes(b.dataset.stil);
+    if (w && !moeglich.includes(reelStil)) stilKnoepfe[0].click();
     if (w) return;
     $('.af-titel', reelKarte).disabled = true;
     tempoEl.textContent = T.mp4Fehlt;
@@ -233,7 +267,7 @@ function aufbauen() {
     info: plan.verkleinert ? f(T.verkleinert, { b: plan.b, h: plan.h }) : '',
     async bauen(fort, w) {
       const r = await aus.gesamtbild(halte, { fortschritt: fort, waechter: w });
-      return [[datei(r.blob, `${name}-gesamt.jpg`)]];
+      return [[datei(r.blob, 'gesamtbild.jpg')]];
     },
   });
 
@@ -251,8 +285,9 @@ function aufbauen() {
     },
   });
 
-  const einspielenKnopf = el('section', { klasse: 'af-punkt' }, el('button', { klasse: 'af-titel neben2', text: T.einspielen, onclick: einspielenWaehlen }));
-  liste.replaceChildren(karussell, reelKarte, gesamt, sicherung, einspielenKnopf);
+  // Ein Reel-Projekt zeigt das Reel zuerst. Beide Ausgaben gehen immer aus demselben Projekt.
+  const erste = Z.strecke.art === 'reel' ? [reelKarte, karussell] : [karussell, reelKarte];
+  liste.replaceChildren(...erste, gesamt, sicherung);
 }
 
 // --- Einspielen ---
@@ -265,6 +300,11 @@ eingabe.addEventListener('change', async () => {
   melde(f(T.wirdGebaut, { p: 0 }), [], 0);
   try {
     const s = await aus.einspielen(d, { fortschritt: (p) => melde(f(T.wirdGebaut, { p: Math.round(p * 100) }), [], 0) });
+    if (s.collage) {
+      melde(`${s.collage.name}`, [], 2500);
+      zeige('collage', { id: s.collage.id });
+      return;
+    }
     melde(`${s.name}`, [], 2500);
     await ladeStrecke(s.id);
     zeige('strecke');
@@ -281,4 +321,5 @@ registriere('ausfahrt', {
     await neuLaden();
     aufbauen();
   },
+  verlassen() { vorschauenStoppen(); },
 });

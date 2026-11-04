@@ -99,18 +99,31 @@ Das Mindeste, das Spaß macht. Ohne das ist alles andere wertlos.
 
 **Fertig, wenn:** Node-Tests zeigen, dass ein Halt außerhalb der Überlappung verlustfrei exakt das Original ist, die Naht an beiden Rändern ohne Stufe ins Original übergeht, nur bis 3 % gebogen wird und keine Stelle `angleichen` aufruft. Die Browser-Tests bauen eine P3-Serie (Profil bleibt, nach JPEG im Mittel höchstens 3 Stufen Abweichung, Karussell in sRGB), führen den Fotovergleich der Diagnose aus und zeigen, dass alte Strecken nur nach Rückfrage neu genäht werden.
 
+## Nachtrag: Professioneller Auftritt
+
+Das Bahn-Thema fällt weg, der Name „Nahtlos“ bleibt. In sechs Schritten, jeder mit Tests, Commit und Push:
+
+1. **Sprache:** Projekt, Foto, Passung, Naht, Hilfslinien, Fotos, Exportieren, Reel, Überraschungsmodus. Bewertung Perfekt, Passt gut, Passt teilweise, Passt nicht. Pünktlichkeit, Endstation, Stempel und Signallichter sind weg, der Sucher zeigt die Passung als Zahl mit Balken.
+2. **Oberfläche:** neutrales dunkles Grau, ein zurückhaltender Akzent, neues Icon und neue Startbilder. Die App startet im Hauptmenü.
+3. **Hauptmenü:** Neu erstellen (Carousel, Reel, Collage), Zuletzt bearbeitet, Alle Projekte, Einstellungen. Ablauf: Karte, Fotos, Vorschau, Export.
+4. **Keine Spuren der App:** kein Text im Ergebnis, neutrale Dateinamen, saubere Metadaten, Carousel ohne Abschluss-Slide (Zoom bis 8 % oder Beschnitt an den Enden), Reel endet auf dem letzten Bild.
+5. **Collage:** 2 bis 9 Fotos, drei Formate, 25 Vorlagen, Mit Rahmen oder Nahtlos, Gesten, eigener Projekttyp mit Sicherung (Format 5).
+6. **Reel-Stile:** Band, Sanft, Schwung, Zoom, Naht mit Live-Vorschau.
+
+**Fertig, wenn:** `test/texte.test.mjs` keinen Bahnbegriff findet. Die Browser-Tests starten im Hauptmenü, vergleichen jede Carousel-Slide Pixel für Pixel mit dem Band (letzte Slide gefüllt), finden keine App-Hinweise in JPEG und MP4, bauen eine Collage ohne Farbänderung außerhalb der Nähte samt Neuladen, Sicherung und Migration, und erzeugen ein Stil-Reel mit genau 450 Bildern in 15 s.
+
 ## Streichliste, falls es knapp wird
 
 Von oben nach unten zuerst streichen:
 
 1. Linsenwechsel
-2. Blindfahrt
-3. Halt-Namen
-4. Herauszoomen auf die ganze Strecke (Leiste bleibt)
-5. Fahrt nur im Tempo Regionalexpress
-6. Fahrt ganz
+2. Überraschungsmodus
+3. Namen für Fotos
+4. Herauszoomen auf das ganze Band (Leiste bleibt)
+5. Reel-Stile Schwung und Naht (Band, Sanft und Zoom bleiben)
+6. Collage im Stil „Nahtlos“ (Mit Rahmen bleibt)
 
-Nie streichen: Rohbild zuerst speichern, Offline-Betrieb, Diagnose, Sicherung, Karussell.
+Nie streichen: Rohbild zuerst speichern, Offline-Betrieb, Diagnose, Sicherung, Carousel.
 
 ## Was David am Ende tun muss
 
@@ -123,21 +136,19 @@ Schreibe David nach dem ersten Merge genau das:
 
 ## Abnahme am iPhone
 
-Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest in etwa 15 Minuten durchgehen kann:
+Das kann nur David prüfen. Liste ihm die Punkte auf, die er vor dem Praxistest in etwa 20 Minuten durchgehen kann:
 
-- Die Einführung ansehen und den Erstlauf einmal durchspielen. Liegen schon Strecken auf dem iPhone, kommt die Einführung nicht von selbst: Strecken → „So funktioniert's“.
-- Flugmodus an, App aus dem App-Umschalter schließen, neu öffnen: Alles ist noch da und die Kamera läuft.
-- Während der Nutzung auf den Home-Bildschirm wechseln und zurück: Die Kamera kommt wieder.
-- Ein Foto aus der Mediathek holen, auch eines von der Lumix.
-- Alles aus der Ausfahrt einmal auslösen und in Fotos oder Instagram prüfen.
-- Eine Serie aus 3 bis 10 Fotos aus der Mediathek holen, auch von der Lumix: Reihenfolge, Werte und Ausschnitte in der Vorschau ansehen, eins umsortieren, bauen.
-- Ein Reel mit 15 Sekunden bauen, „In Fotos speichern“, in Instagram als Reel anlegen (nicht veröffentlichen müssen) und das Titelbild als Cover wählen.
-- Im Sucher „Idee“ antippen, einen Ort wählen, ein paar Ideen durchgehen. Das iPhone so halten, dass eine Linie knapp neben der Marke liegt, und prüfen, ob der Richtungshinweis stimmt.
-- Nach einem Update mit neuem Speicherformat: In der Diagnose müssen „Dateien“ mit plausibler Größe, „Beschädigte Halte: 0“ (oder die erwarteten) und „Lesetest: n von n Halten vollständig lesbar“ stehen. Danach ein Kamerafoto, einen Import und eine Serie bauen, die App ganz schließen, neu öffnen und die Strecke ansehen.
-- Fotos unverändert: Fünfmal auf die Versionsnummer tippen, „Foto vergleichen“, ein iPhone-Foto (Display P3) wählen, danach eins von der Lumix. Bei beiden muss „Ergebnis: in Ordnung“ stehen. In der Zeile „Farbe“ steht, ob P3 am iPhone nativ gespeichert wird. Bericht kopieren und an Claude geben.
-- Eine alte Strecke öffnen: Die App fragt „Neu nähen“. Erst „Später“, dann bei einer Teststrecke „Neu nähen“ und die Übergänge ansehen.
-- Fünfmal auf die Versionsnummer tippen und den Bericht kopieren. Er sollte in Claude Code einfügbar sein.
+- **Start:** Nach dem Update startet die App im Hauptmenü. Alte Projekte stehen unter „Zuletzt bearbeitet“ und „Alle Projekte“ (als Carousel), mit Titelbild. Icon und Startbild sind neu (eventuell erst nach erneutem „Zum Home-Bildschirm“).
+- **Einführung:** Einstellungen → „Einführung ansehen“. Drei Bildschirme, am Ende zurück in die Einstellungen.
+- **Carousel:** Karte „Carousel“, Kamera, drei bis vier Fotos mit Passung machen. Im Sucher: Zahl und Balken statt Lichtern, Hilfslinien als Striche. Dann Projekt → Exportieren: Die Vorschau der Slides ansehen, Carousel teilen und in Instagram prüfen, ob die letzte Slide voll ist und nirgends Text steht.
+- **Reel aus demselben Projekt:** In Exportieren jeden Stil kurz in der Vorschau ansehen, dann je ein Reel mit „Naht“ und „Schwung“ in 15 s bauen, in Fotos speichern und ansehen. Ruckelt etwas, ist das ein Befund. Mit vielen Fotos und 15 s muss der Vorschlag „Foto 1 bis …“ kommen.
+- **Mediathek:** Karte „Reel“, Mediathek, 5 Fotos von der Lumix, zusammensetzen, exportieren.
+- **Collage:** Karte „Collage“, Mediathek, 4 bis 6 Fotos. Feld antippen, ziehen, mit zwei Fingern zoomen, ein Foto auf ein anderes Feld ziehen. Vorlage, Format 9:16 und „Nahtlos“ probieren, Abstand und Rahmenfarbe bei „Mit Rahmen“. Exportieren → Collage als Bild, in Fotos ansehen (2160 Pixel breit, Farben wie im Original). Einmal mit der Kamera eine Collage beginnen.
+- **Sicherung:** Eine Collage sichern, in den Einstellungen einspielen, sie steht danach doppelt in „Alle Projekte“.
+- **Metadaten:** Ein exportiertes Carousel-Bild und das Reel in Fotos öffnen, Infos (i) ansehen: kein Hinweis auf Nahtlos.
+- **Offline:** Flugmodus an, App schließen, neu öffnen: Hauptmenü, Projekte und Kamera gehen.
+- **Diagnose:** Einstellungen → Diagnose. „Beschädigte Fotos: 0“, „Lesetest: n von n Fotos vollständig lesbar“. Bericht kopieren und an Claude geben.
 
 ## Unterwegs
 
-David kann unterwegs über die Claude-App eine neue Sitzung öffnen und den kopierten Bericht einfügen. Bugfixes müssen klein bleiben und dürfen vorhandene Strecken nie gefährden: Vor jeder Änderung am Speicherformat zuerst die Migration, dazu ein Test mit Daten der alten Fassung.
+David kann unterwegs über die Claude-App eine neue Sitzung öffnen und den kopierten Bericht einfügen. Bugfixes müssen klein bleiben und dürfen vorhandene Projekte nie gefährden: Vor jeder Änderung am Speicherformat zuerst die Migration, dazu ein Test mit Daten der alten Fassung.

@@ -1,6 +1,5 @@
 // Gemeinsamer Zustand und Wechsel der Ansichten. Keine Navigation, kein Hash (WebKit-Kamera-Bugs).
 import * as db from './speicher.mjs';
-import { namensVorschlag } from './texte.mjs';
 import { protokolliere } from './diagnose.mjs';
 
 export const Z = {
@@ -45,9 +44,15 @@ export async function ladeAktive() {
   if (!id) id = await db.einstellung('aktiv').catch(() => null);
   if (id && (await ladeStrecke(id))) return;
   const l = await db.strecken();
-  if (l.length) { await ladeStrecke(l[0].id); return; }
-  const s = await db.neueStrecke({ name: namensVorschlag() });
-  await ladeStrecke(s.id);
+  if (l.length) await ladeStrecke(l[0].id);
+}
+
+// Kein Projekt mehr aktiv (etwa nach dem Löschen).
+export async function keinProjekt() {
+  Z.strecke = null;
+  Z.halte = [];
+  try { localStorage.removeItem(AKTIV); } catch {}
+  await db.setzeEinstellung('aktiv', null).catch(() => {});
 }
 
 export async function neuLaden() {

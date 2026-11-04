@@ -2,6 +2,7 @@
 import { analysiere, hauptlinien } from './kern.mjs';
 import { SerienPlaner, motivKarte, motivSetzen, spaltenProfil } from './serie.mjs';
 import { anschliessen } from './uebergang.mjs';
+import { motivRaster } from './collage.mjs';
 
 let rest = null;
 let restLinien = [];
@@ -42,6 +43,9 @@ self.onmessage = (e) => {
       if (e.data.motiv) karte = motivSetzen(karte, e.data.motiv);
       const profil = spaltenProfil(karte);
       self.postMessage({ id, ok: true, profil }, [profil.buffer]);
+    } else if (typ === 'motivraster') {
+      // Collage: Motivkarte des Fotos, verkleinert auf ein Raster für den Ausschnittvorschlag
+      self.postMessage({ id, ok: true, raster: motivRaster(motivKarte(bild(e.data.bild))) });
     } else if (typ === 'serie-neu') {
       planer = new SerienPlaner();
       self.postMessage({ id, ok: true });

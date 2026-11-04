@@ -1,7 +1,7 @@
 // Einführung: nur beim ersten Start, vor der Kamera, überspringbar, in den Strecken wieder aufrufbar.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE } from './hilfe.mjs';
+import { server, browser, neueSeite, oeffne, ausloesen, warteAuf, ERGEBNISSE, hauptmenue, bisHauptmenue } from './hilfe.mjs';
 
 let s;
 let b;
@@ -18,13 +18,13 @@ const abdruck = (page) => page.evaluate(() => {
   return { summe, hell };
 });
 
-test('Kommt beim ersten Start vor der Kamera, animiert, wischbar, überspringbar und dann nie wieder', async () => {
+test('Kommt beim ersten Start vor dem Hauptmenü, animiert, wischbar, überspringbar und dann nie wieder', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
   await page.goto(s.url);
   await page.click('#trotzdem');
   await page.waitForSelector('#v-einfuehrung:not([hidden])');
   assert.equal(await page.locator('.einf-punkte button').count(), 3);
-  assert.equal(await page.textContent('.einf-titel'), 'Eine Reise, ein Bild.');
+  assert.equal(await page.textContent('.einf-titel'), 'Fotos, die ineinander übergehen.');
   assert.equal(await page.evaluate(() => window.__gumAufrufe), 0);
   await page.waitForTimeout(1200);
   const a = await abdruck(page);
@@ -42,40 +42,43 @@ test('Kommt beim ersten Start vor der Kamera, animiert, wischbar, überspringbar
   };
   await wisch(r.width - 40, 40);
   assert.equal(await seite(page), '2');
-  assert.equal(await page.textContent('.einf-titel'), 'Anschluss suchen.');
+  assert.equal(await page.textContent('.einf-titel'), 'Die Passung finden.');
   await wisch(40, r.width - 40);
   assert.equal(await seite(page), '1');
   await page.locator('.einf-punkte button').nth(2).click();
-  assert.equal(await page.textContent('#einf-weiter'), 'Einsteigen');
+  assert.equal(await page.textContent('#einf-weiter'), "Los geht's");
   assert.match(await page.textContent('.einf-absatz'), /Reel/);
   await page.locator('.einf-punkte button').nth(0).click();
   assert.match(await page.textContent('.einf-absatz'), /10 Fotos aus der Mediathek/);
   await page.locator('.einf-punkte button').nth(2).click();
-  // Überspringen führt zur Kamera-Freigabe
+  // Überspringen führt ins Hauptmenü, die Kamera ist noch nicht gefragt
   await page.click('#einf-ueberspringen');
-  await page.waitForSelector('.freigabe:not([hidden])');
+  await hauptmenue(page);
+  assert.equal(await page.evaluate(() => window.__gumAufrufe), 0);
+  await page.screenshot({ path: `${ERGEBNISSE}/ef-hauptmenue.png` });
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher');
+  await hauptmenue(page);
   assert.ok(await page.isHidden('#v-einfuehrung'));
   assert.deepEqual(fehler, []);
   await ctx.close();
 });
 
-test('Lässt sich in den Strecken wieder aufrufen und führt dorthin zurück', async () => {
+test('Lässt sich in den Einstellungen wieder aufrufen und führt dorthin zurück', async () => {
   const { ctx, page, fehler } = await neueSeite(b);
-  await oeffne(page, s.url);
-  await page.click('#zur-strecke');
-  await page.click('#zu-strecken');
-  await page.waitForSelector('#v-strecken:not([hidden])');
-  assert.equal(await page.textContent('#sl-einfuehrung'), "So funktioniert's");
-  await page.screenshot({ path: `${ERGEBNISSE}/ef-strecken.png` });
-  await page.click('#sl-einfuehrung');
+  await page.goto(s.url);
+  await bisHauptmenue(page);
+  await page.click('#start-einstellungen');
+  await page.waitForSelector('#v-einstellungen:not([hidden])');
+  assert.equal(await page.textContent('#ei-einfuehrung span'), 'Einführung ansehen');
+  assert.match(await page.textContent('#version'), /^v\d+\.\d+\.\d+$/);
+  await page.screenshot({ path: `${ERGEBNISSE}/ef-einstellungen.png` });
+  await page.click('#ei-einfuehrung');
   await page.waitForSelector('#v-einfuehrung:not([hidden])');
   assert.equal(await seite(page), '1');
   await page.click('#einf-weiter');
   await page.click('#einf-weiter');
   await page.click('#einf-weiter');
-  await warteAuf(page, () => document.body.dataset.ansicht === 'strecken');
+  await warteAuf(page, () => document.body.dataset.ansicht === 'einstellungen');
   assert.deepEqual(fehler, []);
   await ctx.close();
 });
@@ -92,7 +95,7 @@ test('Mit vorhandenen Halten kommt sie nicht ungefragt', async () => {
     await db.setzeEinstellung('einfuehrung', null);
   });
   await page.reload();
-  await warteAuf(page, () => window.nahtlos?.zustand().ansicht === 'sucher');
+  await hauptmenue(page);
   await ctx.close();
 });
 

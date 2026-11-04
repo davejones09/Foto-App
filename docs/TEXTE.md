@@ -1,198 +1,203 @@
 # Texte
 
-Alle Texte der App auf Deutsch, per Du, trocken und knapp. Neue Texte im selben Ton schreiben. Keine Ausrufezeichen, keine Emojis.
+Alle Texte der App auf Deutsch, per Du, sachlich und klar. Keine Witze, keine Themenwelt, keine Ausrufezeichen, keine Emojis. Die Quelle ist `src/texte.mjs`, `test/texte.test.mjs` prüft, dass kein Bahnbegriff sichtbar wird.
 
 ## Installation (beim Öffnen in Safari)
 
-- **Titel:** Einmal einsteigen, bitte.
-- **Text:** Fotos sollen nicht verloren gehen. Dafür gehört die App auf deinen Home-Bildschirm.
-- **Schritte:** Tippe auf Teilen. Wähle „Zum Home-Bildschirm“. Starte die App über das neue Icon.
+- **Titel:** Nahtlos auf den Home-Bildschirm legen
+- **Text:** Damit keine Fotos verloren gehen, gehört Nahtlos auf deinen Home-Bildschirm.
+- **Schritte:** Tippe auf Teilen. Wähle „Zum Home-Bildschirm“. Starte Nahtlos über das neue Icon.
 - **Link:** Trotzdem im Browser testen
 
-## Einführung (nur beim ersten Start, vor der Kamera-Freigabe)
+## Einführung (nur beim ersten Start, vor dem Hauptmenü)
 
 | Bildschirm | Titel | Text |
 |---|---|---|
-| 1 | Eine Reise, ein Bild. | Jedes Foto beginnt genau dort, wo das letzte aufhört. Fotografier unterwegs oder hol bis zu 10 Fotos aus der Mediathek: Die App sucht die Reihenfolge, die am besten passt. |
-| 2 | Anschluss suchen. | Links im Sucher liegt das Ende deines letzten Fotos. Such etwas, das dort weitergeht, egal wo: Horizont, Tischkante, Geländer. Grün heißt: Das passt. |
-| 3 | Endstation: eine lange Strecke. | Am Ende fährst du durch alles durch: als Reel für Instagram, als Karussell oder als ein langes Bild. |
+| 1 | Fotos, die ineinander übergehen. | Jedes Foto beginnt dort, wo das letzte aufhört. So entsteht aus vielen Fotos ein durchgehendes Bild. Du kannst fotografieren oder bis zu 10 Fotos aus der Mediathek nehmen. |
+| 2 | Die Passung finden. | Links im Sucher liegt das Ende deines letzten Fotos. Richte die Kamera so aus, dass Linien und Flächen weiterlaufen. Die Zahl oben zeigt, wie gut es passt. |
+| 3 | Carousel, Reel oder Collage. | Aus deinen Fotos wird ein Carousel für Instagram, ein Reel oder eine Collage. Du wählst im Hauptmenü, was du erstellen möchtest. |
 
-- **Knöpfe:** Überspringen · Weiter · auf dem letzten Bildschirm Einsteigen
-- **Beschriftung im Beispiel:** Karussell · Reel
-- **Wieder öffnen (in den Strecken):** So funktioniert's
+- **Knöpfe:** Überspringen · Weiter · auf dem letzten Bildschirm Los geht's
+- **Beschriftung im Beispiel:** Carousel · Reel · Collage
+
+## Hauptmenü
+
+- **Abschnitt:** Neu erstellen
+- **Karten:** Carousel · Bilder, die beim Wischen ineinander übergehen | Reel · Ein Video, das durch deine Fotos läuft | Collage · 2 bis 9 Fotos auf einer Fläche
+- **Abschnitt:** Zuletzt bearbeitet · Alle Projekte
+- **Leer:** Noch keine Projekte. Wähle oben, was du erstellen möchtest.
+- **Eintrag:** {Name} · {Carousel | Reel | Collage} · {n} Fotos
+- **Unten:** Alle Projekte · Einstellungen
+- **Neues Carousel oder Reel:** Neues Carousel / Neues Reel · Name „Projekt {Monat} {Jahr}“ · Überraschungsmodus: Ihr seht immer nur das letzte Foto. Das ganze Bild erst beim Aufdecken. · Abbrechen · Mediathek · Kamera
+- **Neue Collage:** Neue Collage · Name „Collage {Monat} {Jahr}“ · Abbrechen · Mediathek · Kamera
+
+## Einstellungen
+
+- **Titel:** Einstellungen
+- **Zeilen:** Sicherung einspielen · Ein gesichertes Projekt wiederherstellen | Einführung ansehen · Die drei Bildschirme vom ersten Start | Diagnose · Technischer Bericht, falls etwas nicht klappt | Version · v{x.y.z}
 
 ## Kamera-Freigabe
 
-- **Text:** Hier geht's nur mit Kamera. Deine Fotos bleiben auf deinem iPhone.
+- **Text:** Für Aufnahmen braucht Nahtlos die Kamera. Deine Fotos bleiben auf deinem iPhone.
 - **Knopf:** Kamera freigeben
-- **Verweigert:** Ohne Kamera bleibt der Zug stehen. Erlaube den Kamerazugriff in den iPhone-Einstellungen bei Safari und öffne die App neu.
-- **Mediathek als Ausweg:** Foto aus der Mediathek holen
+- **Verweigert:** Ohne Kamerazugriff sind hier keine Aufnahmen möglich. Erlaube ihn in den iPhone-Einstellungen bei Safari und öffne Nahtlos neu. Fotos aus der Mediathek gehen auch so.
+- **Ausweg:** Fotos aus der Mediathek wählen
 
 ## Erstlauf
 
 | Moment | Text |
 |---|---|
-| Leerer Sucher | Mach ein Foto. Egal wovon. |
-| Rest erscheint | Das ist das Ende deines letzten Fotos. |
-| Direkt danach | Such etwas, das hier weitergeht. Egal wo. |
-| Marken leuchten auf | Hier kommen Linien aus dem Bild. Triff sie. |
-| Signal leuchtet auf | Grün heißt: Das passt. |
-| Während der ersten Aufdeckung | (kein Text, nur das Bild) |
-| Nach der ersten Aufdeckung | Kein Schnitt. Jedes Foto beginnt, wo das letzte endet. |
-| Direkt danach | Das ist deine Strecke. Sie wird so lang wie deine Reise. |
-| Knopf | Weiterfahren |
+| Leerer Sucher | Mach ein erstes Foto. Das Motiv ist egal. |
+| Rest erscheint | Links siehst du das Ende deines letzten Fotos. |
+| Direkt danach | Such etwas, das dort weitergeht. Der Ort ist egal. |
+| Hilfslinien leuchten auf | Die Hilfslinien zeigen, wo Linien aus dem Bild kommen. Triff sie. |
+| Passung leuchtet auf | Die Zahl zeigt, wie gut es passt. Ab 70 passt es gut. |
+| Nach der ersten Aufdeckung | Kein sichtbarer Schnitt: Jedes Foto beginnt, wo das letzte endet. |
+| Direkt danach | Das ist dein Projekt. Es wächst mit jedem Foto. |
+| Knopf | Weiter |
 
 ## Sucher
 
-**Bewertungen** (in `bewertung()` im Kern):
+**Passung** (in `bewertung()` im Kern), als Zahl mit schmalem Balken:
 
 | Wert | Text |
 |---|---|
-| ab 90 | Planmäßig. Auf die Sekunde. |
-| 70 bis 89 | Anschluss erreicht |
-| 40 bis 69 | Knapp, läuft aber |
-| unter 40 | Anschluss verpasst |
+| ab 90 | Perfekt |
+| 70 bis 89 | Passt gut |
+| 40 bis 69 | Passt teilweise |
+| unter 40 | Passt nicht |
 
-**Tipps**, wenn der Wert 15 Sekunden unter 40 bleibt, höchstens einer pro Minute: kommen aus derselben Quelle wie der Knopf „Idee“ (siehe unten). Die früheren fünf Tipps sind dort als allgemeine Ideen enthalten.
+**Tipps**, wenn der Wert 15 Sekunden unter 40 bleibt, höchstens einer pro Minute: kommen aus derselben Quelle wie „Idee“.
 
 **Idee:**
 
 - **Knopf:** Idee
 - **Satz:** {Beschreibung des Rests} {Idee}, zum Beispiel: Linie auf halber Höhe, oben hell, unten dunkel. Versuch's mit einer Tischkante vor einer hellen Wand.
-- **Beschreibung:** Linie {im oberen Drittel | auf halber Höhe | im unteren Drittel}{, steigt nach rechts | , fällt nach rechts}, oben {hell | dunkel | blau | grün | warm | grau}, unten {…}. Ohne Linie: Kaum Linien im Rest, nur Fläche.
-- **Kontrast:** Die letzten drei Halte waren alle {Farbe}. {Idee}
+- **Kontrast:** Die letzten drei Fotos waren alle {Farbe}. {Idee}
 - **Ort:** Wo bist du gerade? · Strand · Stadt · Essen · Natur · Unterkunft · Unterwegs
 - **Knöpfe:** Schließen · Andere Idee
 - **Alle Ideen:** `src/ideen.mjs` (73 Stück, getaggt)
 
-**Richtung**, wenn eine Kameralinie knapp neben einer Marke liegt:
+**Richtung**, wenn eine Kameralinie knapp neben einer Hilfslinie liegt:
 
-- Etwas höher halten oder leicht nach oben kippen. Die Linie rutscht dann zur Marke.
-- Etwas tiefer halten oder leicht nach unten kippen. Die Linie rutscht dann zur Marke.
+- Etwas höher halten oder leicht nach oben kippen. Die Linie rutscht dann zur Hilfslinie.
+- Etwas tiefer halten oder leicht nach unten kippen. Die Linie rutscht dann zur Hilfslinie.
 
-**Sonstiges:**
-
-- Kamera startet …
-- Aus der Mediathek
-- Strecke
-- Halt {n}
+**Sonstiges:** Kamera startet … · Mediathek · Projekt · Foto {n} · Zurück zum Hauptmenü (Beschriftung für Bildschirmleser: Hauptmenü)
 
 ## Aufdeckung
 
-- **Knöpfe:** Weiter · Feinjustieren · Streichen
-- **Streichen, Rückfrage:** Letzten Halt streichen? · Streichen · Behalten
-- **Bei Fehler:** Das Nähen hat nicht geklappt. Dein Foto ist gespeichert. · Nochmal versuchen
+- **Kopf:** Passung als Zahl mit Balken
+- **Knöpfe:** Weiter · Ausschnitt · Verwerfen
+- **Verwerfen, Rückfrage:** Letztes Foto verwerfen? · Verwerfen · Behalten
+- **Bei Fehler:** Der Übergang hat nicht geklappt. Dein Foto ist gespeichert. · Nochmal versuchen
 
-## Serie
+## Mehrere Fotos aus der Mediathek
 
-- **Titel:** Serie
-- **Modus:** Beste Anschlüsse · Nach Aufnahmezeit
+- **Titel:** Reihenfolge
+- **Modus:** Beste Passung · Nach Aufnahmezeit
 - **Während der Prüfung:** Foto {k} von {n} wird gesichert und geprüft …
-- **Kopf:** Schließt an Halt {n} an.
-- **Zeile:** Halt {n} · {Datum} {Uhrzeit} oder „Zeit unbekannt“ · Wert
-- **Hinweis:** Ziehen am Griff sortiert um, Antippen des Bilds öffnet das Feinjustieren.
-- **Feinjustieren:** Feinjustieren · Ziehen verschiebt, zwei Finger zoomen. Antippen setzt das Motiv. · Ganzes Foto · Abbrechen · Übernehmen
-- **Knöpfe:** Serie verwerfen · Bauen · während des Bauens Abbrechen
-- **Verwerfen, Rückfrage:** Serie verwerfen? Die Fotos bleiben in deiner Mediathek. · Verwerfen · Behalten
+- **Kopf:** Schließt an Foto {n} an.
+- **Hinweis:** Am Griff ziehen ändert die Reihenfolge. Antippen öffnet den Ausschnitt.
+- **Ausschnitt:** Ziehen verschiebt, zwei Finger zoomen. Antippen setzt das Motiv. · Ganzes Foto · Abbrechen · Übernehmen
+- **Knöpfe:** Auswahl verwerfen · Zusammensetzen · währenddessen Abbrechen
+- **Verwerfen, Rückfrage:** Auswahl verwerfen? Die Fotos bleiben in deiner Mediathek. · Verwerfen · Behalten
 - **Zu viele:** Höchstens 10 Fotos. Die ersten 10 sind dabei.
 - **Kaputte Dateien:** {n} Fotos ließen sich nicht öffnen.
 - **Angehalten:** Angehalten. {n} Fotos warten noch.
-- **Beim Start und nach dem Verlassen der Serie:** Eine Serie aus der Mediathek wartet noch. · Später · Weiter
-- **Fehler beim Bauen:** Das Nähen hat nicht geklappt. Tippe nochmal auf Bauen.
+- **Wartet noch:** Eine Auswahl aus der Mediathek wartet noch. · Später · Weiter
+- **Fehler:** Das Zusammensetzen hat nicht geklappt. Tippe nochmal auf Zusammensetzen.
 - **Farbprofil umgerechnet (selten, etwa Adobe RGB):** {n} Fotos haben das Farbprofil {profil}. Nahtlos rechnet sie nach {raum} um.
 
-## Feinjustieren
+## Ausschnitt
 
-- **Hinweis:** Schieben, zoomen, drehen. Der Anschluss rechnet mit.
+- **Hinweis:** Schieben, zoomen, drehen. Die Passung rechnet mit.
 - **Knöpfe:** Übernehmen · Abbrechen
 
-## Strecke
+## Projekt
 
-- **Leer:** Noch kein Halt. Zeit für die Abfahrt.
-- **Kopfzeile:** {name} · {n} Halte
-- **Knöpfe:** Fahrplan · Ausfahrt · Zum Sucher
-- **Alte Strecke (einmal je Start):** Diese Strecke ist noch mit Farbangleichung genäht. Neu nähen lässt deine Fotos unverändert und rechnet nur die Übergänge neu. · Später · Neu nähen
-- **Neu nähen, Rückfrage:** {n} Übergänge neu rechnen? Deine Fotos bleiben erhalten. Die Fotos sehen danach aus wie das Original, nur in den Übergängen wird überblendet. · Abbrechen · Neu nähen
+- **Leer:** Noch kein Foto in diesem Projekt.
+- **Kopfzeile:** {Name} · {n} Fotos
+- **Knöpfe:** Fotos · Exportieren · Aufnehmen
+- **Altes Projekt (einmal je Start):** Dieses Projekt ist noch mit Farbangleichung zusammengesetzt. Neu zusammensetzen lässt deine Fotos unverändert und rechnet nur die Übergänge neu. · Später · Neu zusammensetzen
+- **Rückfrage:** {n} Übergänge neu rechnen? Deine Fotos bleiben erhalten. Sie sehen danach aus wie das Original, nur in den Übergängen wird überblendet. · Abbrechen · Neu zusammensetzen
 - **Während:** Übergänge werden neu gerechnet … {p} %
-- **Fertig:** Fertig. Die Strecke ist neu genäht. · mit Fehlern: Fertig. {n} Halte ließen sich nicht neu rechnen und bleiben, wie sie waren.
+- **Fertig:** Fertig. Das Projekt ist neu zusammengesetzt. · mit Fehlern: Fertig. {n} Fotos ließen sich nicht neu rechnen und bleiben, wie sie waren.
 
-## Strecken
+## Alle Projekte
 
-- **Titel:** Strecken
-- **Leer:** Noch keine Strecke.
-- **Knopf:** Neue Strecke
-- **Name:** Wie heißt die Strecke?
-- **Vorschlag:** „Strecke {Monat} {Jahr}“
-- **Blindfahrt:** Blindfahrt: Ihr seht immer nur das letzte Stück. Die ganze Strecke erst im Ziel.
-- **Löschen, Rückfrage:** „{name}“ wirklich löschen? {n} Halte sind dann weg. · Löschen · Behalten
+- **Titel:** Alle Projekte
+- **Leer:** Noch kein Projekt.
+- **Eintrag:** {Name} · {Art} · {n} Fotos · {Datum} (· Überraschungsmodus)
+- **Löschen, Rückfrage:** „{name}“ wirklich löschen? {n} Fotos sind dann weg. · Löschen · Behalten
 
-## Blindfahrt
+## Überraschungsmodus
 
-- **Statt Strecke:** Die Strecke bleibt bis zum Ziel verdeckt.
-- **Knopf:** Ziel erreichen
-- **Rückfrage:** Ziel erreichen? Danach seht ihr alles. · Aufdecken · Weiterfahren
+- **Statt Band:** Überraschungsmodus: Das Bild bleibt verdeckt, bis ihr es aufdeckt.
+- **Knopf:** Aufdecken
+- **Rückfrage:** Jetzt aufdecken? Danach seht ihr alles. · Aufdecken · Weiter fotografieren
 
-## Fahrplan
+## Fotos
 
-- **Titel:** Fahrplan
-- **Spalten:** Zeit · Halt · Anschluss
-- **Kennzahlen:** {n} Halte · Durchschnitt {x} · Pünktlichkeit {p} %
-- **Unbenannter Halt:** Halt {n}
-- **Bei 100 % Pünktlichkeit:** Das glaubt dir bei der Bahn keiner.
-- **Unter 50 % Pünktlichkeit:** Wir bitten um Entschuldigung.
+- **Titel:** Fotos
+- **Spalten:** Zeit · Foto · Passung
+- **Kennzahlen:** {n} Fotos · Passung im Schnitt {x}
+- **Unbenanntes Foto:** Foto {n}
 
-## Ausfahrt
+## Exportieren
 
-- **Titel:** Ausfahrt
-- **Karussell:** Karussell · {n} Bilder für Instagram
-- **Grenze im Motiv:** Hier läuft eine Bildgrenze durchs Motiv, das ließ sich nicht vermeiden. Das Karussell wird trotzdem gebaut.
-- **Mehrere Beiträge:** Passt nicht in einen Beitrag. Wird auf {t} Teile aufgeteilt.
+- **Titel:** Exportieren
+- **Carousel:** Carousel · {n} Bilder für Instagram · darunter die Vorschau der Slides
+- **Grenze im Motiv:** An dieser Stelle läuft eine Bildgrenze durchs Motiv, das ließ sich nicht vermeiden. Das Carousel wird trotzdem erstellt.
+- **Mehrere Beiträge:** Passt nicht in einen Beitrag. Wird auf {t} Beiträge aufgeteilt.
 - **Reel:** Reel · Video für Instagram · {Länge} s
+- **Stile:** Band · Sanft · Schwung · Zoom · Naht
 - **Längen:** 15 s · 30 s · 60 s · 90 s
-- **Abschnitt:** Von {Halt} bis {Halt}
-- **Tempo:** {n} Halte · Tempo {v} Pixel pro Sekunde
-- **Zu schnell:** Bei {Länge} s wird es zu schnell. Vorschlag: Halt {von} bis {bis}. · Übernehmen
-- **Schalter:** Endstation am Ende
-- **Nach dem Bauen:** Teilen · In Fotos speichern
+- **Abschnitt:** Von {Foto} bis {Foto}
+- **Band:** {n} Fotos · {v} Pixel pro Sekunde · zu schnell: Bei {Länge} s wird es zu schnell. Vorschlag: Foto {von} bis {bis}. · Übernehmen
+- **Übergangsstile:** {n} Fotos · {s} s je Foto · zu kurz: Bei {Länge} s bleibt zu wenig Zeit je Foto. Vorschlag: Foto {von} bis {bis}. · Übernehmen
+- **Nach dem Erstellen:** Teilen · In Fotos speichern
 - **Hinweis:** In Instagram „Reel“ wählen. „In Fotos speichern“ legt Video und Titelbild ab, das Titelbild nimmst du als Cover.
-- **Kein MP4:** Dieses Gerät kann hier kein MP4 bauen.
-- **Gesamtbild:** Gesamtbild · {Breite} × {Höhe} Pixel
-- **Verkleinert:** Für das iPhone zu groß, deshalb auf {Breite} × {Höhe} verkleinert.
-- **Sicherung:** Sicherung · als Datei speichern
-- **Einspielen:** Sicherung einspielen
-- **Erinnerung:** Letzte Sicherung ist {n} Halte her.
-- **Während der Arbeit:** Wird gebaut … {p} %
-- **Fertig:** Teilen
-- **Abbruch:** Abgebrochen, weil die App in den Hintergrund ging. · Nochmal
+- **Kein MP4:** Dieses Gerät kann hier kein MP4 erstellen.
+- **Gesamtbild:** Gesamtbild · {Breite} × {Höhe} Pixel · Für das iPhone zu groß, deshalb auf {Breite} × {Höhe} verkleinert.
+- **Sicherung:** Sicherung · als Datei speichern · Die letzte Sicherung ist {n} Fotos her.
+- **Während der Arbeit:** Wird erstellt … {p} %
+- **Abbruch:** Abgebrochen, weil Nahtlos in den Hintergrund ging. · Nochmal
+- **Dateinamen:** carousel-01.jpg … · reel.mp4 · reel-cover.jpg · gesamtbild.jpg · collage.jpg
 
-## Endstation (letztes Karussellbild, Ende des Reels und des Finales)
+## Collage
 
-```
-Endstation
-{name}
-{erstes Datum} bis {letztes Datum}
-{n} Halte · Pünktlichkeit {p} %
-```
+- **Kopf:** {Name} · Exportieren
+- **Hinweis:** Antippen wählt ein Feld. Ziehen verschiebt, zwei Finger zoomen. Ziehen auf ein anderes Feld tauscht die Fotos.
+- **Zu wenige:** Füge mindestens ein weiteres Foto hinzu.
+- **Formate:** 4:5 · 1:1 · 9:16
+- **Stile:** Mit Rahmen · Nahtlos · Abstand · Rahmenfarbe {n}
+- **Knöpfe:** Mediathek · Kamera · Foto entfernen
+- **Einlesen:** Foto {k} von {n} wird gesichert …
+- **Zu viele:** Höchstens 9 Fotos. Die ersten sind dabei.
+- **Kaputt:** {n} Fotos ließen sich nicht öffnen.
+- **Exportieren, Rückfrage:** Was möchtest du exportieren? · Abbrechen · Sicherung · Collage als Bild
+- **Fertig:** Die Collage ist fertig. · Stattdessen speichern · Teilen
 
 ## Fehler
 
 - **Nicht gesichert:** Das Foto ließ sich nicht sichern. Bitte nochmal.
-- **Serie nicht gesichert:** {n} Fotos ließen sich nicht sichern und sind nicht dabei.
+- **Mehrere nicht gesichert:** {n} Fotos ließen sich nicht sichern und sind nicht dabei.
 - **Umzug beim Start:** Speicher wird umgestellt … {p} %
-- **Beschädigt, Hinweis:** {n} Halte sind beschädigt. Im Fahrplan kannst du sie löschen, der Rest bleibt. · Später · Fahrplan
-- **Beschädigt, Fahrplan:** Halt {n} · Beschädigt · Löschen
-- **Beschädigt, Rückfrage:** Beschädigten Halt {n} löschen? Die Strecke schließt danach an den vorherigen an. · Löschen · Behalten
-- **Speicher voll:** Der Speicher ist voll. Sichere die Strecke und lösche eine alte.
+- **Beschädigt, Hinweis:** {n} Fotos sind beschädigt. Unter „Fotos“ kannst du sie löschen, der Rest bleibt. · Später · Fotos
+- **Beschädigt, in der Liste:** Foto {n} · Beschädigt · Löschen
+- **Beschädigt, Rückfrage:** Beschädigtes Foto {n} löschen? Das Projekt schließt danach an das vorherige Foto an. · Löschen · Behalten
+- **Speicher voll:** Der Speicher ist voll. Sichere das Projekt und lösche ein altes.
 - **Kamera weg:** Die Kamera antwortet nicht. · Neu starten
 - **Import scheitert:** Dieses Foto lässt sich nicht öffnen. Versuch ein anderes.
 - **Farbprofil umgerechnet (selten, etwa Adobe RGB):** Das Foto hat das Farbprofil {profil}. Nahtlos rechnet es nach {raum} um.
 - **Teilen scheitert:** Teilen hat nicht geklappt. · Stattdessen speichern
 - **Querformat:** Bitte hochkant halten.
-- **Allgemein:** Da ist was schiefgelaufen. Deine Fotos sind sicher. · Neu laden
+- **Allgemein:** Da ist etwas schiefgelaufen. Deine Fotos sind sicher. · Neu laden
 
 ## Diagnose
 
 - **Titel:** Diagnose
-- **Knöpfe:** Bericht kopieren · Foto vergleichen · Faden und Teilwerte zeigen · Schließen
-- **Während des Vergleichs:** Foto wird wie beim Bauen durchgerechnet …
+- **Knöpfe:** Bericht kopieren · Foto vergleichen · Naht und Teilwerte zeigen · Schließen
+- **Während des Vergleichs:** Foto wird wie beim Zusammensetzen durchgerechnet …
 - **Nach dem Kopieren:** Kopiert. In Claude Code einfügen.

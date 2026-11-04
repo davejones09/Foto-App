@@ -2,6 +2,8 @@
 
 Ziel ist iPhone-Safari ab iOS 16.4, als Home-Bildschirm-App. Auf dem iPhone gibt es keine Entwicklerkonsole, deshalb ist die Diagnose (Abschnitt 7) Pflicht.
 
+**Namen im Code:** Interne Bezeichner und Speicherfelder stammen aus der ersten Fassung und bleiben, damit keine Daten umgezogen werden müssen: `strecke` (Projekt), `halt` (Foto), `pfad` (Naht), `marken` (Hilfslinien), `fahrplan` (Fotos), `ausfahrt` (Exportieren), `blind` (Überraschungsmodus). Sichtbar ist nur die neue Sprache.
+
 ## 1. Aufbau
 
 ```
@@ -9,27 +11,39 @@ index.html            einzige Seite, alle Ansichten als DOM-Bereiche
 manifest.webmanifest  standalone, Hochformat, relative Pfade
 sw.js                 Offline-Cache, Name enthält APP_VERSION
 src/
-  kern.mjs            Bildkern: Anschlusswert, Faden, Einfahrhilfe
+  kern.mjs            Bildkern: Passung, Naht, Einfahrhilfe
   uebergang.mjs       Übergang: weiche Naht in der Überlappung, Linien biegen (reine Rechnung)
   farbe.mjs           Farbprofile lesen, Display-P3-Profil erzeugen und einsetzen, toBlob-Prüfung
-  vergleich.mjs       Diagnose: Foto vor und nach dem Bauen vergleichen
-  serie.mjs           Serie: Ausschnitte, Motivschutz, Paarwerte, Held-Karp, Viterbi (reine Rechnung)
-  serienwerk.mjs      Serie: kleine Fassungen per Canvas, Ausschnitt in Transformation umrechnen
+  metadaten.mjs       Keine Spuren der App: JPEG nur mit JFIF und Profil, MP4 ohne Werkzeugnamen
+  vergleich.mjs       Diagnose: Foto vor und nach dem Zusammensetzen vergleichen
+  serie.mjs           Mehrere Fotos: Ausschnitte, Motivkarte, Paarwerte, Held-Karp (reine Rechnung)
+  serienwerk.mjs      Mehrere Fotos: kleine Fassungen per Canvas
+  collage.mjs         Collage: Formate, Vorlagen, Felder, Ausschnitte, Schnittbaum (reine Rechnung)
+  collagewerk.mjs     Collage: Fotos einlesen, zeichnen, Ausgabe, Sicherung
+  reelstil.mjs        Reel-Stile: Zeitplan, Bewegungen, Ausschnitt 9:16 (reine Rechnung)
   exif.mjs            Aufnahmezeit aus EXIF
   ideen.mjs           Ideen: 73 getaggte Sätze, Merkmale, Auswahl, Richtung (reine Rechnung)
-  ideenquelle.mjs     Ideen im Sucher: Rest messen, Farben der letzten Halte, Ort, benutzte Ideen
-  kern.worker.mjs     Live-Analyse und Nähen im Worker
+  ideenquelle.mjs     Ideen im Sucher: Rest messen, Farben der letzten Fotos, Ort, benutzte Ideen
+  kern.worker.mjs     Live-Analyse, Übergang, Motivkarte im Worker
   kamera.mjs          Stream-Verwaltung
   speicher.mjs        IndexedDB
-  band.mjs            Strecke anzeigen, Kacheln laden
-  ausgabe.mjs         Karussell, Reel, Titelbild, Gesamtbild, Sicherung, Fahrt fürs Finale
-  ansichten/          Einführung, Sucher, Aufdeckung, Feinjustieren, Strecke, Fahrplan, Ausfahrt
+  band.mjs            Band anzeigen, Kacheln laden
+  ausgabe.mjs         Carousel, Reel mit Stilen, Titelbild, Gesamtbild, Sicherung
+  ansichten/          Hauptmenü, Einführung, Sucher, Aufdeckung, Ausschnitt, Projekt, Fotos, Exportieren, Collage
 vendor/               mp4-muxer, fflate (je eine Datei)
 test/                 Kern- und Browser-Tests
 docs/                 Konzept, Technik, Etappen, Texte, Entscheidungen
 ```
 
-App-Icon und Splash werden per Skript als PNG erzeugt und eingecheckt: gelber Faden auf fast Schwarz.
+App-Icon und Splash werden per Skript als PNG erzeugt und eingecheckt (`npm run icons`): zwei Fotoflächen, die weich ineinander übergehen, der Horizont läuft durch, auf neutralem dunklem Grau.
+
+### Oberfläche und Ablauf
+
+- **Start im Hauptmenü** (`ansichten/start.mjs`): Neu erstellen (Carousel, Reel, Collage), Zuletzt bearbeitet, Alle Projekte, Einstellungen. Die Einführung kommt beim ersten Start davor. `body[data-gestartet]` meldet, wann der Start durch ist (für Tests).
+- **Carousel und Reel** legen dasselbe Band-Projekt an (`strecke.art` = `carousel` oder `reel`, entscheidet nur, welche Ausgabe in Exportieren oben steht). Kamera: Projekt sofort, dann Sucher. Mediathek: Der Dateidialog öffnet noch in der Geste (`frage(..., { sofort })`), das Projekt entsteht erst beim `change`-Ereignis (`vormerken`), bei `cancel` gar nicht.
+- **Zurück** führt aus Sucher, Projekt, Collage, Alle Projekte und Einstellungen ins Hauptmenü. Import aus dem Hauptmenü landet danach im Projekt, nicht im Sucher.
+- **Passung im Sucher:** Zahl, Text und ein schmaler Balken (`zeigePassung` in `ui.mjs`), Balken im Akzent ab 70. Hilfslinien sind kurze Striche.
+- **Gestaltung:** Farben als CSS-Variablen in `style.css` (`--grund #111213`, `--flaeche`, `--linie`, `--text`, `--akzent #8fb1ff`). Hauptknöpfe hell mit dunkler Schrift.
 
 ## 2. Kamera und iOS-Fallen
 
@@ -124,6 +138,7 @@ dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }
 - **Diagnose:** Anzahl und Größe der Einträge in `dateien` (über den Index, ohne Daten zu laden), Zahl beschädigter Halte mit Grund, Lesetest je Halt der aktiven Strecke.
 
 - **Rest für den Sucher:** rechte 363 Pixel von `bild`. Halte sind nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
+- **Format 5:** neuer Speicher `collagen` (Abschnitt Collage). Die Migration legt nur den Speicher an, Strecken und Halte bleiben unberührt. `strecke.art` fehlt bei alten Projekten und gilt dann als Carousel.
 - **Neue Felder ohne Migration:** `farbraum` fehlt bei alten Halten und gilt dann als `srgb` (so wurden sie gerechnet). `verfahren` fehlt bei Halten, die noch mit Farbangleichung genäht sind. Die App rechnet sie nie still neu: Die Strecken-Ansicht bietet einmal je Start „Neu nähen“ an, erst nach Rückfrage rechnet `neuNaehen()` Bild und Naht aus dem Rohbild neu.
 
 ### Farbprofil
@@ -138,7 +153,7 @@ dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }
 - **Unterbrochenes Nähen:** Ein Halt mit `roh`, aber ohne `bild` wird beim Start automatisch fertiggestellt.
 - **Letzten Halt streichen:** löscht nur den letzten Datensatz. Der vorherige Halt ist davon nicht betroffen.
 
-## 5. Strecke anzeigen
+## 5. Band anzeigen
 
 Jeder Halt hat eine eigene Breite `b_i` bei 1620 Höhe: Kamerahalte 1296 (4:5), Serienhalte `1620 × Seitenverhältnis`, begrenzt auf 1134 bis 3240. Die Überlappung ist immer 363. Halt `i` beginnt im Band bei `x_i = x_(i−1) + b_(i−1) − 363`.
 
@@ -161,35 +176,43 @@ Sucher-Rest und Wert nutzen immer den 363 Pixel breiten Streifen am rechten bzw.
 
 Jede Ausgabe läuft mit Fortschrittsanzeige und über den LRU-Lader. Geteilt wird über `navigator.share({ files })`. Das braucht eine frische Nutzergeste: erst erzeugen, dann „Teilen“ antippen lassen. Fallback ist ein Download-Link.
 
-### Karussell
+### Carousel ohne Abschluss-Slide
 
-- Ein Bild ist ein 1296 × 1620 breiter Ausschnitt des Bands, ausgegeben als 1080 × 1350 JPEG 0,92. Gleiches Seitenverhältnis, kein Rand, kein Überstand: Beim Wischen läuft das Bild durch.
-- Anzahl: `ceil(Bandbreite / 1296)`. Instagram erlaubt in der App 20 Bilder pro Beitrag (Stand 2026), ältere Tools nur 10. Etwa 27 Halte passen in einen Beitrag. Längere Strecken werden in Teile zerlegt.
-- Das letzte Bild ist selten voll. Der Rest der Strecke läuft dort in den dunklen Grund aus und trägt die Endstation (`TEXTE.md`).
-- Schafft iOS das Teilen vieler Dateien nicht auf einmal, in Portionen zu je 10 anbieten.
+- Eine Slide ist ein 4:5-Ausschnitt des Bands, ausgegeben als 1080 × 1350 JPEG 0,92. Beim Wischen läuft das Bild durch.
+- **Das Band geht genau in ganze Slides auf** (`karussellGrund`, `karussellPlan` in `kennzahlen.mjs`): Für jede Anzahl n ist der kleinste Zoom `max(1, n × 1296 / Band)`, erlaubt bis 8 %. Gewählt wird die Anzahl, die am meisten Bild behält (sichtbar = n × 1296 / (Band × Zoom²)). Mit Zoom fällt oben und unten gleich viel weg. Bleibt seitlich Band übrig, fällt es am Anfang und Ende weg. Kürzer als eine Slide auch mit 8 %: eine Slide mit so viel Zoom wie nötig. Nie leere Flächen.
+- Folge: Zwei Kamerafotos (2229 Pixel) ergeben eine Slide, drei (3162) zwei Slides.
+- **Motivversatz:** Je Foto die Motivkarte auf 640 Pixeln (im Worker, zwischengespeichert), daraus ein Spaltenprofil, zusammengesetzt zum Profil des Bands (`bandProfil`). Gesucht werden Zoom (bis zu 15 % einer Slide mehr Spielraum, höchstens 8 %) und Start, bei denen die Grenzen und die Schnitte an den Enden am wenigsten Motiv treffen (±40 Pixel). Das lohnt sich nur ab 0,05 weniger, sonst bleibt der Grundplan mittig. Die Anzahl ändert sich nie.
+- Bleibt eine Grenze im Motiv (ab 25 % der stärksten Stelle), zeigt Exportieren die Stelle. Die Vorschau zeigt jede Slide genau so geschnitten wie das Ergebnis (`karussellVorschau`).
+- Instagram erlaubt 20 Bilder pro Beitrag (Stand 2026). Mehr werden in Beiträge geteilt. Schafft iOS das Teilen vieler Dateien nicht, in Portionen zu je 10.
 
 ### Reel
 
 - 1080 × 1920, 30 Bilder pro Sekunde, H.264 als MP4. Ohne MP4-Weg (WebCodecs oder `MediaRecorder` mit `video/mp4`) gibt es kein Reel, nie WebM.
-- Länge 15, 30, 60 oder 90 s. Abschnitt von Halt a bis b: Bandbereich `a × 933` bis `b × 933 + 1296`. Weg = Bereich × 1920/1620 − 1080.
-- Bewegung: ab dem ersten Bild mit vollem Tempo, die letzten 1,6 s bremsen gleichmäßig auf null. Mit Endstation bleiben am Ende 3 s für die Einblendung. Tempo = Weg / (Bewegungszeit − 0,8 s).
-- Über 900 Pixel pro Sekunde: Vorschlag des längsten Abschnitts ab „Von“, der darunter bleibt.
-- Texte im Reel: oben und unten mindestens 250, links und rechts mindestens 60 Pixel Abstand (`endstationLayout`, Test).
-- Titelbild: Band in 1350 Pixel Höhe mittig, zentriert auf den besten Anschluss im Abschnitt, außen Grund.
+- Länge 15, 30, 60 oder 90 s, Abschnitt von Foto a bis b. Das Reel endet auf dem letzten Bild, kein Abspann.
+- **Band:** Weg = Bandbereich × 1920/1620 − 1080. Ab dem ersten Bild mit vollem Tempo, die letzten 1,6 s bremsen gleichmäßig auf null. Über 900 Pixel pro Sekunde: Vorschlag des längsten Abschnitts ab „Von“, der darunter bleibt.
+- **Übergangsstile** (`reelstil.mjs`, gezeichnet in `stilMaler`): Jedes Foto füllt den 9:16-Rahmen, der Ausschnitt (911 × 1620 aus dem Foto) liegt dort, wo das Spaltenprofil der Motivkarte am meisten Motiv zeigt. Standzeit = (Länge − (n − 1) × Übergang) / n.
 
-### Fahrt (Finale der Blindfahrt, unverändert)
+  | Stil | Übergang | kleinste Standzeit | Bewegung |
+  |---|---|---|---|
+  | Sanft | 1,0 s | 1,6 s | Überblendung, jedes Foto zoomt langsam von 1,0 auf 1,06 |
+  | Schwung | 0,45 s | 1,2 s | Schwenk um genau einen Rahmen, Bewegungsunschärfe aus 8 Teilbildern im laufenden Mittel |
+  | Zoom | 0,7 s | 1,2 s | aktuelles Foto zoomt hinein (bis 2,2), das nächste kommt von 0,55 aus der Tiefe und blendet ein |
+  | Naht | 0,9 s | 1,3 s | das nächste läuft von rechts ein, die Grenze hat die Form der echten Naht (`pfad`), weich über fünf Masken |
 
-- 1080 × 1920, 30 Bilder pro Sekunde, H.264. Das Band wird auf die volle Höhe skaliert (Faktor 1920 / 1620). Weiche Beschleunigung am Anfang und Ende, je 1,5 Sekunden. Ganz am Ende die Endstation.
-- Tempo: Bummelzug 220, Regionalexpress 450, Sprinter 900 Pixel pro Sekunde. Länge vorab anzeigen.
-- Weg 1: `VideoEncoder` plus `mp4-muxer` (auf iOS ab 16.4 für Video, siehe caniuse). Mit `isConfigSupported` prüfen, zum Beispiel `avc1.640028`.
-- Weg 2, wenn das scheitert: `MediaRecorder` mit `canvas.captureStream`, verfügbar ab iOS 14.5.
-- Kein Ton in der ersten Fassung. Verlässt der Nutzer die App während des Renderns, darf es abbrechen, die Meldung bietet einen Neustart an.
+  Reicht die Länge nicht, schlägt die App die größte Fotoanzahl vor, die noch passt.
+- **Nicht in Echtzeit:** Mit WebCodecs wird Bild für Bild kodiert, egal wie lange ein Bild braucht, deshalb ruckelt nichts. Im Ausweichweg (`MediaRecorder`, Echtzeit) sind Schwung und Naht ausgeblendet (`stileFuer`).
+- **Live-Vorschau:** Jede Stil-Kachel spielt den Stil mit den ersten drei Fotos in Schleife, aus den kleinen Vorschauen (`stilVorschau`).
+- **Titelbild:** 1080 × 1920 ganz mit Bild gefüllt. Band: das Band in voller Höhe, mittig auf der besten Passung. Stile: das Foto mit der besten Passung im Ausschnitt.
 
-### Karussell ohne Grenze durchs Motiv
+### Überraschungsmodus, Finale
 
-- Je Halt die Motivkarte auf 640 Pixeln (im Worker, zwischengespeichert), daraus ein Spaltenprofil, zusammengesetzt zum Profil des Bands (`bandProfil`, in der Überlappung zählt das stärkere).
-- `karussellPlan`: Versatz von 0 bis 15 % einer Slide (194 Pixel, in Schritten von 2). Bewertet wird die mittlere Motivdichte ±40 Pixel um jede Grenze. Der Versatz lohnt sich nur, wenn er die Summe um mindestens 0,05 senkt. Anzahl = `ceil((Band − Versatz) / 1296)`, sie kann also nie steigen.
-- Bleibt an einer Grenze eine Dichte ab 25 % der stärksten Stelle, zeigt die Ausfahrt den Hinweis mit einer Vorschau dieser Stelle. Gebaut wird trotzdem.
+Das Band läuft einmal im Vollbild durch (1080 × 1920, weiche Beschleunigung am Anfang und Ende), ohne Text am Ende.
+
+### Keine Spuren der App
+
+- Keine Logos, Texte, Statistiken, Abspänne oder Wasserzeichen in Carousel, Reel, Collage und Gesamtbild. Tests vergleichen jede Slide Pixel für Pixel mit dem Band.
+- Dateinamen: `carousel-01.jpg` …, `reel.mp4`, `reel-cover.jpg`, `gesamtbild.jpg`, `collage.jpg`.
+- **Metadaten** (`metadaten.mjs`): JPEG behält nur JFIF und das Farbprofil (kein EXIF, kein Kommentar, keine weiteren APP-Abschnitte). MP4: Namen in den `hdlr`-Kästen werden geleert, `udta` und `meta` werden zu leeren `free`-Kästen gleicher Größe. In `vendor/mp4-muxer.mjs` ist der eigene Handler-Name durch den neutralen „VideoHandler“ ersetzt.
 
 ### Gesamtbild
 
@@ -197,7 +220,17 @@ JPEG der ganzen Strecke. iOS begrenzt die Canvas-Fläche. Grenze zur Laufzeit er
 
 ### Sicherung
 
-ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Blobs je Halt. Einspielen legt die Strecke unter neuer ID wieder an. Liegt die letzte Sicherung mehr als 5 Halte zurück, erinnert die Ausfahrt daran.
+ZIP mit `fflate`, ohne Kompression: `manifest.json` und alle Bilddaten je Foto. Einspielen legt das Projekt unter neuer ID wieder an. Liegt die letzte Sicherung mehr als 5 Fotos zurück, erinnert Exportieren daran. Collagen haben im Manifest `typ: 'collage'` und werden als Collage eingespielt.
+
+### Collage
+
+- **Speicher** (Format 5, Speicher `collagen`): `{ id, name, erstellt, geaendert, format, vorlage, stil, abstand, farbe, fotos, felder, vorschau }`. Je Foto `{ id, rohB, rohH, farbraum, profil, name, zeit, motiv, roh, vorschau }`, die Bilddaten in `dateien` (Rohbild JPEG 0,95 bis 4000 Pixel, Vorschau 1200 Pixel, Motivraster 24 Spalten). `felder: [{ foto, t: { x, y, zoom } | null }]`, `t = null` heißt: Ausschnitt aus der Motivkarte.
+- **Formate** 4:5, 1:1, 9:16 bei 2160 Pixeln Breite. 25 Vorlagen für 2 bis 9 Fotos (Raster, ein großes mit kleinen, versetzt, Mosaik), alle in Anteilen der Fläche.
+- **Mit Rahmen:** gleicher Abstand zwischen den Feldern und am Rand (bis 5 % der Breite), Farbe aus vier ruhigen Tönen.
+- **Nahtlos:** Jede Vorlage lässt sich durchgehend schneiden (Guillotine, `baum`). Die Collage wird entlang des Schnittbaums zusammengesetzt: Jede Hälfte reicht um die halbe Übergangsbreite über die Schnittlinie (22 % des schmaleren Nachbarn, 16 bis 362 Pixel), dann rechnet `uebergang.mjs` den Streifen über die volle Länge. Waagerechte Schnitte werden dafür gedreht. So gibt es an T-Kreuzungen keine Kästchen. Außerhalb der Streifen ist jedes Feld das Foto.
+- **Ausschnitt:** Das Foto füllt sein Feld (Zoom 1 bis 6), der Ausschnitt bleibt immer im Foto, nie leere Bereiche. Der Vorschlag schiebt das Fenster dorthin, wo die Motivkarte am meisten Motiv hat.
+- **Gesten:** Antippen wählt, Ziehen im gewählten Feld verschiebt, zwei Finger oder Mausrad zoomen, Ziehen von einem anderen Feld auf ein Feld tauscht die Fotos. Beim Ziehen ohne Überblendung, danach mit.
+- **Ausgabe:** sRGB, JPEG 0,95, Metadaten gesäubert. Die Rohbilder werden einzeln dekodiert und gleich freigegeben. Keine Farbänderung: Ein Test vergleicht jedes Feld außerhalb der Streifen mit dem Original (im Mittel unter 3 Stufen).
 
 ### Import
 
@@ -235,7 +268,7 @@ Jeder Auftrag hat eine Zeitgrenze (Nähen und Serienplan 60 s, Analyse 15 s, son
 
 ## 7. Diagnose
 
-Fünfmal auf die Versionsnummer tippen. Das Fenster zeigt:
+Einstellungen → Diagnose, oder fünfmal auf die Versionsnummer in den Einstellungen tippen. Das Fenster zeigt:
 
 - Browser-Kennung, Stream-Auflösung, Bilder pro Sekunde, Analyse- und Nähzeit
 - Speicherverbrauch aus `navigator.storage.estimate()`, Status von `persist`
@@ -244,13 +277,14 @@ Fünfmal auf die Versionsnummer tippen. Das Fenster zeigt:
 - „Foto vergleichen“: Ein Foto aus der Mediathek läuft wie beim Import und Bauen durch die App, nur im Speicher. Verglichen wird außerhalb der Überlappung mit dem Foto, wie der Browser es direkt aus der Datei zeigt: mittlere und größte Abweichung je Kanal, dazu Profil der Datei und des gespeicherten Bilds, ob das Nähen das Bild verändert hat (muss 0 sein) und die Nahtränder. Grenze: im Mittel höchstens 3 Stufen.
 - „Bericht kopieren“: Text für die Zwischenablage, den David in Claude Code einfügen kann
 
-Zum Nachjustieren auf der Reise zusätzlich der Schalter „Faden und Teilwerte zeigen“. Er zeigt `farbe`, `linien` und `struktur` live im Sucher.
+Zum Nachjustieren auf der Reise zusätzlich der Schalter „Naht und Teilwerte zeigen“. Er zeigt `farbe`, `linien` und `struktur` live im Sucher.
 
 ## 8. Tests
 
 - `node --test` für den Kern, immer.
 - Browser-Tests mit Playwright, soweit im Umfeld installierbar, erst WebKit, sonst Chromium, Viewport 390 × 844. Die Kamera per `addInitScript` ersetzen: `getUserMedia` liefert `canvas.captureStream()` einer bewegten Testszene. So braucht der Test keine Dateien.
-- Pflichtfälle: Zwei Aufnahmen ergeben die Bandbreite 2229. Neuladen stellt alles wieder her. Karussell-Anzahl stimmt. Service Worker lädt offline. Abbruch beim Nähen verliert kein Foto.
+- Pflichtfälle: Zwei Aufnahmen ergeben die Bandbreite 2229. Neuladen stellt alles wieder her. Carousel geht genau auf, ohne Text, letzte Slide gefüllt. Metadaten sauber. Service Worker lädt offline. Abbruch beim Zusammensetzen verliert kein Foto. Collage ohne Farbänderung. Reel-Stile mit richtiger Dauer und Bildanzahl.
+- `test/texte.test.mjs` prüft alle sichtbaren Texte, die Seite, das Manifest und jede Zeichenkette im Code auf Bahnbegriffe.
 - Screenshots im Viewport ansehen, nicht nur den Text prüfen.
 - Lässt sich etwas nur am iPhone prüfen, gehört es in die Abnahmeliste in `ETAPPEN.md`, nicht unter den Teppich.
 

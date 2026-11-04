@@ -18,12 +18,12 @@ export const IDEEN = [
   { id: 'baum-sandweg', text: 'Baumkronen über einem hellen Sandweg.', h: 'mitte', ob: 'dunkel', un: 'hell', ort: ['natur', 'strand'] },
   { id: 'regal-theke', text: 'Ein dunkles Holzregal über einer hellen Theke.', h: 'mitte', ob: 'dunkel', un: 'hell', ort: ['essen'] },
   { id: 'tischtuch-raum', text: 'Ein helles Tischtuch, darüber der dunkle Raum.', h: 'mitte', ob: 'dunkel', un: 'hell', ort: ['essen', 'unterkunft'] },
-  { id: 'wenig-himmel', text: 'Viel Boden, wenig Himmel: Halt das iPhone tiefer und nimm den Horizont oben mit.', h: 'oben', ort: ['strand', 'natur'] },
+  { id: 'wenig-himmel', text: 'Viel Boden, wenig Himmel: Das iPhone tiefer halten und den Horizont oben mitnehmen.', h: 'oben', ort: ['strand', 'natur'] },
   { id: 'dachrand', text: 'Ein Dachrand oben im Bild, darunter die Fassade.', h: 'oben', ort: ['stadt'] },
   { id: 'regal-oben', text: 'Die Kante eines Regals über Kopfhöhe.', h: 'oben', ort: ['unterkunft', 'essen'] },
   { id: 'bruecke-unten', text: 'Eine Brücke von unten, ihre Unterkante oben im Bild.', h: 'oben', ort: ['stadt', 'unterwegs'] },
   { id: 'bergkamm-wiese', text: 'Ein Bergkamm weit oben, davor viel Wiese.', h: 'oben', un: 'gruen', ort: ['natur'] },
-  { id: 'gepaeckablage', text: 'Die Gepäckablage im Zug, oben im Bild.', h: 'oben', ort: ['unterwegs'] },
+  { id: 'gepaeckablage', text: 'Eine Gepäckablage über den Sitzen, oben im Bild.', h: 'oben', ort: ['unterwegs'] },
   { id: 'schirmrand', text: 'Ein Sonnenschirmrand oben, darunter Liegen und Sand.', h: 'oben', ort: ['strand'] },
   { id: 'strandlinie-unten', text: 'Viel Himmel, wenig Boden: eine Strandlinie ganz unten.', h: 'unten', ob: 'hell', ort: ['strand'] },
   { id: 'tischplatte-unten', text: 'Die Tischplatte ganz unten, darüber Teller und Gläser.', h: 'unten', ort: ['essen'] },
@@ -35,7 +35,7 @@ export const IDEEN = [
   { id: 'steigt-allgemein', text: 'Eine Treppe, ein Geländer oder ein Hang nehmen die Schräge auf.', n: 'steigt' },
   { id: 'dach-seite', text: 'Ein Dach von der Seite, schräg nach oben.', n: 'steigt', ort: ['stadt'] },
   { id: 'weg-bergauf', text: 'Ein Weg, der bergauf führt, von unten links nach oben rechts.', n: 'steigt', ort: ['natur'] },
-  { id: 'rolltreppe', text: 'Die Rolltreppe im Bahnhof, schräg nach oben.', n: 'steigt', ort: ['unterwegs', 'stadt'] },
+  { id: 'rolltreppe', text: 'Eine Rolltreppe, schräg nach oben.', n: 'steigt', ort: ['unterwegs', 'stadt'] },
   { id: 'duene', text: 'Eine Düne von der Seite.', n: 'steigt', ort: ['strand'] },
   { id: 'faellt-allgemein', text: 'Ein Hang abwärts oder ein Treppengeländer nach unten nimmt die Schräge auf.', n: 'faellt' },
   { id: 'rampe', text: 'Eine Rampe oder Auffahrt, die nach rechts abfällt.', n: 'faellt', ort: ['stadt', 'unterwegs'] },
@@ -50,26 +50,26 @@ export const IDEEN = [
   { id: 'oben-gruen', text: 'Eine Hecke oder Bäume über der Linie.', ob: 'gruen' },
   { id: 'unten-warm', text: 'Holzboden, Terrakotta oder ein Tisch schließen unten an.', un: 'warm', ort: ['essen', 'unterkunft'] },
   { id: 'oben-warm', text: 'Eine Abendwolke oder eine Hauswand in Ocker über der Linie.', ob: 'warm' },
-  { id: 'unten-grau', text: 'Asphalt, Beton oder ein Bahnsteig schließen unten an.', un: 'grau', ort: ['stadt', 'unterwegs'] },
+  { id: 'unten-grau', text: 'Asphalt, Beton oder ein Gehweg schließen unten an.', un: 'grau', ort: ['stadt', 'unterwegs'] },
   { id: 'oben-grau', text: 'Ein bedeckter Himmel oder eine Betondecke über der Linie.', ob: 'grau' },
   { id: 'abend-fenster', text: 'Abendlicht: eine Fensterkante gegen den hellen Himmel draußen.', zeit: ['abend'], ob: 'hell' },
   { id: 'nacht-theke', text: 'Nachts zählt das Licht: eine beleuchtete Theke oder ein Schaufenster.', zeit: ['nacht'] },
   { id: 'nacht-laternen', text: 'Laternen in einer Reihe geben nachts eine Linie.', zeit: ['nacht'], ort: ['stadt'] },
-  { id: 'morgen-fruehstueck', text: 'Der Frühstückstisch, die Kante auf Höhe der Marke.', zeit: ['morgen'], ort: ['essen', 'unterkunft'] },
+  { id: 'morgen-fruehstueck', text: 'Der Frühstückstisch, die Kante auf Höhe der Hilfslinie.', zeit: ['morgen'], ort: ['essen', 'unterkunft'] },
   { id: 'tiefe-sonne', text: 'Tiefe Sonne: Lange Schatten auf dem Boden sind gute Linien.', zeit: ['morgen', 'abend'] },
   { id: 'mittag-schatten', text: 'Harte Mittagsschatten unter Markisen und Dächern.', zeit: ['tag'], ort: ['stadt'] },
   { id: 'wasserkante', text: 'Die Wasserkante, wo der Sand nass wird.', ort: ['strand'], h: 'mitte' },
   { id: 'handtuch', text: 'Ein Handtuch von oben, seine Kante quer durchs Bild.', ort: ['strand'] },
-  { id: 'schaufenster', text: 'Eine Schaufensterkante auf der Höhe der Marke.', ort: ['stadt'] },
-  { id: 'schienen', text: 'Straßenbahnschienen von der Seite.', ort: ['stadt'], un: 'grau' },
+  { id: 'schaufenster', text: 'Eine Schaufensterkante auf der Höhe der Hilfslinie.', ort: ['stadt'] },
+  { id: 'schienen', text: 'Ein Geländer oder eine Leitplanke von der Seite.', ort: ['stadt'], un: 'grau' },
   { id: 'tellerrand', text: 'Der Tellerrand von der Seite.', ort: ['essen'] },
   { id: 'glas', text: 'Die Oberfläche eines Getränks im Glas ist auch eine Linie.', ort: ['essen'], h: 'mitte' },
   { id: 'uferlinie', text: 'Ein See, die Uferlinie.', ort: ['natur'], h: 'mitte' },
   { id: 'baumstamm', text: 'Ein liegender Baumstamm.', ort: ['natur'] },
   { id: 'kopfteil', text: 'Die Oberkante des Kopfteils am Bett.', ort: ['unterkunft'] },
   { id: 'badewanne', text: 'Der Rand der Badewanne.', ort: ['unterkunft'], un: 'hell' },
-  { id: 'zugfenster', text: 'Der Fensterrand im Zug, draußen zieht die Landschaft.', ort: ['unterwegs'] },
-  { id: 'bahnsteigkante', text: 'Die Bahnsteigkante mit dem weißen Streifen.', ort: ['unterwegs'], un: 'grau' },
+  { id: 'zugfenster', text: 'Ein Fensterrand unterwegs, draußen zieht die Landschaft.', ort: ['unterwegs'] },
+  { id: 'bahnsteigkante', text: 'Eine Bordsteinkante mit weißem Streifen.', ort: ['unterwegs'], un: 'grau' },
   { id: 'tragflaeche', text: 'Die Tragfläche aus dem Flugzeugfenster.', ort: ['unterwegs'], h: 'mitte' },
   { id: 'gegen-blau', text: 'Such was Warmes: Ziegel, Holz, Markise.', gegen: 'blau' },
   { id: 'gegen-gruen', text: 'Wie wär\'s mit Stadt: Asphalt, Glas, Beton.', gegen: 'gruen' },
@@ -77,15 +77,15 @@ export const IDEEN = [
   { id: 'gegen-grau', text: 'Such Farbe: Markt, Blumen, Sonnenschirme.', gegen: 'grau' },
   { id: 'gegen-hell', text: 'Ein dunkler Innenraum bringt Abwechslung.', gegen: 'hell' },
   { id: 'gegen-dunkel', text: 'Geh raus ins Helle.', gegen: 'dunkel' },
-  { id: 'tipp-marke', text: 'Such eine Kante auf Höhe der Marke.', allg: true },
+  { id: 'tipp-marke', text: 'Such eine Kante auf Höhe der Hilfslinie.', allg: true },
   { id: 'tipp-linien', text: 'Tisch, Mauer, Horizont, Geländer: Alles ist eine Linie.', allg: true },
   { id: 'tipp-naeher', text: 'Geh näher ran, dann wird die Linie größer.', allg: true },
-  { id: 'tipp-hoehe', text: 'Halt das iPhone tiefer oder höher. Die Linie wandert mit.', allg: true },
+  { id: 'tipp-hoehe', text: 'Das iPhone tiefer oder höher halten. Die Linie wandert mit.', allg: true },
   { id: 'tipp-ort', text: 'Es muss nicht derselbe Ort sein. Es muss nur weitergehen.', allg: true },
 ];
 
 const FARB_WORT = { hell: 'hell', dunkel: 'dunkel', blau: 'blau', gruen: 'grün', warm: 'warm', grau: 'grau' };
-const KONTRAST_WORT = { blau: 'blau', gruen: 'grün', warm: 'warm', grau: 'grau', hell: 'hell', dunkel: 'dunkel' };
+export const KONTRAST_WORT = { blau: 'blau', gruen: 'grün', warm: 'warm', grau: 'grau', hell: 'hell', dunkel: 'dunkel' };
 
 // --- Farben einordnen ---
 export function farbKlasse([r, g, b]) {
@@ -222,7 +222,7 @@ export function waehleIdee(m, { benutzt = new Set(), zufall = Math.random, nurTi
   const spitze = frei.filter((x) => x.p >= best - 1e-9);
   const wahl = spitze[Math.floor(zufall() * spitze.length) % spitze.length].idee;
   let satz;
-  if (wahl.gegen) satz = `Die letzten drei Halte waren alle ${KONTRAST_WORT[wahl.gegen]}. ${wahl.text}`;
+  if (wahl.gegen) satz = `Die letzten drei Fotos waren alle ${KONTRAST_WORT[wahl.gegen]}. ${wahl.text}`;
   else if (wahl.allg) satz = wahl.text;
   else satz = `${beschreibung(m)} ${wahl.text}`;
   return { idee: wahl, satz, neueRunde, passend: kandidaten.map((x) => x.idee.id) };

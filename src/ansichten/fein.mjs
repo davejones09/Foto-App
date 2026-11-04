@@ -1,8 +1,7 @@
 // Feinjustieren: das neue Foto unter dem Rest schieben, zoomen, drehen. Nur der letzte Halt.
 import { Z, registriere, zeige } from '../zustand.mjs';
 import { T } from '../texte.mjs';
-import { $, melde } from '../ui.mjs';
-import { bewertung } from '../kern.mjs';
+import { $, melde, zeigePassung } from '../ui.mjs';
 import { auftrag, beschaeftigt } from '../rechner.mjs';
 import { leinwand, ctx2d, pixel, ladeBitmap, ladeBild, freigeben, verkleinere } from '../bild.mjs';
 import { begrenze, zeichneTransformiert, STANDARD } from '../geometrie.mjs';
@@ -17,7 +16,6 @@ const bildC = $('.fein-bild', rahmen);
 const restEl = $('.rest', rahmen);
 const restImg = $('img', restEl);
 const fadenLinie = $('.faden polyline', restEl);
-const signal = $('.signal', v);
 const wertEl = $('.wert', v);
 const bewEl = $('.bewertung', v);
 const ladenEl = $('.kamerastatus', rahmen);
@@ -73,9 +71,7 @@ async function analysieren() {
     if (r.leer || !daten) return;
     glatt = glatt == null ? r.wert : glatt * 0.5 + r.wert * 0.5;
     const w = Math.round(glatt);
-    wertEl.textContent = String(w);
-    bewEl.textContent = bewertung(w);
-    signal.className = 'signal ' + (w >= 90 ? 'an-gruen blinkt' : w >= 70 ? 'an-gruen' : w >= 40 ? 'an-gelb' : 'an-rot');
+    zeigePassung(v, w);
     fadenLinie.setAttribute('points', r.pfad.map((x, y) => `${x + 0.5},${y + 0.5}`).join(' '));
   } catch (err) {
     protokolliere('fein', err);
@@ -150,7 +146,7 @@ async function betreten(d) {
   glatt = null;
   wertEl.textContent = '';
   bewEl.textContent = '';
-  signal.className = 'signal';
+  zeigePassung(v, null);
   fadenLinie.setAttribute('points', '');
   ladenEl.hidden = false;
   const { halt } = d;
@@ -208,7 +204,7 @@ $('#fein-ok').addEventListener('click', async () => {
     Z.halte[h.index] = h;
     const q = roh;
     aufraeumen();
-    zeige('aufdeckung', { halt: h, rohQuelle: q, langsam: !!d.erstlauf && h.index === 1, erstlauf: !!d.erstlauf });
+    zeige('aufdeckung', { halt: h, rohQuelle: q, langsam: !!d.erstlauf && h.index === 1, erstlauf: !!d.erstlauf, danach: d.danach });
   } catch (err) {
     protokolliere('fein', err);
     melde(err instanceof db.SpeicherVoll ? T.speicherVoll : T.allgemein);
@@ -220,7 +216,7 @@ $('#fein-abbrechen').addEventListener('click', () => {
   const d = daten;
   const q = roh;
   aufraeumen();
-  if (d.neu || !d.halt.bild) zeige('aufdeckung', { halt: d.halt, rohQuelle: q, langsam: !!d.erstlauf && d.halt.index === 1, erstlauf: !!d.erstlauf });
+  if (d.neu || !d.halt.bild) zeige('aufdeckung', { halt: d.halt, rohQuelle: q, langsam: !!d.erstlauf && d.halt.index === 1, erstlauf: !!d.erstlauf, danach: d.danach });
   else { freigeben(q); zeige('aufdeckung', { halt: d.halt, fertig: true }); }
 });
 

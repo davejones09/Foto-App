@@ -7,7 +7,7 @@
 // { schluessel, laenge, typ } oder null. Gelesen wird über blob(meta, feld), das einen frischen Blob baut.
 
 export const DB_NAME = 'nahtlos';
-export const FORMAT = 4;
+export const FORMAT = 5;
 const KAMERA_BREITE = 1296; // Breite eines 4:5-Halts, so waren alle Halte bis Format 3
 export const BILDFELDER = ['roh', 'bild', 'naht', 'vorschau', 'nahtVorschau'];
 
@@ -34,6 +34,12 @@ const MIGRATIONEN = {
   // 1296 in migriereBreiten(), nach dem Blob-Umzug. Im Upgrade selbst nichts umschreiben: Datensätze
   // mit alten Blobs dürfen auf dem iPhone nicht noch einmal geschrieben werden.
   4() {},
+  // 5: Collagen als eigener Projekttyp. Nur ein neuer Speicher, an Strecken und Halten ändert sich nichts.
+  // { id, name, erstellt, geaendert, format, vorlage, stil, abstand, farbe, fotos: [Foto], felder: [{ foto, t }],
+  //   vorschau: Verweis }  Foto: { id, rohB, rohH, farbraum, profil, name, zeit, motiv, roh, vorschau }
+  5(db) {
+    db.createObjectStore('collagen', { keyPath: 'id' });
+  },
 };
 
 export class SpeicherVoll extends Error {}
@@ -146,7 +152,7 @@ export async function blob(meta, feld) {
 // Wie blob(), aber mit klarer Fehlermeldung, wenn die Daten fehlen.
 export async function blobPflicht(meta, feld) {
   const b = await blob(meta, feld);
-  if (!b) throw new Error(`Bilddaten fehlen oder sind unlesbar: ${feld} von Halt ${(meta?.index ?? 0) + 1}`);
+  if (!b) throw new Error(`Bilddaten fehlen oder sind unlesbar: ${feld} von Foto ${(meta?.index ?? 0) + 1}`);
   return b;
 }
 
@@ -163,8 +169,9 @@ export function strecke(id) {
   return tx('strecken', 'readonly', (t) => anfrage(t.objectStore('strecken').get(id)));
 }
 
-export async function neueStrecke({ name, blind = false }) {
-  const s = { id: neueId(), name, erstellt: Date.now(), blind: !!blind, ziel: false, formatVersion: FORMAT, gesichertBei: 0 };
+// art: wofür das Projekt angelegt wurde ('carousel' oder 'reel'). Beide Ausgaben gehen immer.
+export async function neueStrecke({ name, blind = false, art = 'carousel' }) {
+  const s = { id: neueId(), name, erstellt: Date.now(), blind: !!blind, ziel: false, formatVersion: FORMAT, gesichertBei: 0, art };
   await tx('strecken', 'readwrite', (t) => anfrage(t.objectStore('strecken').put(s)));
   return s;
 }
@@ -173,7 +180,7 @@ export async function aendereStrecke(id, felder) {
   return tx('strecken', 'readwrite', async (t) => {
     const st = t.objectStore('strecken');
     const s = await anfrage(st.get(id));
-    if (!s) throw new Error('Strecke fehlt');
+    if (!s) throw new Error('Projekt fehlt');
     Object.assign(s, felder);
     await anfrage(st.put(s));
     return s;
@@ -188,6 +195,93 @@ export function loescheStrecke(id) {
     for (const h of halte) t.objectStore('halte').delete(h.id);
     for (const f of wartend) t.objectStore('serie').delete(f.id);
     t.objectStore('strecken').delete(id);
+  });
+}
+
+// --- Collagen (nur Metadaten, Bilddaten in "dateien") ---
+
+const COLLAGE_FELDER = ['vorschau'];
+const fotoVerweise = (f) => ['roh', 'vorschau'].map((k) => f?.[k]).filter(istVerweis).map((v) => v.schluessel);
+
+export function collagen() {
+  return tx('collagen', 'readonly', (t) => anfrage(t.objectStore('collagen').getAll()))
+    .then((l) => l.sort((a, b) => (b.geaendert || b.erstellt) - (a.geaendert || a.erstellt)));
+}
+
+export function collage(id) {
+  return tx('collagen', 'readonly', (t) => anfrage(t.objectStore('collagen').get(id)));
+}
+
+export async function neueCollage({ name, format = '4:5', stil = 'rahmen' }) {
+  const c = {
+    id: neueId(), name, erstellt: Date.now(), geaendert: Date.now(), format, vorlage: null, stil,
+    abstand: 0.012, farbe: '#ffffff', fotos: [], felder: [], vorschau: null, formatVersion: FORMAT,
+  };
+  await tx('collagen', 'readwrite', (t) => anfrage(t.objectStore('collagen').put(c)));
+  return c;
+}
+
+export async function aendereCollage(id, felder = {}, dateien = null) {
+  keinBlob(felder);
+  const { eintraege, verweise } = await vorbereiten(id, dateien || {});
+  const c = await tx(['collagen', 'dateien'], 'readwrite', async (t) => {
+    const st = t.objectStore('collagen');
+    const alt = await anfrage(st.get(id));
+    if (!alt) throw new Error('Collage fehlt');
+    for (const e of eintraege) t.objectStore('dateien').put(e);
+    Object.assign(alt, felder, verweise, { geaendert: Date.now() });
+    await anfrage(st.put(alt));
+    return alt;
+  });
+  await pruefe(eintraege);
+  return c;
+}
+
+// Ein Foto kommt dazu: erst die Bilddaten, dann der Eintrag, dann zurücklesen. Scheitert das, ist es nicht da.
+export async function collageFotoHinzu(collageId, foto, { roh, vorschau }) {
+  keinBlob(foto);
+  const { eintraege, verweise } = await vorbereiten(foto.id, { roh, vorschau });
+  const f = { ...foto, ...verweise };
+  await tx(['collagen', 'dateien'], 'readwrite', async (t) => {
+    const st = t.objectStore('collagen');
+    const c = await anfrage(st.get(collageId));
+    if (!c) throw new Error('Collage fehlt');
+    for (const e of eintraege) t.objectStore('dateien').put(e);
+    c.fotos.push(f);
+    c.geaendert = Date.now();
+    await anfrage(st.put(c));
+  });
+  try {
+    await pruefe(eintraege);
+  } catch (err) {
+    await collageFotoEntfernen(collageId, f.id).catch(() => {});
+    throw err;
+  }
+  return f;
+}
+
+export function collageFotoEntfernen(collageId, fotoId) {
+  return tx(['collagen', 'dateien'], 'readwrite', async (t) => {
+    const st = t.objectStore('collagen');
+    const c = await anfrage(st.get(collageId));
+    if (!c) return null;
+    const f = c.fotos.find((x) => x.id === fotoId);
+    if (f) for (const k of fotoVerweise(f)) t.objectStore('dateien').delete(k);
+    c.fotos = c.fotos.filter((x) => x.id !== fotoId);
+    c.felder = (c.felder || []).filter((x) => x.foto !== fotoId);
+    c.geaendert = Date.now();
+    await anfrage(st.put(c));
+    return c;
+  });
+}
+
+export function loescheCollage(id) {
+  return tx(['collagen', 'dateien'], 'readwrite', async (t) => {
+    const c = await anfrage(t.objectStore('collagen').get(id));
+    if (!c) return;
+    for (const f of c.fotos || []) for (const k of fotoVerweise(f)) t.objectStore('dateien').delete(k);
+    for (const feld of COLLAGE_FELDER) if (istVerweis(c[feld])) t.objectStore('dateien').delete(c[feld].schluessel);
+    t.objectStore('collagen').delete(id);
   });
 }
 
@@ -233,7 +327,7 @@ export async function aendereHalt(id, felder = {}, dateien = null) {
   const h = await tx(['halte', 'dateien'], 'readwrite', async (t) => {
     const st = t.objectStore('halte');
     const alt = await anfrage(st.get(id));
-    if (!alt) throw new Error('Halt fehlt');
+    if (!alt) throw new Error('Foto fehlt');
     for (const [feld, v] of Object.entries(verweise)) {
       if (v === null && istVerweis(alt[feld])) t.objectStore('dateien').delete(alt[feld].schluessel);
     }

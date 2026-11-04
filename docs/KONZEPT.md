@@ -2,13 +2,13 @@
 
 ## In einem Satz
 
-Eine Kamera, bei der jedes Foto genau dort beginnen muss, wo das letzte aufhört: Aus einem ganzen Urlaub wird ein einziges, durchgehendes Bild ohne sichtbaren Schnitt.
+Eine Foto-App, bei der jedes Foto genau dort beginnt, wo das letzte aufhört: Aus vielen Fotos wird ein durchgehendes Bild ohne sichtbaren Schnitt, als Carousel, Reel oder Collage.
 
 ## Die Idee
 
 Das Ende des letzten Fotos liegt halbtransparent im Sucher. Du suchst etwas in der echten Welt, das dort weitergeht. Der Horizont vom Meer wird zur Tischkante im Café, das Geländer am Hafen zum Grat eines Vulkans, der Schatten am Pool zur Straße. Orte und Zeiten dürfen beliebig wechseln, nur die Linien müssen sich treffen.
 
-Das ändert, wie man durch einen Urlaub läuft: Man sucht nicht mehr nur Motive, sondern Anschlüsse. Am Ende steht kein Album, sondern eine einzige lange Strecke, durch die man fahren kann.
+Das ändert, wie man durch eine Reise läuft: Man sucht nicht mehr nur Motive, sondern Passungen. Am Ende steht kein Album, sondern ein durchgehendes Bild, durch das man wischen oder als Reel laufen kann.
 
 ## Warum es das so noch nicht gibt
 
@@ -18,138 +18,146 @@ Recherche vom 03.11.2026, ohne Anspruch auf Vollständigkeit:
 - Exquisite-Corpse-Apps wie [Art Swipe](https://apps.apple.com/us/app/art-swipe/id493872473), [Skwiz](https://apps.apple.com/cd/app/skwiz/id1611258643) oder [DrawnTogether](https://apps.apple.com/kh/app/drawntogether/id1616768845) arbeiten mit Zeichnungen oder Collagen aus fertigen Bildern. Keine führt live im Sucher zum passenden Motiv.
 - Collagen- und Stitching-Tools kleben fertige Fotos nachträglich zusammen. Das Besondere hier passiert vor der Aufnahme.
 
-Der Kern ist neu: der Live-Sucher, der misst, wie gut die Welt gerade an das letzte Foto anschließt, und die Kette daraus.
+Der Kern ist neu: der Live-Sucher, der misst, wie gut die Welt gerade an das letzte Foto anschließt, und das durchgehende Bild daraus.
+
+## Auftritt
+
+Ruhig und hochwertig wie eine professionelle Foto-App. Sachliche Sprache per Du, keine Witze, keine Themenwelt. Der Name „Nahtlos“ bleibt.
 
 ## Begriffe
 
-Die App nutzt Bahnsprache, weil David vom Fach ist. Sie bleibt dabei trocken und knapp.
-
 | Begriff | Bedeutung |
 |---|---|
-| Strecke | das durchgehende Bild, also das Projekt |
-| Halt | ein Foto in der Strecke |
+| Projekt | das durchgehende Bild aus mehreren Fotos (für Carousel und Reel) oder eine Collage |
+| Foto | ein Foto im Projekt |
 | Rest | die rechten 28 % des letzten Fotos, im Sucher sichtbar |
-| Faden | die unsichtbare Schnittlinie zwischen zwei Halten |
-| Anschluss | die Bewertung von 0 bis 100, wie gut zwei Halte zusammenpassen |
-| Marken | kleine Dreiecke, die zeigen, auf welcher Höhe Linien aus dem Rest kommen |
-| Fahrplan | die Liste aller Halte |
-| Reel | das Hochkant-Video, das durch die Strecke fährt |
-| Fahrt | das Finale der Blindfahrt, live abgespielt |
-| Ausfahrt | der Bereich zum Teilen und Sichern |
+| Naht | die unsichtbare Schnittlinie zwischen zwei Fotos |
+| Passung | die Bewertung von 0 bis 100, wie gut zwei Fotos zusammenpassen |
+| Hilfslinien | kurze Striche am Rand des Rests, auf der Höhe der Linien, die aus dem Bild kommen |
+| Fotos | die Liste aller Fotos eines Projekts |
+| Exportieren | der Bereich für Carousel, Reel, Gesamtbild und Sicherung |
+| Reel | das Hochkant-Video aus dem Projekt |
+| Überraschungsmodus | Option eines Projekts: Man sieht nur das letzte Foto, das ganze Bild erst beim Aufdecken |
 
-„Anschluss“ ist nur Bewertungsbegriff, kein App-Name: International ist das Wort historisch belastet.
+Bewertung: ab 90 „Perfekt“, ab 70 „Passt gut“, ab 40 „Passt teilweise“, darunter „Passt nicht“.
 
 ## Bildschirme
 
 ### 0. Einführung (nur beim ersten Start)
 
-Drei kurze Bildschirme vor der Kamera-Freigabe, jeder mit einem gezeichneten, animierten Beispiel und zwei Sätzen. Keine fremden Fotos.
+Drei kurze Bildschirme vor dem Hauptmenü, jeder mit einem gezeichneten, animierten Beispiel und zwei Sätzen. Keine fremden Fotos.
 
-1. **Was die App macht:** Drei Fotos liegen durcheinander, sortieren sich, rücken zusammen und verschmelzen zu einer Strecke, die dann weiterfährt. Der Text nennt auch die Serie aus der Mediathek.
-2. **Wie ein Anschluss funktioniert:** Ein Sucher mit Rest. Die Linie im Kamerabild wandert, Wert und Signal steigen, die Marke wird grün, dann Auslösen, Faden und Stempel.
-3. **Was am Ende rauskommt:** Die ganze Strecke, in 4:5-Bilder geschnitten, daneben das Karussell und das Reel.
+1. **Was die App macht:** Drei Fotos liegen durcheinander, sortieren sich, rücken zusammen und gehen ineinander über.
+2. **Wie die Passung funktioniert:** Ein Sucher mit Rest. Die Linie im Kamerabild wandert, Zahl und Balken steigen, die Hilfslinie leuchtet, dann Auslösen und Naht.
+3. **Was rauskommt:** Das Band in genau aufgehende Slides geschnitten, daneben Carousel, Reel und Collage.
 
-„Überspringen“ ist immer da, Wischen wechselt die Bildschirme. Später lässt sich die Einführung in den Strecken über „So funktioniert's“ wieder öffnen.
+„Überspringen“ ist immer da, Wischen wechselt die Bildschirme. Später lässt sich die Einführung in den Einstellungen wieder öffnen.
 
-### 1. Sucher (Hauptbildschirm, danach immer der Einstieg)
+### 1. Hauptmenü (Start der App)
 
-- Hochformat. Großer 4:5-Rahmen mit dem Kamerabild.
-- Beim ersten Halt ist der Sucher frei.
-- Ab dem zweiten Halt liegt links der **Rest** über 28 % der Breite, halbtransparent. Die Deckkraft stellt man durch Wischen auf dem Rest zwischen 15 % und 85 % ein. Standard: 55 %.
-- **Faden live:** In der Überlappung läuft eine feine Linie durch das Bild, genau dort, wo später geschnitten würde.
-- **Marken:** Bis zu drei gelbe Dreiecke am rechten Rand des Rests zeigen die Höhe der stärksten Linien. Trifft eine Linie im Kamerabild die Marke, wird das Dreieck grün.
-- **Signal:** Drei kleine Lichter oben. Rot unter 40, gelb von 40 bis 69, grün ab 70. Ab 90 blinkt grün langsam.
-- **Wert und Text:** großer Zahlenwert mit Bewertungstext aus `TEXTE.md`.
-- **Auslöser:** groß, unten mittig, immer erreichbar. Bei jedem Wert erlaubt: Auch ein verpasster Anschluss ist Teil der Reise.
-- Nebenfunktionen: Foto aus der Mediathek holen (auch eine Serie), Strecke ansehen, Linse wechseln (sofern verfügbar).
-- **Idee:** Ein Knopf im Sucher schlägt einen konkreten nächsten Halt vor, passend zur Linie im Rest, zu Farben, Tageszeit und gemerktem Ort. Mehr unter „Ideen“.
-- **Richtung:** Liegt eine Linie der Kamera knapp neben einer Marke, sagt die App, ob das iPhone höher oder tiefer muss.
+- **Neu erstellen:** drei große Karten, Carousel, Reel und Collage.
+- **Zuletzt bearbeitet:** Vorschaubilder der letzten Projekte, dazu „Alle Projekte“.
+- **Einstellungen:** Sicherung einspielen, Einführung, Diagnose, Version.
 
-### 2. Aufdeckung (direkt nach dem Auslösen, etwa 1,5 Sekunden)
+Ablauf bei Carousel und Reel: Karte wählen, Name (und auf Wunsch Überraschungsmodus), dann Kamera oder Mediathek, Vorschau, Export. Beide nutzen dasselbe Projekt: Aus einem Carousel-Projekt lässt sich auch ein Reel erstellen und umgekehrt. Wählt man die Mediathek, entsteht das Projekt erst, wenn wirklich Fotos gewählt sind.
 
-Das ist der Moment, für den die App existiert.
+### 2. Sucher
+
+- Hochformat. Großer 4:5-Rahmen mit dem Kamerabild. Oben links zurück ins Hauptmenü.
+- Beim ersten Foto ist der Sucher frei.
+- Ab dem zweiten Foto liegt links der **Rest** über 28 % der Breite, halbtransparent. Die Deckkraft stellt man durch Wischen auf dem Rest zwischen 15 % und 85 % ein. Standard: 55 %.
+- **Naht live:** In der Überlappung läuft eine feine Linie durch das Bild, genau dort, wo später geschnitten würde.
+- **Hilfslinien:** Bis zu drei kurze Striche am rechten Rand des Rests zeigen die Höhe der stärksten Linien. Trifft eine Linie im Kamerabild, leuchtet der Strich im Akzent.
+- **Passung:** oben als Zahl mit Bewertungstext und schmalem Balken. Ab 70 trägt der Balken den Akzent.
+- **Auslöser:** groß, unten mittig, immer erreichbar. Bei jedem Wert erlaubt.
+- Nebenfunktionen: Fotos aus der Mediathek, Projekt ansehen, Linse wechseln (sofern verfügbar).
+- **Idee:** schlägt ein konkretes nächstes Motiv vor, passend zur Linie im Rest, zu Farben, Tageszeit und gemerktem Ort.
+- **Richtung:** Liegt eine Linie der Kamera knapp neben einer Hilfslinie, sagt die App, ob das iPhone höher oder tiefer muss.
+
+### 3. Aufdeckung (direkt nach dem Auslösen, etwa 1,5 Sekunden)
 
 1. Das Bild friert ein, der Rest blendet aus.
-2. Der Faden zeichnet sich von oben nach unten. Dabei verschmelzen beide Fotos entlang der Linie.
-3. Die Ansicht zoomt heraus und zeigt das Stück Strecke mit dem neuen Halt.
-4. Der Wert erscheint als Stempel.
+2. Die Naht zeichnet sich von oben nach unten, beide Fotos gehen ineinander über.
+3. Die Ansicht zoomt heraus und zeigt das Stück Band mit dem neuen Foto.
+4. Oben steht die Passung als Zahl mit Balken.
 
-Danach: „Weiter“ als Hauptaktion, daneben „Feinjustieren“ und „Streichen“. Beim ersten Anschluss überhaupt läuft die Aufdeckung langsamer, siehe Erstlauf.
+Danach: „Weiter“ als Hauptaktion, daneben „Ausschnitt“ und „Verwerfen“.
 
-### 3. Feinjustieren
+### 4. Ausschnitt
 
-Rettet knappe Anschlüsse und ist der Weg für Fotos aus der Mediathek.
+Rettet knappe Passungen und ist der Weg für ein einzelnes Foto aus der Mediathek. Verschieben, zoomen (100 bis 200 %) und drehen (±8°), die Passung rechnet live mit. Nur das jeweils letzte Foto ist änderbar.
 
-- Das neue Foto lässt sich unter dem Rest verschieben, zoomen (100 bis 200 %) und drehen (±8°). Der Anschluss rechnet live mit.
-- Nur der jeweils letzte Halt ist änderbar. Das hält die Kette einfach und robust.
+### 4a. Mehrere Fotos aus der Mediathek
 
-### 3a. Serie aus der Mediathek
+- Bis zu 10 Fotos, jedes wird einzeln geöffnet und sofort gesichert.
+- **Fotos bleiben ganz.** Jedes behält sein Seitenverhältnis (feste Höhe 1620). Nur was schmaler als 0,7 oder breiter als 2:1 ist, wird um das Motiv herum beschnitten. Das Motiv findet eine Karte über Schärfe.
+- Die App sucht die beste Reihenfolge („Beste Passung“) oder folgt der Aufnahmezeit.
+- Vorschau vor dem Zusammensetzen: Ziehen sortiert um, × entfernt, Antippen öffnet den Ausschnitt. Ein Abbruch verliert kein Foto.
+- Im Überraschungsmodus bleibt es beim einzelnen Foto.
 
-Für Fotos, die schon gemacht sind, etwa mit der Lumix.
+### 5. Projekt
 
-- In der Auswahl sind bis zu 10 Fotos erlaubt. Ein einzelnes Foto läuft wie bisher über das Feinjustieren.
-- Jedes Foto wird einzeln geöffnet und sofort gesichert.
-- **Fotos bleiben ganz.** Ein Serienhalt behält sein Seitenverhältnis (feste Höhe 1620, eigene Breite) und wird nicht gezoomt. Nur was schmaler als 0,7 oder breiter als 2:1 ist, wird beschnitten, und zwar um das Motiv herum. Das Motiv findet eine Karte über Schärfe: Ein unscharfer Vordergrund oder gleichmäßige Textur wie Meer zählt nicht.
-- Die App sucht die beste Reihenfolge, bewertet nach den vollen Fotos. Hat die Strecke schon Halte, schließt die Serie an den letzten an. Alternativ „Nach Aufnahmezeit“: Die Reihenfolge folgt dem Aufnahmedatum.
-- **Übergang zwischen Serienfotos:** derselbe wie bei jedem Halt (siehe Gestaltung, Grundregel). Weich, aber nur in der Überlappung. Treffen zwei Linien fast aufeinander (höchstens 3 % der Höhe auseinander), werden sie innerhalb der Überlappung sanft zueinander gebogen. Beide Fotos bleiben außerhalb der Überlappung, wie sie sind.
-- Vorschau vor dem Bauen: Vorschaubilder mit Werten, Ziehen sortiert um, × entfernt. Antippen öffnet das Feinjustieren: optional zoomen und verschieben, Standard ist das ganze Foto, Antippen setzt das Motiv. Erst „Bauen“ rechnet die volle Auflösung, mit Fortschritt. Ein Abbruch verliert kein Foto.
-- In der Blindfahrt bleibt es beim einzelnen Foto.
+Das ganze Band zum Durchwischen, flüssig auch bei 50 Fotos, mit Leiste und Tageswechseln. Unten: Fotos, Exportieren, Aufnehmen.
 
-### 4. Strecke
+### 6. Fotos
 
-- Die ganze Strecke zum horizontalen Durchwischen, flüssig auch bei 50 Halten.
-- Darunter eine schmale Leiste mit allen Halten als Markierung, Tageswechsel deutlich sichtbar.
-- Hineinzoomen bis 100 % und Herauszoomen auf die ganze Strecke.
+Ruhige Liste: Zeit, Name, Passung. Fotos lassen sich benennen, beschädigte löschen. Oben Anzahl und Passung im Schnitt.
 
-### 5. Fahrplan
+### 7. Exportieren
 
-Sieht aus wie ein gelber Abfahrtsplan am Bahnsteig: schwarze Schrift auf Gelb, Spalten Zeit, Halt und Anschluss. Halte kann man benennen. Oben stehen Anzahl der Halte, Durchschnitt und die **Pünktlichkeit**, also der Anteil der Anschlüsse ab 70.
+- **Carousel:** Das Band in 4:5-Slides für Instagram, ohne Abschluss-Slide: Das Band geht genau in ganze Slides auf. Erst wird bis 8 % vergrößert (oben und unten gleich viel weg). Reicht das nicht, nimmt die App die Slide-Anzahl, die am wenigsten Bild kostet, und schneidet den Rest am Anfang und Ende weg, ohne Motive zu treffen. Die Grenzen rücken weg vom Motiv, wenn das hilft. Die Vorschau zeigt jede Slide genau so, wie sie exportiert wird.
+- **Reel:** MP4 in 1080 × 1920, Länge 15, 30, 60 oder 90 s, Abschnitt von bis. Stile mit kurzer Live-Vorschau:
+  - **Band:** das fortlaufende Band
+  - **Sanft:** weiche Überblendung, dazu langsames Zoomen
+  - **Schwung:** schneller Schwenk zum nächsten Foto mit Bewegungsunschärfe
+  - **Zoom:** Fahrt ins Foto hinein, das nächste kommt aus der Tiefe
+  - **Naht:** Das nächste Foto läuft entlang des echten Nahtverlaufs ins Bild
 
-### 6. Ausfahrt
+  Bei den vier Übergangsstilen füllt jedes Foto den Rahmen, der Ausschnitt folgt der Motivkarte. Standzeit und Übergänge ergeben sich aus der Länge, ist sie zu kurz, schlägt die App weniger Fotos vor. Das Reel endet auf dem letzten Bild. Dazu ein Titelbild in 1080 × 1920.
+- **Gesamtbild:** das ganze Band als ein langes Bild.
+- **Sicherung:** das ganze Projekt als Datei.
 
-- **Karussell:** Die Strecke in passgenau geschnittenen 4:5-Bildern für Instagram. Beim Wischen läuft das Bild nahtlos durch. Damit keine Bildgrenze durchs Motiv läuft, darf der Anfang um bis zu 15 % eines Bildes nach rechts rücken. Die Bildanzahl steigt dadurch nie. Lässt sich eine Grenze im Motiv nicht vermeiden, zeigt die Ausfahrt die Stelle als Vorschau und baut trotzdem.
-- **Reel:** Hochkant-Video (MP4) für Instagram, das durch die Strecke fährt. Man wählt die Länge (15, 30, 60 oder 90 Sekunden) und per Von-bis-Halt den Abschnitt, das Tempo ergibt sich. Über 900 Pixel pro Sekunde schlägt die App einen kürzeren Abschnitt vor. Das Reel ist ab dem ersten Bild in Bewegung, nur das Ende läuft weich aus. Die Endstation am Schluss ist per Schalter abwählbar. Dazu entsteht ein Titelbild in 1080 × 1920, dessen Wichtigstes in den mittleren 1080 × 1350 liegt. Danach: „Teilen“ und „In Fotos speichern“ mit dem Hinweis, es in Instagram als Reel auszuwählen.
-- **Gesamtbild:** Die ganze Strecke als ein langes Bild.
-- **Sicherung:** Die ganze Strecke als Datei fürs Backup und zum Wiedereinspielen.
+### 8. Collage
 
-### 7. Strecken
+- 2 bis 9 Fotos aus Mediathek oder Kamera. Formate 4:5, 1:1 und 9:16, Ausgabe als JPEG mit 2160 Pixeln Breite.
+- Über 20 Vorlagen passend zur Fotoanzahl: Raster, ein großes Foto mit kleinen, asymmetrische Aufteilungen.
+- **Mit Rahmen:** Abstand und Rahmenfarbe einstellbar. **Nahtlos:** Die Felder gehen mit dem weichen Übergang ineinander über.
+- Die Motivkarte schlägt den Ausschnitt vor. Antippen wählt ein Feld, Ziehen und Zoomen ändern den Ausschnitt, Ziehen auf ein anderes Feld tauscht die Fotos. Immer hineingezoomt, nie leere Bereiche. Keine Farbänderung.
+- Eigener Projekttyp mit Sicherung.
 
-Liste aller Strecken mit kleiner Vorschau. „Neue Strecke“ fragt nach einem Namen und bietet die Blindfahrt an.
+### 9. Alle Projekte und Einstellungen
+
+Liste aller Projekte (Carousel, Reel, Collage) mit Vorschau, öffnen, löschen. In den Einstellungen: Sicherung einspielen, Einführung, Diagnose, Version.
 
 ## Ideen
 
-Regelbasiert und komplett offline, ohne KI und ohne Netz. Grundlagen:
+Regelbasiert und komplett offline, ohne KI und ohne Netz: Höhe, Stärke und Neigung der Linie im Rest, die Farben darüber und darunter, die Farben der letzten 3 Fotos, Tageszeit und ein gemerkter Ort. „Andere Idee“ wiederholt innerhalb eines Projekts nichts, bis alle passenden durch sind.
 
-- Höhe, Stärke und Neigung der Linie im Rest, die Farben darüber und darunter
-- die Farben der letzten 3 Halte: Waren alle gleich, kommt eine Idee mit Kontrast
-- die Tageszeit und ein per Antippen gemerkter Ort: Strand, Stadt, Essen, Natur, Unterkunft, Unterwegs
+## Überraschungsmodus
 
-Jede Idee ist ein konkreter Satz im trockenen Ton der App. „Andere Idee“ wiederholt innerhalb einer Strecke nichts, bis alle passenden durch sind. Die Tipps bei niedrigem Wert kommen aus derselben Quelle.
-
-## Blindfahrt
-
-Eine Option pro Strecke für zwei Personen: Man sieht immer nur den Rest, nie die Strecke. Das Handy wandert hin und her, und jeder setzt fort, ohne zu wissen, wie der andere dahin gekommen ist. Erst mit „Ziel erreichen“ wird alles aufgedeckt, und die Fahrt läuft als Vollbild-Finale.
+Eine Option pro Projekt für zwei Personen: Man sieht immer nur den Rest, nie das Band. Das Handy wandert hin und her, und jeder setzt fort, ohne zu wissen, wie der andere dahin gekommen ist. Erst „Aufdecken“ zeigt alles, das Band läuft einmal im Vollbild durch.
 
 ## Erstlauf
 
-Die Einführung zeigt die Idee vorab in drei Bildschirmen. Danach lernt man die App beim Benutzen, mit knappen Sätzen aus `TEXTE.md`:
+Die Einführung zeigt die Idee vorab. Im ersten Projekt lernt man den Sucher beim Benutzen, mit knappen Sätzen aus `TEXTE.md`:
 
 1. **Foto 1:** Die App bittet nur um irgendein Foto.
-2. **Danach:** Der Rest erscheint im Sucher und wird in einem Satz erklärt. Die App fordert auf, etwas zu suchen, das hier weitergeht. Marken und Signal werden kurz hervorgehoben.
-3. **Foto 2:** Die erste Aufdeckung läuft langsam, etwa 3 Sekunden, und zeigt zum ersten Mal mit eigenen Fotos das durchgehende Bild. Danach kommt der Satz, der alles zusammenfasst.
+2. **Danach:** Der Rest erscheint und wird in einem Satz erklärt. Hilfslinien und Passung werden kurz hervorgehoben.
+3. **Foto 2:** Die erste Aufdeckung läuft langsam und zeigt zum ersten Mal mit eigenen Fotos das durchgehende Bild.
 
 Wer nach Einführung und Schritt 3 die Idee nicht verstanden hat, dem hat der Erstlauf nicht geholfen. Das ist das Abnahmekriterium.
 
 ## Gestaltung
 
 - **Das Foto ist der Held.** Die Oberfläche tritt zurück und verfälscht die Farbwahrnehmung nicht.
-- **Grundregel: Fotos werden außerhalb des Übergangs nicht verändert.** Fotografen stecken Stunden in die Bearbeitung. Ein Halt ist außerhalb der Überlappung das unveränderte Original: keine Farbangleichung, kein Verbiegen, keine Option dafür. Nur in der Überlappung wird weich überblendet, und auch dort gehen beide Ränder exakt ins Original über. Fotos in Display P3 bleiben P3, nichts wird beim Import still umgerechnet. Für Instagram werden die Ausgaben sauber nach sRGB umgerechnet.
-- **Farben:** fast schwarzer Grund (`#0E0F10`), Signalgelb (`#FFD400`) als einziger Akzent, helles Grau für Text. Signalrot und Signalgrün nur für Signal und Marken. Der Fahrplan ist die einzige große gelbe Fläche.
-- **Schrift:** Systemschrift. Ziffern in `ui-monospace` mit Tabellenziffern, damit der Wert beim Rechnen nicht springt.
-- **Bedienung:** einhändig, unter Sonne lesbar, Trefferflächen mindestens 44 pt, sichere Bereiche (`safe-area-inset`) beachten. Im Querformat erscheint ein kurzer Hinweis zum Drehen.
+- **Grundregel: Fotos werden außerhalb des Übergangs nicht verändert.** Fotografen stecken Stunden in die Bearbeitung. Ein Foto ist außerhalb der Überlappung das unveränderte Original: keine Farbangleichung, kein Verbiegen, keine Option dafür. Nur im Übergang wird weich überblendet, und auch dort gehen beide Ränder exakt ins Original über. Fotos in Display P3 bleiben P3. Für Instagram werden die Ausgaben sauber nach sRGB umgerechnet.
+- **Keine Spuren der App im Ergebnis:** keine Logos, Texte, Statistiken, Abspänne oder Wasserzeichen in Carousel, Reel, Collage und Gesamtbild, neutrale Dateinamen, keine App-Hinweise in den Metadaten.
+- **Farben:** neutrales dunkles Grau (`#111213`, Flächen `#1A1B1D`), helles Grau für Text, ein zurückhaltendes Blau (`#8FB1FF`) als einziger Akzent. Hauptknöpfe hell mit dunkler Schrift.
+- **Schrift:** Systemschrift, klare Hierarchie, viel Luft. Ziffern in `ui-monospace` mit Tabellenziffern.
+- **Bedienung:** einhändig, unter Sonne lesbar, Trefferflächen mindestens 44 pt, sichere Bereiche (`safe-area-inset`) beachten. Im Querformat ein kurzer Hinweis zum Drehen.
 - **Bewegung:** knapp und mit Grund. Die Aufdeckung darf sich Zeit nehmen, alles andere nicht.
-- **Keine Emojis**, keine Abzeichen, keine Punktelisten mit Belohnungen. Die Bahnsprache ist der ganze Spaß.
+- **Keine Emojis**, keine Abzeichen, keine Belohnungen.
 
 ## Bewusst nicht drin
 
-Konten, Cloud, Filter, KI-Bildgenerierung, soziale Funktionen. Die Linien sollen echt sein: Es wird nichts erfunden oder dazugemalt, nur in der Überlappung entlang des Fadens überblendet. Eine Farbangleichung der Fotos gibt es nicht, auch nicht als Option.
+Konten, Cloud, Filter, KI-Bildgenerierung, soziale Funktionen. Die Linien sollen echt sein: Es wird nichts erfunden oder dazugemalt, nur im Übergang entlang der Naht überblendet. Eine Farbangleichung der Fotos gibt es nicht, auch nicht als Option.
