@@ -61,11 +61,17 @@ function eigenPlan(medien, stil) {
 // Schnitte auf die Musik. Ein Schnitt ist die Mitte des Übergangs und liegt auf einem Schlag aus dem Raster.
 // Die Vorlage gibt den Rhythmus in Schlägen vor. Eigene Längen und ganze Clips gehen auf den nächsten Schlag,
 // ganze Clips eher davor, damit der Clip nicht vor dem Schnitt zu Ende ist.
-export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRest = REEL_MAX }) {
+// Der Übergang landet auf dem Treffer: Das neue Bild steht in dem Moment, in dem der Schlag kommt.
+// Beim Suchen zählt die Stärke: Lieber ein kräftiger Akzent etwas daneben als ein schwacher genau am Wunsch.
+const MUSIK_UEBERGANG_MAX = 0.24;
+
+export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRest = REEL_MAX, takt = null }) {
+  const stellen = raster.map((r) => (typeof r === 'number' ? { t: r, s: 1 } : r));
   const v = VORLAGEN.find((x) => x.id === stil) || null;
   const n = medien.length;
   const ende = Math.min(laenge ?? REEL_MAX, musikRest, REEL_MAX);
-  const abstand = raster.length > 1 ? (raster[raster.length - 1] - raster[0]) / (raster.length - 1) : 0.5;
+  const abstand = takt ?? (stellen.length > 1 ? (stellen[stellen.length - 1].t - stellen[0].t) / (stellen.length - 1) : 0.5);
+  const spielraum = Math.max(0.4, abstand);
   const schnitte = [];
   const arten = [];
   const tr = [];
@@ -77,30 +83,36 @@ export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRes
     const m = medien[k % n];
     if (laenge == null && k >= n - 1) break;
     const art = v ? v.arten[k % v.arten.length] : 'schnitt';
-    const dauerTr = UEBERGAENGE[art];
+    const dauerTr = Math.min(UEBERGAENGE[art], MUSIK_UEBERGANG_MAX);
     // Ein Clip steht nie länger, als er lang ist: Sonst springt er sichtbar an seinen Anfang zurück.
-    const rest = m.typ === 'clip' ? eigeneLaenge(m) : Infinity;
+    // Der hereinkommende Übergang zeigt schon den Clip, deshalb zählt er mit.
+    const rest = m.typ === 'clip' ? eigeneLaenge(m) - trVorher : Infinity;
     const vorlageWunsch = v ? v.schlaege[k % v.schlaege.length] * abstand : Infinity;
     const eigen = !v || m.eigen || vorlageWunsch > rest;
-    const wunsch = !v || m.eigen ? eigeneLaenge(m) : Math.min(vorlageWunsch, rest);
+    const wunsch = !v || m.eigen ? (m.typ === 'clip' ? rest : eigeneLaenge(m)) : Math.min(vorlageWunsch, rest);
     const ziel = vorher + wunsch;
-    const frueh = vorher + trVorher / 2 + dauerTr / 2 + 0.2;
+    const frueh = vorher + dauerTr + 0.2;
+    while (schritt < stellen.length && stellen[schritt].t < frueh) schritt++;
     let best = null;
-    while (schritt < raster.length && raster[schritt] < frueh) schritt++;
-    for (let i = schritt; i < raster.length; i++) {
-      const r = raster[i];
-      if (r > ende - 0.3) break;
-      if (best == null || Math.abs(r - ziel) < Math.abs(best - ziel)) best = r;
-      if (r > ziel) break;
+    let bestWert = -1;
+    let naechste = null;
+    let davor = null;
+    for (let i = schritt; i < stellen.length; i++) {
+      const { t, s } = stellen[i];
+      if (t > ende - 0.3) break;
+      const d = Math.abs(t - ziel);
+      if (naechste == null || d < Math.abs(naechste - ziel)) naechste = t;
+      if (t <= ziel + 1e-6) davor = t;
+      if (d <= spielraum && !(eigen && t > ziel + 1e-6)) {
+        const wert = s * (1 - (0.6 * d) / spielraum);
+        if (wert > bestWert) { bestWert = wert; best = t; }
+      }
+      if (t > ziel + spielraum) break;
     }
     // Ein ganzer Clip darf nicht über sein Ende hinaus stehen: dann lieber der Schlag davor.
-    if (best != null && eigen && best > ziel + 1e-6) {
-      let davor = null;
-      for (let i = schritt; i < raster.length && raster[i] <= ziel; i++) davor = raster[i];
-      if (davor != null) best = davor;
-    }
+    if (best == null) best = eigen && davor != null ? davor : naechste;
     if (best == null) { gekappt = laenge == null ? k < n - 1 : false; break; }
-    schnitte.push(best);
+    schnitte.push(best - dauerTr / 2);
     arten.push(art);
     tr.push(dauerTr);
     vorher = best;
@@ -109,15 +121,15 @@ export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRes
   // Das letzte Medium läuft bis zum Ende: eigene Länge beziehungsweise Vorlage, auf den Schlag gelegt.
   const letzteM = medien[schnitte.length % n];
   const v2 = v ? v.schlaege[schnitte.length % v.schlaege.length] * abstand : 0;
-  const letzterRest = letzteM.typ === 'clip' ? eigeneLaenge(letzteM) : Infinity;
-  let schluss = laenge != null ? ende : vorher + (v && !letzteM.eigen ? Math.min(Math.max(v2, abstand * 2), letzterRest) : eigeneLaenge(letzteM));
+  const letzterRest = letzteM.typ === 'clip' ? eigeneLaenge(letzteM) - trVorher : Infinity;
+  let schluss = laenge != null ? ende : vorher + (v && !letzteM.eigen ? Math.min(Math.max(v2, abstand * 2), letzterRest) : (letzteM.typ === 'clip' ? letzterRest : eigeneLaenge(letzteM)));
   schluss = Math.min(schluss, ende);
   // Auf den letzten Schlag davor enden, damit auch das Ende im Takt liegt und der Clip nicht zurückspringt.
   if (laenge == null) {
     let davor = null;
-    for (const r of raster) {
+    for (const { t: r } of stellen) {
       if (r > schluss + 1e-6) break;
-      if (r > vorher + trVorher / 2 + 0.2) davor = r;
+      if (r > vorher + 0.2) davor = r;
     }
     if (davor != null) schluss = davor;
   }
@@ -139,9 +151,9 @@ export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRes
   };
 }
 
-export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, musikRest = REEL_MAX } = {}) {
+export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, musikRest = REEL_MAX, takt = null } = {}) {
   let plan;
-  if (raster && raster.length && medien.length) plan = musikPlan(medien, { stil, raster, laenge, musikRest });
+  if (raster && raster.length && medien.length) plan = musikPlan(medien, { stil, raster, laenge, musikRest, takt });
   else if (stil === GANZ) plan = ganzPlan(medien);
   else if (medien.some((m) => m.eigen)) plan = eigenPlan(medien, stil);
   else plan = vorlagenPlan(medien.length, { laenge, vorlage: stil });

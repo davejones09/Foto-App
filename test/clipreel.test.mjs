@@ -153,7 +153,12 @@ for (const stil of [GANZ, ...VORLAGEN_IDS]) {
     const m = [CLIP(8), FOTO, CLIP(6), CLIP(9)];
     const p = clipPlan(m, { stil, raster: RASTER, musikRest: 120 });
     assert.ok(p.schnitte.length >= 1);
-    for (const s of p.schnitte) assert.ok(RASTER.includes(s), `Schnitt ${s}`);
+    // Der Übergang endet auf dem Schlag
+    p.schnitte.forEach((s, k) => {
+      const ende = s + p.uebergaenge[k] / 2;
+      assert.ok(RASTER.some((r) => Math.abs(r - ende) < 1e-6), `Übergang endet bei ${ende}`);
+      assert.ok(p.uebergaenge[k] <= 0.24);
+    });
     for (const k of p.staende) assert.ok(k > 0);
     // Mitte des Übergangs ist der Schnitt, auch nach dem Runden auf Bilder
     p.schnitte.forEach((s, k) => {
@@ -165,6 +170,18 @@ for (const stil of [GANZ, ...VORLAGEN_IDS]) {
     assert.ok(p.dauer <= REEL_MAX);
   });
 }
+
+test('Musik: Der stärkere Akzent schlägt den näheren', () => {
+  const raster = [{ t: 2, s: 0.15 }, { t: 2.5, s: 0.15 }, { t: 3, s: 0.15 }, { t: 3.3, s: 1 }, { t: 3.5, s: 0.15 }, { t: 4, s: 0.15 }, { t: 8, s: 0.15 }];
+  const p = clipPlan([CLIP(3.5), CLIP(5)], { stil: GANZ, raster, takt: 0.5, musikRest: 20 });
+  assert.equal(p.schnitte[0], 3.3);
+});
+
+test('Musik: Der ganze Clip steht auch beim Akzent nicht über sein Ende', () => {
+  const raster = [{ t: 2.5, s: 0.15 }, { t: 3.2, s: 0.15 }, { t: 3.4, s: 1 }];
+  const p = clipPlan([CLIP(3.3), CLIP(5)], { stil: GANZ, raster, takt: 0.5, musikRest: 20 });
+  assert.equal(p.schnitte[0], 3.2);
+});
 
 test('Musik mit fester Länge: Fotos laufen in Runden bis zum Ende, Schluss genau bei der Länge', () => {
   const p = clipPlan([CLIP(30), CLIP(30)], { stil: 'v-beat', raster: RASTER, laenge: 30, musikRest: 120 });
@@ -190,7 +207,7 @@ test('Musik: Ein Clip springt nie zurück, auch wenn die Vorlage länger stehen 
     const p = clipPlan(m, { stil, raster: RASTER, musikRest: 120 });
     p.staende.forEach((s, k) => {
       const gezeigt = p.vorlauf[k] + s + (p.uebergaenge[k] || 0);
-      assert.ok(gezeigt <= eigeneLaenge(m[k]) + 0.8, `${stil} Abschnitt ${k}: ${gezeigt}`);
+      assert.ok(gezeigt <= eigeneLaenge(m[k]) + 1e-6, `${stil} Abschnitt ${k}: ${gezeigt}`);
     });
     const z = vorlagenZustand(p, (p.bilder - 1) / FPS);
     assert.equal(z.j, null);

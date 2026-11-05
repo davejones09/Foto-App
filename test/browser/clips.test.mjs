@@ -266,10 +266,12 @@ test('Musik: Takt erkannt, Schnitte darauf, Video enthält Ton', async () => {
   const r = await page.evaluate(async () => {
     const u = new Uint8Array(await (await fetch(document.querySelector('.cl-video').src)).arrayBuffer());
     const { mp4TonProben } = await import('./src/metadaten.mjs');
+    window.__ladenWeg = document.querySelector('#laden').hidden;
     return { daten: Array.from(u), proben: mp4TonProben(u), hinweis: document.querySelector('.cl-ergebnis p').textContent };
   });
   assert.ok(r.daten.length > 1000);
   assert.ok(r.proben > 100, 'Tonspur fehlt');
+  assert.equal(await page.evaluate(() => window.__ladenWeg), true, 'Ladeanzeige ist weg');
   // Die fertige Datei mit einem fremden Programm prüfen: AAC, und der Ton ist wirklich hörbar.
   const datei = join(ERGEBNISSE, 'cl-musik.mp4');
   writeFileSync(datei, Buffer.from(r.daten));
@@ -283,5 +285,89 @@ test('Musik: Takt erkannt, Schnitte darauf, Video enthält Ton', async () => {
   }
   assert.match(r.hinweis, /enthält die Musik/);
   await page.screenshot({ path: `${ERGEBNISSE}/cl-musik.png` });
+  assert.deepEqual(fehler, []);
+});
+
+test('Ladeanzeige: steht ab dem Öffnen der Auswahl, zählt mit, verschwindet', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  const wahl = page.waitForEvent('filechooser');
+  await page.click('#cl-waehlen');
+  const auswahl = await wahl;
+  assert.equal(await page.locator('#laden').isVisible(), true, 'Anzeige schon beim Öffnen');
+  assert.match(await page.locator('.laden-text').textContent(), /Wird geladen/);
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-laden.png` });
+  // Abbrechen nimmt sie wieder weg
+  await page.evaluate(() => document.querySelector('#datei-clips').dispatchEvent(new Event('cancel', { bubbles: true })));
+  assert.equal(await page.locator('#laden').isVisible(), false);
+  await page.click('#cl-waehlen').catch(() => {});
+  await auswahl.setFiles([join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.waitForSelector('#laden', { state: 'hidden' });
+  assert.deepEqual(fehler, []);
+});
+
+test('Bearbeiten: Fertig und Zurücksetzen liegen unten und bleiben erreichbar', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await page.setViewportSize({ width: 390, height: 664 });
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm')]);
+  await page.waitForSelector('.cl-bearbeiten');
+  await page.click('.cl-bearbeiten');
+  await page.waitForSelector('.cl-editor:not([hidden])');
+  const r = await page.evaluate(() => {
+    const k = (id) => document.querySelector(id).getBoundingClientRect();
+    return { fertig: k('#ce-fertig'), zurueck: k('#ce-zuruecksetzen'), h: innerHeight };
+  });
+  for (const k of [r.fertig, r.zurueck]) {
+    assert.ok(k.top > r.h * 0.75, `Knopf liegt bei ${k.top} von ${r.h}`);
+    assert.ok(k.bottom <= r.h, 'Knopf im Bild');
+    assert.ok(k.height >= 44);
+  }
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-editor-klein.png` });
+  await page.click('#ce-fertig');
+  await page.waitForSelector('.cl-editor', { state: 'hidden' });
+  assert.deepEqual(fehler, []);
+});
+
+test('Musik: Der Übergang landet auf dem Schlag', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.setInputFiles('#datei-musik', [wav(120, 20)]);
+  await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
+  await page.locator('.cl-stil[data-stil="v-slide"]').click();
+  await page.click('#cl-bauen');
+  await page.waitForSelector('.cl-video', { timeout: 120000 });
+  const daten = await page.evaluate(async () => Array.from(new Uint8Array(await (await fetch(document.querySelector('.cl-video').src)).arrayBuffer())));
+  const datei = join(ERGEBNISSE, 'cl-takt.mp4');
+  writeFileSync(datei, Buffer.from(daten));
+  const ff = spawnSync('ffmpeg', ['-v', 'error', '-i', datei, '-vf', 'scale=32:57,format=gray', '-f', 'rawvideo', '-'], { maxBuffer: 1e9 });
+  if (!ff.error) {
+    assert.equal(ff.status, 0, String(ff.stderr));
+    const groesse = 32 * 57;
+    const bilder = Math.floor(ff.stdout.length / groesse);
+    const unterschied = [];
+    for (let i = 1; i < bilder; i++) {
+      let d = 0;
+      for (let p = 0; p < groesse; p++) d += Math.abs(ff.stdout[i * groesse + p] - ff.stdout[(i - 1) * groesse + p]);
+      unterschied.push(d / groesse);
+    }
+    // Letztes Bild jeder Bewegung: danach steht das neue Bild. Die Kicks liegen bei 0,1 + k × 0,5.
+    const enden = [];
+    unterschied.forEach((d, i) => { if (d > 3 && !(unterschied[i + 1] > 3)) enden.push((i + 1) / 30); });
+    assert.ok(enden.length === 1, `Genau ein Übergang erwartet, gefunden: ${enden}`);
+    for (const e of enden) {
+      const abstand = Math.abs(((e - 0.1 + 0.25) % 0.5) - 0.25);
+      assert.ok(abstand <= 0.07, `Übergang endet ${abstand.toFixed(3)} s neben dem Schlag (${e.toFixed(2)} s)`);
+    }
+  }
   assert.deepEqual(fehler, []);
 });

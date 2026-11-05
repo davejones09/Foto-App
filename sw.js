@@ -1,5 +1,5 @@
 // Service Worker: alles für den Offline-Betrieb vorhalten. Der Name enthält APP_VERSION.
-const APP_VERSION = '0.20.3';
+const APP_VERSION = '0.21.0';
 const CACHE = 'nahtlos-' + APP_VERSION;
 
 const DATEIEN = [
@@ -59,6 +59,7 @@ const DATEIEN = [
   './src/ansichten/start.mjs',
   './src/ansichten/collage.mjs',
   './src/aac.mjs',
+  './src/laden.mjs',
   './vendor/aac.mjs',
   './vendor/mp4-muxer.mjs',
   './icons/icon-180.png',

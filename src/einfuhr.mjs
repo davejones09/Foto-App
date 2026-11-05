@@ -10,6 +10,7 @@ import { profilAusDatei, arbeitsraum, wirdUmgerechnet } from './farbe.mjs';
 import { sichereRoh } from './naehwerk.mjs';
 import { ROH_MAX } from './masse.mjs';
 import { protokolliere } from './diagnose.mjs';
+import { ladeEnde } from './laden.mjs';
 import { SpeicherVoll, NichtGesichert } from './speicher.mjs';
 
 const eingabe = $('#datei-bild');
@@ -26,18 +27,22 @@ eingabe.addEventListener('change', async () => {
   eingabe.value = '';
   const anlegen = vorgemerkt;
   vorgemerkt = null;
-  if (!dateien.length) return;
-  if (anlegen) {
-    try { await anlegen(); } catch (err) {
-      protokolliere('neues Projekt', err);
-      melde(err instanceof SpeicherVoll ? T.speicherVoll : T.allgemein);
-      return;
+  try {
+    if (!dateien.length) return;
+    if (anlegen) {
+      try { await anlegen(); } catch (err) {
+        protokolliere('neues Projekt', err);
+        melde(err instanceof SpeicherVoll ? T.speicherVoll : T.allgemein);
+        return;
+      }
     }
+    if (!Z.strecke) return;
+    if (nurEinzeln()) dateien = dateien.slice(0, 1);
+    if (dateien.length > 1) await zeige('serie', { dateien });
+    else await importieren(dateien[0]);
+  } finally {
+    ladeEnde();
   }
-  if (!Z.strecke) return;
-  if (nurEinzeln()) dateien = dateien.slice(0, 1);
-  if (dateien.length > 1) zeige('serie', { dateien });
-  else importieren(dateien[0]);
 });
 
 // Öffnet die Auswahl der Mediathek. Das Ergebnis kommt über das change-Ereignis.

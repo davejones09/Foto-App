@@ -480,6 +480,9 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-ton-pruefung { display: block; color: var(--text2); font-size: 12px; }
 .cl-editor { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--grund); }
 .cl-editor[hidden] { display: none; }
+.ce-titel { margin: 0; padding: calc(var(--oben) + 10px) 16px 2px; font-size: 17px; font-weight: 600; text-align: center; flex: none; }
+.ce-knoepfe { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: none; width: 100%; max-width: 480px; align-self: center; padding: 10px 16px calc(var(--unten) + 12px); }
+.ce-knoepfe button { width: 100%; min-height: 48px; }
 .ce-inhalt { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); overflow-y: auto; }
 #ce-bild { height: min(52dvh, 560px); aspect-ratio: 9 / 16; width: auto; border-radius: 12px; background: #000; touch-action: none; cursor: grab; flex: none; }
 .ce-regler { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px; flex: none; }
@@ -489,3 +492,12 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
   #ce-bild { height: min(78dvh, 720px); }
   .ce-regler { width: 380px; }
 }
+
+/* Laden nach der Auswahl: blockiert nichts */
+#laden { position: fixed; top: calc(var(--oben) + 72px); left: 50%; transform: translateX(-50%); z-index: 950; width: min(300px, calc(100vw - 32px)); padding: 12px 16px 14px; border-radius: 14px; background: var(--flaeche); box-shadow: 0 8px 28px rgba(0, 0, 0, .55); pointer-events: none; }
+#laden[hidden] { display: none; }
+.laden-text { margin: 0 0 8px; font-size: 15px; text-align: center; }
+.laden-balken { height: 4px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, .16); }
+.laden-balken > div { height: 100%; width: 35%; border-radius: 2px; background: var(--akzent, #FFD400); animation: laden-lauf 1.1s ease-in-out infinite; }
+#laden[data-stand] .laden-balken > div { animation: none; width: var(--stand, 0%); transition: width .2s; }
+@keyframes laden-lauf { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
