@@ -86,3 +86,36 @@ test('Hauptmenü: Reel bietet „Aus Clips“ an', async () => {
   await page.getByRole('button', { name: 'Aus Clips' }).click();
   await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
 });
+
+test('Nach dem Übergang läuft der Clip weiter und springt nicht zurück', async () => {
+  const { page } = await neueSeite(b);
+  await oeffne(page, s.url);
+  const r = await page.evaluate(async () => {
+    const { clipPlan, clipMaler } = await import('./src/clipreel.mjs');
+    const lade = async (n) => new File([await (await fetch(`test/daten/${n}`)).blob()], n, { type: 'video/webm' });
+    const blau = await lade('clip-blau.webm');
+    const rot = await lade('clip-rot.webm');
+    const medien = [
+      { typ: 'clip', datei: blau, url: URL.createObjectURL(blau), dauer: 2, start: 0 },
+      { typ: 'clip', datei: rot, url: URL.createObjectURL(rot), dauer: 3, start: 0 },
+    ];
+    const p = clipPlan(medien, { stil: 'v-spot', laenge: null });
+    const c = document.createElement('canvas');
+    c.width = 90;
+    c.height = 160;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    const m = clipMaler(medien, p, { W: 90, H: 160 });
+    const rotWerte = [];
+    // Vom Beginn des Übergangs bis 0,5 Sekunden danach: Der Kreis öffnet sich in der Mitte.
+    const von = p.staende[0] + p.uebergaenge[0] * 0.3;
+    const bis = p.beginn[1] + 0.5;
+    for (let t = von; t < bis; t += 1 / 30) {
+      await m.male(ctx, t);
+      rotWerte.push(ctx.getImageData(45, 80, 1, 1).data[0]);
+    }
+    m.ende();
+    return rotWerte;
+  });
+  assert.ok(r.length > 10);
+  for (let i = 1; i < r.length; i++) assert.ok(r[i] >= r[i - 1] - 6, `Rücksprung bei Bild ${i}: ${r.join(' ')}`);
+});
