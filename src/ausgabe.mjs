@@ -258,11 +258,11 @@ async function videoBauen(weg, male, bilder, { fortschritt, waechter, ton = null
       const muxer = new Muxer({
         target: new ArrayBufferTarget(),
         video: { codec: 'avc', width: FAHRT_B, height: FAHRT_H },
-        ...(ton ? { audio: { codec: ton.codec, numberOfChannels: ton.spur.numberOfChannels, sampleRate: ton.spur.sampleRate } } : {}),
+        ...(ton ? { audio: { codec: 'aac', numberOfChannels: ton.kanaele, sampleRate: ton.rate } } : {}),
         fastStart: 'in-memory',
       });
       let fehler = null;
-      if (ton) await tonKodieren(ton, muxer);
+      if (ton) tonSchreiben(ton, muxer);
       const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => (fehler = e) });
       enc.configure({ codec: weg.codec, width: FAHRT_B, height: FAHRT_H, bitrate: 8_000_000, framerate: FAHRT_FPS, avc: { format: 'avc' } });
       for (let i = 0; i < bilder; i++) {
@@ -317,16 +317,6 @@ async function videoBauen(weg, male, bilder, { fortschritt, waechter, ton = null
 
 // --- Ton: AAC, das versteht Instagram zuverlässig ---
 export const TON_RATE = 48000;
-const TON_CONFIG = (codec) => ({ codec, sampleRate: TON_RATE, numberOfChannels: 2, bitrate: 192000 });
-
-export async function tonWeg({ erlaubeOpus = false } = {}) {
-  if (typeof AudioEncoder === 'undefined') return null;
-  const geht = async (c) => { try { return (await AudioEncoder.isConfigSupported(TON_CONFIG(c))).supported; } catch { return false; } };
-  if (await geht('mp4a.40.2')) return { codec: 'aac', config: 'mp4a.40.2' };
-  // Nur für Tests: Der Testbrowser kann kein AAC.
-  if (erlaubeOpus && (await geht('opus'))) return { codec: 'opus', config: 'opus' };
-  return null;
-}
 
 // Ausschnitt der Musik für das Reel, auf 48 kHz Stereo, mit weichem Ende.
 export async function tonSpur(musik, start, dauer) {
@@ -342,26 +332,19 @@ export async function tonSpur(musik, start, dauer) {
   return ctx.startRendering();
 }
 
-async function tonKodieren({ spur, config }, muxer) {
-  let fehler = null;
-  const enc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => (fehler = e) });
-  enc.configure({ ...TON_CONFIG(config) });
+// Fertige Spur zu AAC. Passiert vor dem Bild: Scheitert der Ton, ist noch kein Bild gerechnet.
+export async function tonKodieren(spur) {
+  const { aacKodieren } = await import('./aac.mjs');
   const kanaele = [spur.getChannelData(0), spur.getChannelData(1)];
-  const STUECK = 4096;
-  for (let i = 0; i < spur.length; i += STUECK) {
-    if (fehler) throw fehler;
-    const n = Math.min(STUECK, spur.length - i);
-    const daten = new Float32Array(n * 2);
-    daten.set(kanaele[0].subarray(i, i + n), 0);
-    daten.set(kanaele[1].subarray(i, i + n), n);
-    const ad = new AudioData({ format: 'f32-planar', sampleRate: spur.sampleRate, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((i / spur.sampleRate) * 1e6), data: daten });
-    enc.encode(ad);
-    ad.close();
-    while (enc.encodeQueueSize > 8) await kurz();
-  }
-  await enc.flush();
-  if (fehler) throw fehler;
-  enc.close();
+  const aac = await aacKodieren(kanaele, spur.sampleRate, { pause: kurz });
+  if (!aac.pakete.length || !aac.beschreibung.length) throw new Error('Ton: keine Daten vom Encoder');
+  return { ...aac, rate: spur.sampleRate, kanaele: 2 };
+}
+
+function tonSchreiben(ton, muxer) {
+  const meta = { decoderConfig: { codec: 'mp4a.40.2', numberOfChannels: ton.kanaele, sampleRate: ton.rate, description: ton.beschreibung } };
+  const dauer = (ton.rahmen / ton.rate) * 1e6;
+  ton.pakete.forEach((p, i) => muxer.addAudioChunkRaw(p, 'key', i * dauer, dauer, i === 0 ? meta : undefined));
 }
 
 // Musik dekodieren und Schläge finden, auf 22 kHz Mono.

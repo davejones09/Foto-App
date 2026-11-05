@@ -76,6 +76,33 @@ export function mp4Sauber(eingabe) {
   return b;
 }
 
+// Zahl der Tonproben im MP4. Prüft nach dem Bauen, ob die Musik wirklich in der Datei liegt.
+export function mp4TonProben(eingabe) {
+  const b = new Uint8Array(eingabe);
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let summe = 0;
+  const lauf = (start, ende, spur) => {
+    let o = start;
+    while (o + 8 <= ende) {
+      let groesse = dv.getUint32(o);
+      const typ = text(b, o + 4, 4);
+      let kopf = 8;
+      if (groesse === 1) { groesse = Number(dv.getBigUint64(o + 8)); kopf = 16; } else if (groesse === 0) groesse = ende - o;
+      if (groesse < kopf || o + groesse > ende) break;
+      if (typ === 'trak') {
+        const s = { ton: false, proben: 0 };
+        lauf(o + kopf, o + groesse, s);
+        if (s.ton) summe += s.proben;
+      } else if (typ === 'hdlr' && spur) spur.ton = text(b, o + kopf + 8, 4) === 'soun';
+      else if (typ === 'stsz' && spur) spur.proben = dv.getUint32(o + kopf + 8);
+      else if (typ === 'moov' || typ === 'mdia' || typ === 'minf' || typ === 'stbl') lauf(o + kopf, o + groesse, spur);
+      o += groesse;
+    }
+  };
+  lauf(0, b.length, null);
+  return summe;
+}
+
 export async function blobSauber(blob) {
   const b = new Uint8Array(await blob.arrayBuffer());
   if (blob.type === 'image/jpeg') return new Blob([jpegSauber(b)], { type: 'image/jpeg' });

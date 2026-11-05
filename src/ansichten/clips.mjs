@@ -4,7 +4,8 @@ import { registriere, zeige } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
 import { $, el, melde } from '../ui.mjs';
 import * as aus from '../ausgabe.mjs';
-import { protokolliere } from '../diagnose.mjs';
+import { protokolliere, serienEintrag } from '../diagnose.mjs';
+import { mp4TonProben } from '../metadaten.mjs';
 import { REEL_LAENGEN } from '../kennzahlen.mjs';
 import { VORLAGEN_IDS } from '../reelvorlagen.mjs';
 import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
@@ -373,15 +374,15 @@ async function bauen() {
   const p = planJetzt();
   const m = clipMaler(medien, p);
   try {
-    const weg = musik ? await aus.tonWeg(tonOptionen) : null;
-    const ton = musik && weg ? { codec: weg.codec, config: weg.config, spur: await aus.tonSpur(musik.puffer, musik.start, p.dauer) } : null;
+    const ton = musik ? await tonBauen(p.dauer) : null;
     const blob = await aus.videoAusMaler(m.male, p.bilder, { fortschritt: fort, waechter: w, ton });
+    const hatTon = ton ? await tonPruefen(blob, ton) : false;
     const datei = new File([blob], 'reel.mp4', { type: blob.type });
     if (ergebnisUrl) URL.revokeObjectURL(ergebnisUrl);
     ergebnisUrl = URL.createObjectURL(blob);
     ergebnisEl.replaceChildren(
-      el('video', { src: ergebnisUrl, controls: true, playsinline: true, muted: !ton, loop: true, klasse: 'cl-video' }),
-      el('p', { klasse: 'rt-info', text: ton ? T.musikRechte : (musik ? T.musikKeinTon : T.clipsOhneTon) }),
+      el('video', { src: ergebnisUrl, controls: true, playsinline: true, muted: !hatTon, loop: true, klasse: 'cl-video' }),
+      el('p', { klasse: 'rt-info', text: hatTon ? T.musikRechte : (musik ? T.musikKeinTon : T.clipsOhneTon) }),
       el('button', { klasse: 'haupt', id: 'cl-teilen', text: T.teilen, onclick: () => teile(datei) }),
     );
     fortEl.hidden = true;
@@ -400,6 +401,24 @@ async function bauen() {
   }
 }
 
+// Scheitert der Ton, wird das Reel trotzdem fertig, aber mit klarem Hinweis und Eintrag in der Diagnose.
+async function tonBauen(dauer) {
+  try {
+    return await aus.tonKodieren(await aus.tonSpur(musik.puffer, musik.start, dauer));
+  } catch (err) {
+    protokolliere('musik', err);
+    return null;
+  }
+}
+
+async function tonPruefen(blob, ton) {
+  const proben = mp4TonProben(await blob.arrayBuffer());
+  serienEintrag(`Musik: ${ton.pakete.length} Pakete kodiert, ${proben} in der Datei`);
+  if (proben === ton.pakete.length) return true;
+  protokolliere('musik', `Tonspur unvollständig: ${proben} von ${ton.pakete.length}`);
+  return false;
+}
+
 async function teile(datei) {
   try {
     await aus.teilen([datei], T.artReel);
@@ -409,8 +428,6 @@ async function teile(datei) {
   }
 }
 
-// Nur für Tests: Der Testbrowser kann kein AAC.
-const tonOptionen = { erlaubeOpus: new URLSearchParams(location.search).has('testton') };
 
 stileBauen();
 editorEinrichten();
