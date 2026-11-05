@@ -376,13 +376,15 @@ async function bauen() {
   try {
     const ton = musik ? await tonBauen(p.dauer) : null;
     const blob = await aus.videoAusMaler(m.male, p.bilder, { fortschritt: fort, waechter: w, ton });
-    const hatTon = ton ? await tonPruefen(blob, ton) : false;
+    const pruefung = ton ? await tonPruefen(blob, ton) : null;
+    const hatTon = !!pruefung?.ok;
     const datei = new File([blob], 'reel.mp4', { type: blob.type });
     if (ergebnisUrl) URL.revokeObjectURL(ergebnisUrl);
     ergebnisUrl = URL.createObjectURL(blob);
     ergebnisEl.replaceChildren(
       el('video', { src: ergebnisUrl, controls: true, playsinline: true, muted: !hatTon, loop: true, klasse: 'cl-video' }),
       el('p', { klasse: 'rt-info', text: hatTon ? T.musikRechte : (musik ? T.musikKeinTon : T.clipsOhneTon) }),
+      pruefung ? el('small', { klasse: 'cl-ton-pruefung', text: pruefung.text }) : null,
       el('button', { klasse: 'haupt', id: 'cl-teilen', text: T.teilen, onclick: () => teile(datei) }),
     );
     fortEl.hidden = true;
@@ -404,7 +406,7 @@ async function bauen() {
 // Scheitert der Ton, wird das Reel trotzdem fertig, aber mit klarem Hinweis und Eintrag in der Diagnose.
 async function tonBauen(dauer) {
   try {
-    return await aus.tonKodieren(await aus.tonSpur(musik.puffer, musik.start, dauer));
+    return await aus.tonKodieren(musik.puffer, musik.start, dauer);
   } catch (err) {
     protokolliere('musik', err);
     return null;
@@ -413,10 +415,13 @@ async function tonBauen(dauer) {
 
 async function tonPruefen(blob, ton) {
   const proben = mp4TonProben(await blob.arrayBuffer());
-  serienEintrag(`Musik: ${ton.pakete.length} Pakete kodiert, ${proben} in der Datei`);
-  if (proben === ton.pakete.length) return true;
-  protokolliere('musik', `Tonspur unvollständig: ${proben} von ${ton.pakete.length}`);
-  return false;
+  const gehoert = await aus.tonHoeren(ton);
+  const zahl = (x) => (x == null ? '–' : x.toFixed(2));
+  const text = f(T.musikPruefung, { n: proben, von: ton.pakete.length, pegel: zahl(ton.pegel), gehoert: zahl(gehoert) });
+  serienEintrag(text);
+  const ok = proben === ton.pakete.length && (gehoert == null || gehoert > 0.001);
+  if (!ok) protokolliere('musik', text);
+  return { ok, text };
 }
 
 async function teile(datei) {

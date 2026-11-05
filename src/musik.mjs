@@ -118,3 +118,49 @@ export const rasterSchlaege = (dauer, bpm = 120) => Array.from({ length: Math.fl
 export function schnittRaster(schlaege, musikStart = 0, alle = 1) {
   return schlaege.map((t) => t - musikStart).filter((t) => t > 0.05).filter((_, i) => i % alle === alle - 1);
 }
+
+// --- Ton direkt aus den dekodierten Daten, ohne Web-Audio-Rendering ---
+
+// Mono auf niedrigere Abtastrate, für die Schlagerkennung.
+export function monoKlein(kanaele, rate, zielRate) {
+  const n = kanaele[0].length;
+  const m = Math.ceil((n * zielRate) / rate);
+  const aus = new Float32Array(m);
+  const schritt = rate / zielRate;
+  for (let i = 0; i < m; i++) {
+    const a = Math.floor(i * schritt);
+    const b = Math.min(n, Math.max(a + 1, Math.floor((i + 1) * schritt)));
+    let s = 0;
+    for (const k of kanaele) for (let j = a; j < b; j++) s += k[j];
+    aus[i] = s / ((b - a || 1) * kanaele.length);
+  }
+  return aus;
+}
+
+// Ausschnitt in Stereo auf der Zielrate, mit weichem Ende. Mono wird auf beide Seiten gelegt,
+// ist die Musik zu kurz, bleibt der Rest still.
+export function tonAusschnitt(kanaele, rate, start, dauer, zielRate) {
+  const n = Math.ceil(dauer * zielRate);
+  const quellen = [kanaele[0], kanaele[1] ?? kanaele[0]];
+  const aus = Math.min(0.8, dauer / 4);
+  const ergebnis = quellen.map((q) => {
+    const z = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const p = start * rate + (i * rate) / zielRate;
+      const a = Math.floor(p);
+      if (a >= q.length) break;
+      const b = Math.min(a + 1, q.length - 1);
+      z[i] = q[a] + (q[b] - q[a]) * (p - a);
+    }
+    const ab = Math.floor((dauer - aus) * zielRate);
+    for (let i = ab; i < n; i++) z[i] *= Math.max(0, (n - i) / (n - ab));
+    return z;
+  });
+  return ergebnis;
+}
+
+export function spitze(kanaele) {
+  let s = 0;
+  for (const k of kanaele) for (let i = 0; i < k.length; i++) { const w = Math.abs(k[i]); if (w > s) s = w; }
+  return s;
+}

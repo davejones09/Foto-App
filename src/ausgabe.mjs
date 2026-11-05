@@ -318,27 +318,34 @@ async function videoBauen(weg, male, bilder, { fortschritt, waechter, ton = null
 // --- Ton: AAC, das versteht Instagram zuverlässig ---
 export const TON_RATE = 48000;
 
-// Ausschnitt der Musik für das Reel, auf 48 kHz Stereo, mit weichem Ende.
-export async function tonSpur(musik, start, dauer) {
-  const ctx = new OfflineAudioContext(2, Math.ceil(dauer * TON_RATE), TON_RATE);
-  const q = ctx.createBufferSource();
-  q.buffer = musik;
-  const g = ctx.createGain();
-  const aus = Math.min(0.8, dauer / 4);
-  g.gain.setValueAtTime(1, Math.max(0, dauer - aus));
-  g.gain.linearRampToValueAtTime(0, dauer);
-  q.connect(g).connect(ctx.destination);
-  q.start(0, start, dauer);
-  return ctx.startRendering();
+// Ausschnitt der Musik für das Reel, direkt aus den dekodierten Daten.
+const kanaeleVon = (puffer) => Array.from({ length: puffer.numberOfChannels }, (_, i) => puffer.getChannelData(i));
+
+export async function tonKodieren(puffer, start, dauer) {
+  const { tonAusschnitt, spitze } = await import('./musik.mjs');
+  const { aacKodieren } = await import('./aac.mjs');
+  const kanaele = tonAusschnitt(kanaeleVon(puffer), puffer.sampleRate, start, dauer, TON_RATE);
+  const pegel = spitze(kanaele);
+  if (pegel < 0.001) throw new Error(`Ton: Musik ist stumm (Pegel ${pegel}, Quelle ${puffer.sampleRate} Hz, ${puffer.numberOfChannels} Kanäle, ${puffer.duration.toFixed(1)} s, Start ${start})`);
+  const aac = await aacKodieren(kanaele, TON_RATE, { pause: kurz });
+  if (!aac.pakete.length || !aac.beschreibung.length) throw new Error('Ton: keine Daten vom Encoder');
+  return { ...aac, rate: TON_RATE, kanaele: 2, pegel };
 }
 
-// Fertige Spur zu AAC. Passiert vor dem Bild: Scheitert der Ton, ist noch kein Bild gerechnet.
-export async function tonKodieren(spur) {
-  const { aacKodieren } = await import('./aac.mjs');
-  const kanaele = [spur.getChannelData(0), spur.getChannelData(1)];
-  const aac = await aacKodieren(kanaele, spur.sampleRate, { pause: kurz });
-  if (!aac.pakete.length || !aac.beschreibung.length) throw new Error('Ton: keine Daten vom Encoder');
-  return { ...aac, rate: spur.sampleRate, kanaele: 2 };
+// Hört das Gerät den Ton selbst? Baut aus den Paketen ein kleines MP4 nur mit Ton und dekodiert es.
+// Nur zur Diagnose: null heißt nicht prüfbar.
+export async function tonHoeren(ton) {
+  try {
+    const { Muxer, ArrayBufferTarget } = await import('../vendor/mp4-muxer.mjs');
+    const muxer = new Muxer({ target: new ArrayBufferTarget(), audio: { codec: 'aac', numberOfChannels: ton.kanaele, sampleRate: ton.rate }, fastStart: 'in-memory' });
+    tonSchreiben(ton, muxer);
+    muxer.finalize();
+    const puffer = await new OfflineAudioContext(2, 1, TON_RATE).decodeAudioData(muxer.target.buffer);
+    const { spitze } = await import('./musik.mjs');
+    return spitze(kanaeleVon(puffer));
+  } catch {
+    return null;
+  }
 }
 
 function tonSchreiben(ton, muxer) {
@@ -350,17 +357,10 @@ function tonSchreiben(ton, muxer) {
 // Musik dekodieren und Schläge finden, auf 22 kHz Mono.
 export async function musikLaden(datei) {
   const bytes = await datei.arrayBuffer();
-  const ctx = new OfflineAudioContext(2, 1, 44100);
-  const puffer = await ctx.decodeAudioData(bytes);
+  const puffer = await new OfflineAudioContext(2, 1, TON_RATE).decodeAudioData(bytes);
+  const { schlaegeErkennen, rasterSchlaege, monoKlein } = await import('./musik.mjs');
   const RATE = 22050;
-  const klein = new OfflineAudioContext(1, Math.ceil(puffer.duration * RATE), RATE);
-  const q = klein.createBufferSource();
-  q.buffer = puffer;
-  q.connect(klein.destination);
-  q.start();
-  const mono = await klein.startRendering();
-  const { schlaegeErkennen, rasterSchlaege } = await import('./musik.mjs');
-  const r = schlaegeErkennen(mono.getChannelData(0), RATE);
+  const r = schlaegeErkennen(monoKlein(kanaeleVon(puffer), puffer.sampleRate, RATE), RATE);
   return { puffer, ...r, schlaege: r.sicher ? r.schlaege : rasterSchlaege(puffer.duration), bpm: r.sicher ? r.bpm : 120 };
 }
 

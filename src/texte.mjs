@@ -210,6 +210,7 @@ export const T = {
   musikFehler: 'Diese Musikdatei lässt sich nicht öffnen. Geschützte Titel aus Apple Music gehen nicht, nimm eine Datei wie MP3 oder M4A.',
   musikKeinTon: 'Die Musik ließ sich nicht ins Video schreiben. Die Schnitte liegen trotzdem auf der Musik, das Video bleibt aber stumm. Die Ursache steht in der Diagnose.',
   musikKurz: 'Die Musik ist kürzer als das Reel, es endet mit der Musik.',
+  musikPruefung: 'Tonprüfung: {n} von {von} Paketen, Pegel {pegel}, gehört {gehoert}',
   musikRechte: 'Das Reel enthält die Musik. Bei geschützten Titeln kann Instagram den Ton stummschalten oder den Beitrag einschränken.',
   clipHoch: 'Nach oben',
   clipRunter: 'Nach unten',

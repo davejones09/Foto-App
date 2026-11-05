@@ -1,7 +1,7 @@
 // Musik: Tempo und Lage der Schläge an erzeugter Musik, Raster.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { schlaegeErkennen, schnittRaster, rasterSchlaege } from '../src/musik.mjs';
+import { schlaegeErkennen, schnittRaster, rasterSchlaege, monoKlein, tonAusschnitt, spitze } from '../src/musik.mjs';
 
 const RATE = 22050;
 
@@ -83,4 +83,35 @@ test('Raster: ab Musikstart und nur jeder n-te Schlag', () => {
   assert.deepEqual(schnittRaster(s, 1, 1), [0.5, 1, 1.5, 2]);
   assert.deepEqual(schnittRaster(s, 0, 2), [1, 2, 3]);
   assert.equal(rasterSchlaege(10, 120).length, 20);
+});
+
+test('tonAusschnitt: richtige Stelle, Stereo aus Mono, weiches Ende, Rest still', () => {
+  const q = new Float32Array(48000 * 4);
+  q.fill(0.5, 48000 * 2); // laut ab Sekunde 2
+  const [l, r] = tonAusschnitt([q], 48000, 1, 2, 48000);
+  assert.equal(l.length, 96000);
+  assert.deepEqual(l.subarray(48000, 48010), r.subarray(48000, 48010));
+  assert.equal(l[47999], 0);
+  assert.equal(l[48001], 0.5);
+  assert.ok(l[95999] < 0.01, 'Ende ausgeblendet');
+  const kurz = tonAusschnitt([q], 48000, 3.5, 2, 48000)[0];
+  assert.equal(kurz[47000], 0, 'hinter dem Ende still');
+});
+
+test('tonAusschnitt: andere Quellrate, Tonhöhe bleibt', () => {
+  const n = 44100 * 2;
+  const q = Float32Array.from({ length: n }, (_, i) => Math.sin((2 * Math.PI * 441 * i) / 44100));
+  const [z] = tonAusschnitt([q, q], 44100, 0, 1, 48000);
+  let wechsel = 0;
+  for (let i = 1; i < 24000; i++) if (z[i - 1] < 0 && z[i] >= 0) wechsel++;
+  assert.ok(Math.abs(wechsel - 220) <= 2, `${wechsel} Durchgänge in 0,5 s`);
+  assert.ok(spitze([z]) > 0.9);
+});
+
+test('monoKlein: mittelt die Kanäle und passt die Länge an', () => {
+  const a = new Float32Array(48000).fill(1);
+  const b = new Float32Array(48000).fill(0);
+  const m = monoKlein([a, b], 48000, 22050);
+  assert.equal(m.length, 22050);
+  assert.ok(Math.abs(m[100] - 0.5) < 1e-6);
 });
