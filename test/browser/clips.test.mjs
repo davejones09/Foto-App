@@ -2,6 +2,8 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { server, browser, neueSeite, oeffne, warteAuf, ERGEBNISSE } from './hilfe.mjs';
 
 let s;
@@ -249,7 +251,7 @@ function wav(bpm, sek) {
 
 test('Musik: Takt erkannt, Schnitte darauf, Video enthält Ton', async () => {
   const { page, fehler } = await neueSeite(b);
-  await oeffne(page, `${s.url}?testton=1`);
+  await oeffne(page, s.url);
   await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
   await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
   await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
@@ -263,15 +265,22 @@ test('Musik: Takt erkannt, Schnitte darauf, Video enthält Ton', async () => {
   await page.waitForSelector('.cl-video', { timeout: 120000 });
   const r = await page.evaluate(async () => {
     const u = new Uint8Array(await (await fetch(document.querySelector('.cl-video').src)).arrayBuffer());
-    const sucht = (w) => {
-      const c = [...w].map((x) => x.charCodeAt(0));
-      for (let i = 0; i + 4 < u.length; i++) if (u[i] === c[0] && u[i + 1] === c[1] && u[i + 2] === c[2] && u[i + 3] === c[3]) return true;
-      return false;
-    };
-    return { laenge: u.length, opus: sucht('Opus') || sucht('mp4a'), hinweis: document.querySelector('.cl-ergebnis p').textContent };
+    const { mp4TonProben } = await import('./src/metadaten.mjs');
+    return { daten: Array.from(u), proben: mp4TonProben(u), hinweis: document.querySelector('.cl-ergebnis p').textContent };
   });
-  assert.ok(r.laenge > 1000);
-  assert.ok(r.opus, 'Tonspur fehlt');
+  assert.ok(r.daten.length > 1000);
+  assert.ok(r.proben > 100, 'Tonspur fehlt');
+  // Die fertige Datei mit einem fremden Programm prüfen: AAC, und der Ton ist wirklich hörbar.
+  const datei = join(ERGEBNISSE, 'cl-musik.mp4');
+  writeFileSync(datei, Buffer.from(r.daten));
+  const ff = spawnSync('ffmpeg', ['-v', 'error', '-i', datei, '-map', '0:a', '-f', 'f32le', '-ac', '1', '-'], { maxBuffer: 1e9 });
+  if (!ff.error) {
+    assert.equal(ff.status, 0, String(ff.stderr));
+    const t = new Float32Array(ff.stdout.buffer, ff.stdout.byteOffset, ff.stdout.length >> 2);
+    assert.ok(t.subarray(0, 96000).some((x) => Math.abs(x) > 0.05), 'Tonspur ist stumm');
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', datei]);
+    assert.equal(String(probe.stdout).trim(), 'aac');
+  }
   assert.match(r.hinweis, /enthält die Musik/);
   await page.screenshot({ path: `${ERGEBNISSE}/cl-musik.png` });
   assert.deepEqual(fehler, []);

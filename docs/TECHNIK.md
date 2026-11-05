@@ -34,7 +34,7 @@ src/
   band.mjs            Band anzeigen, Kacheln laden
   ausgabe.mjs         Carousel, Reel mit Stilen, Titelbild, Gesamtbild, Sicherung
   ansichten/          Hauptmenü, Einführung, Sucher, Aufdeckung, Ausschnitt, Projekt, Fotos, Exportieren, Collage
-vendor/               mp4-muxer, fflate (je eine Datei)
+vendor/               mp4-muxer, fflate, aac (je eine Datei)
 test/                 Kern- und Browser-Tests
 docs/                 Konzept, Technik, Etappen, Texte, Entscheidungen
 ```
