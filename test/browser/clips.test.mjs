@@ -119,3 +119,39 @@ test('Nach dem Übergang läuft der Clip weiter und springt nicht zurück', asyn
   assert.ok(r.length > 10);
   for (let i = 1; i < r.length; i++) assert.ok(r[i] >= r[i - 1] - 6, `Rücksprung bei Bild ${i}: ${r.join(' ')}`);
 });
+
+test('Bei gleicher Bildrate kommt jedes Clip-Bild genau einmal vor, auch mit Startpunkt', async () => {
+  const { page } = await neueSeite(b);
+  await oeffne(page, s.url);
+  const r = await page.evaluate(async () => {
+    const { clipMaler, clipPlan } = await import('./src/clipreel.mjs');
+    const d = new File([await (await fetch('test/daten/clip-rot.webm')).blob()], 'r.webm', { type: 'video/webm' });
+    const c = document.createElement('canvas');
+    c.width = 90;
+    c.height = 160;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    const aus = {};
+    for (const start of [0, 0.5, 0.517]) {
+      const medien = [{ typ: 'clip', datei: d, url: URL.createObjectURL(d), dauer: 3, start }];
+      const p = clipPlan(medien);
+      const m = clipMaler(medien, p, { W: 90, H: 160 });
+      const werte = [];
+      for (let k = 0; k < 45; k++) {
+        await m.male(ctx, k / 30);
+        werte.push(ctx.getImageData(45, 80, 1, 1).data[0]);
+      }
+      m.ende();
+      aus[start] = werte;
+    }
+    return aus;
+  });
+  for (const [start, w] of Object.entries(r)) {
+    // Rot steigt um 70 je Sekunde, also etwa 2,3 je Bild: keine Pause, kein Doppelsprung.
+    for (let i = 1; i < w.length; i++) {
+      const d = w[i] - w[i - 1];
+      assert.ok(d >= 0 && d <= 6, `Start ${start}, Bild ${i}: ${w.join(' ')}`);
+    }
+    const gleich = w.slice(1).filter((x, i) => x === w[i]).length;
+    assert.ok(gleich <= 4, `Start ${start}: ${gleich} gleiche Bilder: ${w.join(' ')}`);
+  }
+});

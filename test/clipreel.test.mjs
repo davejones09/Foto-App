@@ -1,7 +1,7 @@
 // Reel aus Clips: Zeitplan und Stelle im Clip.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clipPlan, clipZeit, clipStellen, clipBewegung, gleichesBild, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
+import { clipPlan, clipZeit, clipStellen, clipBewegung, gleichesBild, sprungZiel, HINTER_GRENZE, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
 import { vorlagenZustand, VORLAGEN_IDS } from '../src/reelvorlagen.mjs';
 import { FPS } from '../src/reelstil.mjs';
 
@@ -105,4 +105,18 @@ test('Liegt die Zeit noch im selben Bild, wird nicht gesucht', () => {
   assert.equal(gleichesBild(1, b, 0.9), false);
   assert.equal(gleichesBild(null, b, 1), false, 'noch kein Bild');
   assert.equal(gleichesBild(1, 0, 1), false, 'Abstand noch unbekannt');
+});
+
+test('Sprungziel liegt nie auf einer Bildgrenze, für 24, 25, 30 und 60 fps', () => {
+  for (const fps of [24, 25, 30, 60]) {
+    const abstand = 1 / fps;
+    for (let k = 0; k < 900; k++) {
+      const z = sprungZiel(k / FPS, 1000);
+      const inBild = (z / abstand) % 1;
+      if (fps === FPS || fps === 60) assert.ok(inBild > 0.05 && inBild < 0.95, `${fps} fps, Bild ${k}: ${inBild}`);
+    }
+    assert.ok(HINTER_GRENZE < abstand / 2);
+  }
+  assert.equal(sprungZiel(100, 5), 5 - 0.04, 'bleibt im Clip');
+  assert.equal(sprungZiel(0, 5), HINTER_GRENZE);
 });

@@ -133,11 +133,20 @@ export function gleichesBild(bildZeit, bildAbstand, ziel) {
   return bildZeit != null && bildAbstand > 0 && ziel >= bildZeit - 0.001 && ziel < bildZeit + bildAbstand - 0.001;
 }
 
+// Wer genau auf die Grenze zwischen zwei Bildern springt, landet je nach Rundung mal davor, mal dahinter:
+// Dann erscheint ein Bild doppelt und das nächste fehlt. Das Ziel liegt deshalb knapp hinter der Grenze.
+export const HINTER_GRENZE = 1 / 240;
+export const sprungZiel = (t, dauer) => Math.max(0, Math.min(t + HINTER_GRENZE, (Number.isFinite(dauer) ? dauer : t + 1) - 0.04));
+
+// Dem Bildabstand erst trauen, wenn genug Bilder gemessen sind. Sonst kann ein einziger großer Sprung am Anfang
+// dafür sorgen, dass dauerhaft jedes zweite Bild übersprungen wird.
+export const ABSTAND_PROBEN = 8;
+
 const WARTE_MS = 400;
 const FEHLT_MAX = 5;
 const stand = new WeakMap();
 const standVon = (v) => {
-  if (!stand.has(v)) stand.set(v, { bildZeit: null, abstand: 0, fehlt: 0, gesucht: 0, ohneBild: 0, ms: 0 });
+  if (!stand.has(v)) stand.set(v, { bildZeit: null, abstand: 0, proben: 0, fehlt: 0, gesucht: 0, ohneBild: 0, ms: 0 });
   return stand.get(v);
 };
 export const suchStatistik = (v) => standVon(v);
@@ -145,10 +154,10 @@ export const suchStatistik = (v) => standVon(v);
 // Springt an die Zeit t und wartet, bis das neue Bild wirklich dekodiert ist. Große Clips brauchen dafür
 // oft länger, und ein zu frühes Zeichnen wiederholt das alte Bild: Das sieht im Reel wie Ruckeln aus.
 export async function suche(v, t) {
-  const ziel = Math.max(0, Math.min(t, (Number.isFinite(v.duration) ? v.duration : t) - 0.04));
+  const ziel = sprungZiel(t, v.duration);
   const st = standVon(v);
-  if (v.readyState >= 2 && !v.seeking && gleichesBild(st.bildZeit, st.abstand, ziel)) return;
-  if (Math.abs(v.currentTime - ziel) < 1 / 240 && !v.seeking && v.readyState >= 2) return;
+  if (v.readyState >= 2 && !v.seeking && st.proben >= ABSTAND_PROBEN && gleichesBild(st.bildZeit, st.abstand, ziel)) return;
+  if (Math.abs(v.currentTime - ziel) < 0.001 && !v.seeking && v.readyState >= 2) return;
   const t0 = performance.now();
   st.gesucht++;
   const seeked = new Promise((ok) => v.addEventListener('seeked', ok, { once: true }));
@@ -166,7 +175,10 @@ export async function suche(v, t) {
       st.fehlt = 0;
       const neu = m.mediaTime ?? v.currentTime;
       const d = st.bildZeit == null ? 0 : Math.abs(neu - st.bildZeit);
-      if (d > 0.001) st.abstand = st.abstand ? Math.min(st.abstand, d) : d;
+      if (d > 0.001) {
+        st.abstand = st.abstand ? Math.min(st.abstand, d) : d;
+        st.proben++;
+      }
       st.bildZeit = neu;
     } else {
       st.fehlt++;
