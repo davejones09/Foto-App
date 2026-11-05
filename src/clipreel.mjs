@@ -37,12 +37,15 @@ export function clipPlan(medien, { laenge = null, stil = GANZ } = {}) {
   // Wie viel des Clips frühere Runden schon gezeigt haben: Die nächste Runde läuft dort weiter.
   const versatz = [];
   const benutzt = new Array(medien.length).fill(0);
+  // vorlauf: Ein Clip läuft schon während des Übergangs, in dem er hereinkommt. Danach läuft er dort weiter.
+  const vorlauf = [];
   plan.staende.forEach((s, k) => {
     const i = k % medien.length;
     versatz.push(benutzt[i]);
-    benutzt[i] += s + (plan.uebergaenge[k] || 0);
+    vorlauf.push(k > 0 ? plan.uebergaenge[k - 1] || 0 : 0);
+    benutzt[i] += vorlauf[k] + s + (plan.uebergaenge[k] || 0);
   });
-  return { ...plan, versatz, medienZahl: medien.length };
+  return { ...plan, versatz, vorlauf, medienZahl: medien.length };
 }
 
 // Stelle im Clip für einen Abschnitt des Plans, seit = Zeit seit seinem Beginn. Läuft am Ende von vorn.
@@ -50,6 +53,16 @@ export function clipZeit(medium, versatz, seit) {
   const start = medium.start || 0;
   const rest = Math.max(0.05, medium.dauer - start);
   return start + (versatz + seit) % rest;
+}
+
+// Stellen in den Clips zur Reel-Zeit t: zeitI für den laufenden Clip, zeitJ für den, der gerade hereinkommt.
+export function clipStellen(plan, medien, z) {
+  const m = medien[z.i];
+  const zeitI = m.typ === 'foto' ? 0 : clipZeit(m, plan.versatz[z.schritt] + plan.vorlauf[z.schritt], z.seit);
+  if (z.j == null) return { zeitI, zeitJ: 0 };
+  const n = medien[z.j];
+  const seitJ = Math.max(0, z.seit - plan.staende[z.schritt]);
+  return { zeitI, zeitJ: n.typ === 'foto' ? 0 : clipZeit(n, plan.versatz[z.schritt + 1], seitJ) };
 }
 
 // Passt Quelle (qw × qh) in den Rahmen: mittiger Ausschnitt, der ihn füllt.
@@ -167,14 +180,10 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
     const z = vorlagenZustand(plan, t);
-    const m = medien[z.i];
-    const zeitI = m.typ === 'foto' ? 0 : clipZeit(m, plan.versatz[z.schritt], z.seit);
+    const { zeitI, zeitJ } = clipStellen(plan, medien, z);
     const b = bewegung(plan.bewegung, z.seit, plan.takt, z.lauf);
     if (z.j == null) { await zeichne(ctx, z.i, zeitI, b); return; }
     const u = uebergangLage(z.art, z.p);
-    const naechstes = medien[z.j];
-    const seitJ = (z.seit - plan.staende[z.schritt]);
-    const zeitJ = naechstes.typ === 'foto' ? 0 : clipZeit(naechstes, plan.versatz[z.schritt + 1], Math.max(0, seitJ));
     const bn = bewegung(plan.bewegung, 0, plan.takt, 0);
     const mit = (basis, teil) => ({ ...basis, ...teil, s: basis.s * (teil.faktor ?? 1) });
     if (u.a) await zeichne(ctx, z.i, zeitI, mit(b, u.a));

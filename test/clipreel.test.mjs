@@ -1,8 +1,8 @@
 // Reel aus Clips: Zeitplan und Stelle im Clip.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clipPlan, clipZeit, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
-import { vorlagenZustand } from '../src/reelvorlagen.mjs';
+import { clipPlan, clipZeit, clipStellen, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
+import { vorlagenZustand, VORLAGEN_IDS } from '../src/reelvorlagen.mjs';
 import { FPS } from '../src/reelstil.mjs';
 
 const CLIP = (dauer, start = 0) => ({ typ: 'clip', dauer, start });
@@ -49,4 +49,37 @@ test('Ausschnitt füllt den 9:16-Rahmen, mittig', () => {
   assert.ok(Math.abs(q.x - (1920 - q.w) / 2) < 1e-9);
   const h = deckAusschnitt(1080, 1920);
   assert.ok(Math.abs(h.w - 1080) < 1e-9 && Math.abs(h.h - 1920) < 1e-9);
+});
+
+test('Clips laufen über jeden Übergang hinweg gleichmäßig weiter, in allen Vorlagen und Runden', () => {
+  const m = [CLIP(600), CLIP(600), CLIP(600)];
+  for (const stil of VORLAGEN_IDS) for (const laenge of [null, 15, 60]) {
+    const p = clipPlan(m, { stil, laenge });
+    const zuletzt = new Map(); // Abschnitt des Plans -> [Bild, Stelle im Clip]
+    for (let k = 0; k < p.bilder; k++) {
+      const z = vorlagenZustand(p, k / FPS);
+      const st = clipStellen(p, m, z);
+      const pruefe = (schritt, zeit) => {
+        const v = zuletzt.get(schritt);
+        if (v) {
+          const erwartet = v[1] + (k - v[0]) / FPS;
+          assert.ok(Math.abs(zeit - erwartet) < 0.002, `${stil} ${laenge}: Abschnitt ${schritt}, Bild ${k}: ${zeit} statt ${erwartet}`);
+        }
+        zuletzt.set(schritt, [k, zeit]);
+      };
+      pruefe(z.schritt, st.zeitI);
+      if (z.j != null) pruefe(z.schritt + 1, st.zeitJ);
+    }
+  }
+});
+
+test('Spätere Runden zeigen neue Stellen: nichts wiederholt sich', () => {
+  const m = [CLIP(600), CLIP(600), CLIP(600)];
+  const p = clipPlan(m, { stil: 'v-slide', laenge: 60 });
+  assert.ok(p.runden > 1);
+  const n = m.length;
+  for (let k = n; k < p.staende.length; k++) {
+    const vorherEnde = p.versatz[k - n] + p.vorlauf[k - n] + p.staende[k - n] + (p.uebergaenge[k - n] || 0);
+    assert.ok(Math.abs(p.versatz[k] - vorherEnde) < 1e-9, `Abschnitt ${k}`);
+  }
 });
