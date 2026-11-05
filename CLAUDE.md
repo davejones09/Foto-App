@@ -1,6 +1,6 @@
 # Nahtlos
 
-Foto-Web-App fürs iPhone. „Nahtlos“ ist der Arbeitstitel.
+Foto-Web-App fürs iPhone und den Browser am Computer. „Nahtlos“ ist der Arbeitstitel.
 
 Lies vor der ersten Änderung in dieser Reihenfolge:
 

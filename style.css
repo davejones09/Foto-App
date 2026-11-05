@@ -366,7 +366,7 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 
 .quer { display: none; z-index: 40; background: var(--grund); font-size: 20px; }
 @media (orientation: landscape) and (max-height: 520px) {
-  .quer { display: flex; }
+  html:not(.desktop) .quer { display: flex; }
 }
 
 /* Startvideo. Die Animation ist nur das Sicherheitsnetz, falls das Skript nie läuft. */
@@ -432,3 +432,35 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-video { width: 60%; align-self: center; border-radius: 12px; background: #000; }
 .af-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .cl-inhalt > * { flex: none; }
+
+/* Browser am Computer */
+#ablage { position: fixed; inset: 16px; z-index: 900; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--text2); border-radius: 18px; background: rgba(0, 0, 0, 0.7); font-size: 22px; pointer-events: none; }
+#ablage[hidden] { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+  .neu-karte:hover, .sl-eintrag:hover, .rt-klappe summary:hover, .cl-stil:hover, .zuletzt-eintrag:hover .zuletzt-bild { filter: brightness(1.18); }
+  .neben2:hover:not(:disabled) { filter: brightness(1.25); }
+  .haupt:hover:not(:disabled) { filter: brightness(0.92); }
+}
+.desktop .rt-liste, .desktop .fp-tabelle { user-select: text; -webkit-user-select: text; }
+@media (min-width: 900px) {
+  .start-kopf, .start-inhalt, .start-fuss { width: 100%; max-width: 1080px; margin-inline: auto; }
+  .start-inhalt { padding-inline: 32px; }
+  .start-kopf { padding-inline: 32px; padding-top: 28px; }
+  .start-kopf h1 { font-size: 34px; }
+  .neu-karten { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .neu-karte { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; justify-items: center; text-align: center; padding: 28px 20px; row-gap: 8px; }
+  .neu-karte .nk-bild { grid-row: auto; margin-bottom: 12px; }
+  .zuletzt { flex-wrap: wrap; overflow: visible; margin: 0; padding-left: 0; gap: 16px; }
+  .zuletzt-eintrag, .zuletzt-bild { width: 150px; }
+  .zuletzt-bild { height: 188px; }
+  .start-fuss { justify-content: flex-end; padding-inline: 32px; }
+  .start-fuss > button { flex: none; min-width: 160px; }
+  .leiste-oben { width: 100%; max-width: 1080px; margin-inline: auto; }
+  .rt-liste, .cl-inhalt, .ei-liste, .af-liste, .sl-liste, .fp-tabelle, .fp-kennzahlen, .se-liste, .se-status, .se-hinweis, .se-modus {
+    width: 100%; max-width: 760px; margin-inline: auto; align-self: center;
+  }
+  .cl-video { width: 280px; }
+  #startvideo video { object-fit: contain; }
+}

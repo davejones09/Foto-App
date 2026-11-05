@@ -1,4 +1,5 @@
 // Start der App: Installationshinweis, Service Worker, Wiederaufnahme, Diagnose.
+import { IST_DESKTOP, ablageEinrichten, kuerzelEinrichten } from './desktop.mjs';
 import { installiereHandler, protokolliere, alleFehler, werte, serienProtokoll } from './diagnose.mjs';
 installiereHandler();
 
@@ -199,7 +200,9 @@ function weiterNachHinweis() {
 
 let imBrowser = false;
 try { imBrowser = sessionStorage.getItem('nahtlos-browser') === '1'; } catch {}
-if (!istStandalone() && !imBrowser && !new URLSearchParams(location.search).has('startvideo')) {
+ablageEinrichten(zeige);
+kuerzelEinrichten();
+if (!IST_DESKTOP && !istStandalone() && !imBrowser && !new URLSearchParams(location.search).has('startvideo')) {
   document.getElementById('startvideo')?.remove();
   zeige('install');
   $('#trotzdem').addEventListener('click', () => {

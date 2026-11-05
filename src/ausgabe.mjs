@@ -18,6 +18,7 @@ import { APP_VERSION } from './version.mjs';
 import { auftrag } from './rechner.mjs';
 import { MOTIV } from './serie.mjs';
 import { stilPlan, zustand, lage, reelAusschnitt, nahtGrenze, teilzeiten, RAHMEN, ZEITEN } from './reelstil.mjs';
+import { IST_DESKTOP } from './desktop.mjs';
 import { istVorlage, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
 
 export class Abgebrochen extends Error {}
@@ -669,6 +670,12 @@ export async function einspielen(datei, { fortschritt } = {}) {
 
 // --- Teilen ---
 export async function teilen(dateien, titel) {
+  // Am Computer wird heruntergeladen: Mehrere Dateien auf einmal blockieren Browser oft, deshalb als ZIP.
+  if (IST_DESKTOP) {
+    if (dateien.length === 1) speichern(dateien);
+    else speichern([new File([await packe(dateien.map((d) => ({ name: d.name, inhalt: d })))], 'export.zip', { type: 'application/zip' })]);
+    return 'geteilt';
+  }
   if (navigator.canShare && navigator.canShare({ files: dateien })) {
     try {
       await navigator.share({ files: dateien, title: titel });
