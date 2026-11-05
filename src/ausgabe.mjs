@@ -248,15 +248,21 @@ function fahrtBildMaler(strecke, halte, tempo) {
 }
 
 // Kodiert Bilder zu einem Video. male(ctx, t) zeichnet das Bild zur Zeit t.
-async function videoBauen(weg, male, bilder, { fortschritt, waechter } = {}) {
+async function videoBauen(weg, male, bilder, { fortschritt, waechter, ton = null } = {}) {
   const c = leinwand(FAHRT_B, FAHRT_H, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
   try {
     if (weg.art === 'webcodecs') {
       const { Muxer, ArrayBufferTarget } = await import('../vendor/mp4-muxer.mjs');
-      const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'avc', width: FAHRT_B, height: FAHRT_H }, fastStart: 'in-memory' });
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: { codec: 'avc', width: FAHRT_B, height: FAHRT_H },
+        ...(ton ? { audio: { codec: ton.codec, numberOfChannels: ton.spur.numberOfChannels, sampleRate: ton.spur.sampleRate } } : {}),
+        fastStart: 'in-memory',
+      });
       let fehler = null;
+      if (ton) await tonKodieren(ton, muxer);
       const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => (fehler = e) });
       enc.configure({ codec: weg.codec, width: FAHRT_B, height: FAHRT_H, bitrate: 8_000_000, framerate: FAHRT_FPS, avc: { format: 'avc' } });
       for (let i = 0; i < bilder; i++) {
@@ -307,6 +313,72 @@ async function videoBauen(weg, male, bilder, { fortschritt, waechter } = {}) {
   } finally {
     freigeben(c);
   }
+}
+
+// --- Ton: AAC, das versteht Instagram zuverlässig ---
+export const TON_RATE = 48000;
+const TON_CONFIG = (codec) => ({ codec, sampleRate: TON_RATE, numberOfChannels: 2, bitrate: 192000 });
+
+export async function tonWeg({ erlaubeOpus = false } = {}) {
+  if (typeof AudioEncoder === 'undefined') return null;
+  const geht = async (c) => { try { return (await AudioEncoder.isConfigSupported(TON_CONFIG(c))).supported; } catch { return false; } };
+  if (await geht('mp4a.40.2')) return { codec: 'aac', config: 'mp4a.40.2' };
+  // Nur für Tests: Der Testbrowser kann kein AAC.
+  if (erlaubeOpus && (await geht('opus'))) return { codec: 'opus', config: 'opus' };
+  return null;
+}
+
+// Ausschnitt der Musik für das Reel, auf 48 kHz Stereo, mit weichem Ende.
+export async function tonSpur(musik, start, dauer) {
+  const ctx = new OfflineAudioContext(2, Math.ceil(dauer * TON_RATE), TON_RATE);
+  const q = ctx.createBufferSource();
+  q.buffer = musik;
+  const g = ctx.createGain();
+  const aus = Math.min(0.8, dauer / 4);
+  g.gain.setValueAtTime(1, Math.max(0, dauer - aus));
+  g.gain.linearRampToValueAtTime(0, dauer);
+  q.connect(g).connect(ctx.destination);
+  q.start(0, start, dauer);
+  return ctx.startRendering();
+}
+
+async function tonKodieren({ spur, config }, muxer) {
+  let fehler = null;
+  const enc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => (fehler = e) });
+  enc.configure({ ...TON_CONFIG(config) });
+  const kanaele = [spur.getChannelData(0), spur.getChannelData(1)];
+  const STUECK = 4096;
+  for (let i = 0; i < spur.length; i += STUECK) {
+    if (fehler) throw fehler;
+    const n = Math.min(STUECK, spur.length - i);
+    const daten = new Float32Array(n * 2);
+    daten.set(kanaele[0].subarray(i, i + n), 0);
+    daten.set(kanaele[1].subarray(i, i + n), n);
+    const ad = new AudioData({ format: 'f32-planar', sampleRate: spur.sampleRate, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((i / spur.sampleRate) * 1e6), data: daten });
+    enc.encode(ad);
+    ad.close();
+    while (enc.encodeQueueSize > 8) await kurz();
+  }
+  await enc.flush();
+  if (fehler) throw fehler;
+  enc.close();
+}
+
+// Musik dekodieren und Schläge finden, auf 22 kHz Mono.
+export async function musikLaden(datei) {
+  const bytes = await datei.arrayBuffer();
+  const ctx = new OfflineAudioContext(2, 1, 44100);
+  const puffer = await ctx.decodeAudioData(bytes);
+  const RATE = 22050;
+  const klein = new OfflineAudioContext(1, Math.ceil(puffer.duration * RATE), RATE);
+  const q = klein.createBufferSource();
+  q.buffer = puffer;
+  q.connect(klein.destination);
+  q.start();
+  const mono = await klein.startRendering();
+  const { schlaegeErkennen, rasterSchlaege } = await import('./musik.mjs');
+  const r = schlaegeErkennen(mono.getChannelData(0), RATE);
+  return { puffer, ...r, schlaege: r.sicher ? r.schlaege : rasterSchlaege(puffer.duration), bpm: r.sicher ? r.bpm : 120 };
 }
 
 // --- Reel: immer MP4 ---

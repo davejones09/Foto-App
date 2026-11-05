@@ -464,3 +464,27 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
   .cl-video { width: 280px; }
   #startvideo video { object-fit: contain; }
 }
+
+/* Reel aus Clips: Bearbeiten und Musik */
+.cl-bearbeiten { align-self: flex-start; padding: 2px 0; min-height: 28px; }
+.cl-regler { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--text2); }
+.cl-regler[hidden], .ce-zoom[hidden] { display: none; }
+.cl-regler input[type="range"] { width: 100%; }
+.cl-musik { display: flex; flex-direction: column; gap: 8px; }
+.cl-musik-info { display: flex; flex-direction: column; gap: 8px; background: var(--flaeche); border-radius: 14px; padding: 12px; }
+.cl-musik-info[hidden] { display: none; }
+.cl-musik-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; }
+.cl-musik-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cl-musik-takt { color: var(--text2); }
+.cl-musik-probe { width: 100%; height: 40px; }
+.cl-editor { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--grund); }
+.cl-editor[hidden] { display: none; }
+.ce-inhalt { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); overflow-y: auto; }
+#ce-bild { height: min(52dvh, 560px); aspect-ratio: 9 / 16; width: auto; border-radius: 12px; background: #000; touch-action: none; cursor: grab; flex: none; }
+.ce-regler { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px; flex: none; }
+.ce-hinweis { margin: 0; }
+@media (min-width: 900px) {
+  .ce-inhalt { flex-direction: row; justify-content: center; align-items: flex-start; gap: 32px; }
+  #ce-bild { height: min(78dvh, 720px); }
+  .ce-regler { width: 380px; }
+}
