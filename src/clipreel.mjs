@@ -4,6 +4,7 @@
 
 import { FPS, RAHMEN } from './reelstil.mjs';
 import { vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
+import { serienEintrag } from './diagnose.mjs';
 
 export const GANZ = 'c-ganz';
 export const MEDIEN_MAX = 30;
@@ -119,25 +120,71 @@ export function clipWeg(v) {
   v.remove();
 }
 
-// Springt an die Zeit t und wartet, bis das Bild wirklich da ist.
+// Bewegung auf Clips: Harte Zoom-Stöße und Pulse sehen auf Fotos lebhaft aus, auf laufendem Video aber wie
+// Ruckeln. Deshalb sanft und durchgehend ab dem Moment, in dem der Clip hereinkommt.
+export function clipBewegung(art, seitEintritt, takt, lauf) {
+  if (art === 'wackel' || art === 'drift') return bewegung(art, seitEintritt, takt, lauf);
+  if (art === 'keine') return { s: 1, qx: 0, qy: 0 };
+  return { s: 1 + 0.05 * Math.exp(-seitEintritt / 0.4), qx: 0, qy: 0 };
+}
+
+// Liegt die Zeit noch im Bild, das gerade zu sehen ist? Dann bringt Suchen nichts, etwa bei 24-fps-Clips.
+export function gleichesBild(bildZeit, bildAbstand, ziel) {
+  return bildZeit != null && bildAbstand > 0 && ziel >= bildZeit - 0.001 && ziel < bildZeit + bildAbstand - 0.001;
+}
+
+const WARTE_MS = 400;
+const FEHLT_MAX = 5;
+const stand = new WeakMap();
+const standVon = (v) => {
+  if (!stand.has(v)) stand.set(v, { bildZeit: null, abstand: 0, fehlt: 0, gesucht: 0, ohneBild: 0, ms: 0 });
+  return stand.get(v);
+};
+export const suchStatistik = (v) => standVon(v);
+
+// Springt an die Zeit t und wartet, bis das neue Bild wirklich dekodiert ist. Große Clips brauchen dafür
+// oft länger, und ein zu frühes Zeichnen wiederholt das alte Bild: Das sieht im Reel wie Ruckeln aus.
 export async function suche(v, t) {
   const ziel = Math.max(0, Math.min(t, (Number.isFinite(v.duration) ? v.duration : t) - 0.04));
+  const st = standVon(v);
+  if (v.readyState >= 2 && !v.seeking && gleichesBild(st.bildZeit, st.abstand, ziel)) return;
   if (Math.abs(v.currentTime - ziel) < 1 / 240 && !v.seeking && v.readyState >= 2) return;
-  await new Promise((ok) => {
-    const fertig = () => { clearTimeout(zeit); v.removeEventListener('seeked', fertig); ok(); };
-    const zeit = setTimeout(fertig, 4000);
-    v.addEventListener('seeked', fertig);
-    v.currentTime = ziel;
-  });
-  if (v.requestVideoFrameCallback) {
-    await Promise.race([new Promise((ok) => v.requestVideoFrameCallback(() => ok())), warte(60)]);
+  const t0 = performance.now();
+  st.gesucht++;
+  const seeked = new Promise((ok) => v.addEventListener('seeked', ok, { once: true }));
+  const nutzeBild = v.requestVideoFrameCallback && st.fehlt < FEHLT_MAX;
+  const bild = nutzeBild ? new Promise((ok) => v.requestVideoFrameCallback((_, m) => ok(m))) : null;
+  v.currentTime = ziel;
+  const auszeit = () => new Promise((ok) => setTimeout(() => ok('auszeit'), 4000));
+  await Promise.race([seeked, auszeit()]);
+  if (!nutzeBild) {
+    // Ohne Rückmeldung vom Browser: kurz warten, damit das Bild sicher da ist.
+    await warte(80);
+  } else {
+    const m = await Promise.race([bild, warte(WARTE_MS).then(() => null)]);
+    if (m) {
+      st.fehlt = 0;
+      const neu = m.mediaTime ?? v.currentTime;
+      const d = st.bildZeit == null ? 0 : Math.abs(neu - st.bildZeit);
+      if (d > 0.001) st.abstand = st.abstand ? Math.min(st.abstand, d) : d;
+      st.bildZeit = neu;
+    } else {
+      st.fehlt++;
+      st.ohneBild++;
+    }
   }
+  st.ms += performance.now() - t0;
 }
 
 // Zeichnet das Reel. medien: [{ typ, url, datei, dauer, start }].
 export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
   const kx = W / RAHMEN.w;
   const clips = new Map(); // höchstens zwei gleichzeitig offen
+  const berichte = (i, v) => {
+    const st = suchStatistik(v);
+    if (!st.gesucht) return;
+    serienEintrag(`Clip ${i + 1}: ${v.videoWidth}x${v.videoHeight}, ${v.duration.toFixed(1)} s, Bildabstand ${Math.round(st.abstand * 1000)} ms, ${st.gesucht} Sprünge, ${st.ohneBild} ohne neues Bild, je ${Math.round(st.ms / st.gesucht)} ms`);
+  };
   const fotos = new Map();
   async function quelle(i) {
     const m = medien[i];
@@ -149,7 +196,7 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
       return { b: fotos.get(i), w: fotos.get(i).width, h: fotos.get(i).height };
     }
     if (!clips.has(i)) {
-      for (const [k, v] of clips) { if (clips.size < 2) break; clipWeg(v); clips.delete(k); }
+      for (const [k, v] of clips) { if (clips.size < 2) break; berichte(k, v); clipWeg(v); clips.delete(k); }
       clips.set(i, await ladeClip(m.url));
     }
     const v = clips.get(i);
@@ -181,10 +228,14 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     ctx.fillRect(0, 0, W, H);
     const z = vorlagenZustand(plan, t);
     const { zeitI, zeitJ } = clipStellen(plan, medien, z);
-    const b = bewegung(plan.bewegung, z.seit, plan.takt, z.lauf);
+    const b = medien[z.i].typ === 'foto'
+      ? bewegung(plan.bewegung, z.seit, plan.takt, z.lauf)
+      : clipBewegung(plan.bewegung, plan.vorlauf[z.schritt] + z.seit, plan.takt, z.lauf);
     if (z.j == null) { await zeichne(ctx, z.i, zeitI, b); return; }
     const u = uebergangLage(z.art, z.p);
-    const bn = bewegung(plan.bewegung, 0, plan.takt, 0);
+    const bn = medien[z.j].typ === 'foto'
+      ? bewegung(plan.bewegung, 0, plan.takt, 0)
+      : clipBewegung(plan.bewegung, Math.max(0, z.seit - plan.staende[z.schritt]), plan.takt, 0);
     const mit = (basis, teil) => ({ ...basis, ...teil, s: basis.s * (teil.faktor ?? 1) });
     if (u.a) await zeichne(ctx, z.i, zeitI, mit(b, u.a));
     if (u.maske && u.b) {
@@ -209,7 +260,7 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     }
   }
   function ende() {
-    for (const v of clips.values()) clipWeg(v);
+    for (const [k, v] of clips) { berichte(k, v); clipWeg(v); }
     clips.clear();
     for (const b of fotos.values()) b.close?.();
     fotos.clear();

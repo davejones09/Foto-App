@@ -1,7 +1,7 @@
 // Reel aus Clips: Zeitplan und Stelle im Clip.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clipPlan, clipZeit, clipStellen, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
+import { clipPlan, clipZeit, clipStellen, clipBewegung, gleichesBild, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
 import { vorlagenZustand, VORLAGEN_IDS } from '../src/reelvorlagen.mjs';
 import { FPS } from '../src/reelstil.mjs';
 
@@ -82,4 +82,27 @@ test('Spätere Runden zeigen neue Stellen: nichts wiederholt sich', () => {
     const vorherEnde = p.versatz[k - n] + p.vorlauf[k - n] + p.staende[k - n] + (p.uebergaenge[k - n] || 0);
     assert.ok(Math.abs(p.versatz[k] - vorherEnde) < 1e-9, `Abschnitt ${k}`);
   }
+});
+
+test('Clip-Bewegung ändert sich sanft und ohne Sprung über den Übergang', () => {
+  for (const art of ['stoss', 'puls']) {
+    let vorher = null;
+    for (let k = 0; k < 90; k++) {
+      const { s } = clipBewegung(art, k / FPS, 0.5, k / 90);
+      assert.ok(s >= 1);
+      if (vorher != null) assert.ok(Math.abs(s - vorher) < 0.005, `${art} Bild ${k}: ${vorher} zu ${s}`);
+      vorher = s;
+    }
+  }
+  assert.equal(clipBewegung('keine', 1, 0.5, 0).s, 1);
+});
+
+test('Liegt die Zeit noch im selben Bild, wird nicht gesucht', () => {
+  const b = 1 / 24;
+  assert.equal(gleichesBild(1, b, 1), true);
+  assert.equal(gleichesBild(1, b, 1 + 1 / 30), true);
+  assert.equal(gleichesBild(1, b, 1 + b), false);
+  assert.equal(gleichesBild(1, b, 0.9), false);
+  assert.equal(gleichesBild(null, b, 1), false, 'noch kein Bild');
+  assert.equal(gleichesBild(1, 0, 1), false, 'Abstand noch unbekannt');
 });

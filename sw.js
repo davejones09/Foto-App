@@ -1,5 +1,5 @@
 // Service Worker: alles für den Offline-Betrieb vorhalten. Der Name enthält APP_VERSION.
-const APP_VERSION = '0.19.1';
+const APP_VERSION = '0.19.2';
 const CACHE = 'nahtlos-' + APP_VERSION;
 
 const DATEIEN = [
