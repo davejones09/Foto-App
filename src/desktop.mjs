@@ -30,6 +30,7 @@ export const DESKTOP_TEXTE = {
   serieNaehFehler: 'Das Zusammensetzen hat nicht geklappt. Klicke nochmal auf Zusammensetzen.',
   clipsHinweis: 'Wähle Videoclips und Fotos oder zieh sie einfach hierher. Die Clips werden nicht in der App gespeichert, die Auswahl geht beim Schließen verloren.',
   clipsWaehlen: 'Clips und Fotos auswählen',
+  clipHinweisFuellen: 'Ziehen verschiebt den Ausschnitt, das Mausrad zoomt.',
 };
 
 // Läuft beim Laden dieses Moduls, also bevor irgendein Text in die Seite kommt.

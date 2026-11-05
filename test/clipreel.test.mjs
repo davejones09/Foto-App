@@ -1,7 +1,7 @@
 // Reel aus Clips: Zeitplan und Stelle im Clip.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clipPlan, clipZeit, clipStellen, clipBewegung, gleichesBild, sprungZiel, HINTER_GRENZE, deckAusschnitt, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
+import { clipPlan, clipZeit, clipStellen, clipBewegung, gleichesBild, sprungZiel, HINTER_GRENZE, deckAusschnitt, rahmenAusschnitt, eigeneLaenge, musikPlan, GANZ, REEL_MAX, FOTO_STAND } from '../src/clipreel.mjs';
 import { vorlagenZustand, VORLAGEN_IDS } from '../src/reelvorlagen.mjs';
 import { FPS } from '../src/reelstil.mjs';
 
@@ -119,4 +119,82 @@ test('Sprungziel liegt nie auf einer Bildgrenze, für 24, 25, 30 und 60 fps', ()
   }
   assert.equal(sprungZiel(100, 5), 5 - 0.04, 'bleibt im Clip');
   assert.equal(sprungZiel(0, 5), HINTER_GRENZE);
+});
+
+test('Eigene Längen: Clip von Start bis Ende, Foto wie eingestellt, Clip läuft dann am Ende von vorn', () => {
+  assert.equal(eigeneLaenge({ typ: 'clip', dauer: 10, start: 2, ende: 5 }), 3);
+  assert.equal(eigeneLaenge({ typ: 'foto', laenge: 4 }), 4);
+  assert.equal(eigeneLaenge(FOTO), FOTO_STAND);
+  const p = clipPlan([{ typ: 'clip', dauer: 10, start: 2, ende: 5 }, { typ: 'foto', laenge: 4, dauer: 0, start: 0 }]);
+  assert.deepEqual(p.staende, [3, 4]);
+  assert.equal(clipZeit({ dauer: 10, start: 2, ende: 5 }, 0, 4), 3, 'Bereich ist 3 s, 4 % 3 = 1');
+});
+
+test('Eigene Längen gelten auch in Vorlagen, die anderen behalten den Takt', () => {
+  const p = clipPlan([{ typ: 'foto', laenge: 4, eigen: true, dauer: 0, start: 0 }, FOTO, CLIP(10)], { stil: 'v-beat' });
+  assert.equal(p.staende[0], 4);
+  assert.equal(p.staende[1], 1);
+  assert.equal(p.eigeneLaengen, true);
+});
+
+test('Rahmen: Zoom und Lage bleiben immer im Bild', () => {
+  const m = rahmenAusschnitt(1920, 1080, null);
+  assert.ok(Math.abs(m.x - (1920 - m.w) / 2) < 1e-9);
+  const l = rahmenAusschnitt(1920, 1080, { x: 0, y: 0, zoom: 2 });
+  assert.deepEqual([l.x, l.y], [0, 0]);
+  const r = rahmenAusschnitt(1920, 1080, { x: 1, y: 1, zoom: 2 });
+  assert.ok(Math.abs(r.x + r.w - 1920) < 1e-9 && Math.abs(r.y + r.h - 1080) < 1e-9);
+  assert.ok(Math.abs(r.w - m.w / 2) < 1e-9);
+});
+
+const RASTER = Array.from({ length: 300 }, (_, k) => (k + 1) * 0.5);
+for (const stil of [GANZ, ...VORLAGEN_IDS]) {
+  test(`Musik, ${stil}: Jeder Schnitt liegt auf einem Schlag`, () => {
+    const m = [CLIP(8), FOTO, CLIP(6), CLIP(9)];
+    const p = clipPlan(m, { stil, raster: RASTER, musikRest: 120 });
+    assert.ok(p.schnitte.length >= 1);
+    for (const s of p.schnitte) assert.ok(RASTER.includes(s), `Schnitt ${s}`);
+    for (const k of p.staende) assert.ok(k > 0);
+    // Mitte des Übergangs ist der Schnitt, auch nach dem Runden auf Bilder
+    p.schnitte.forEach((s, k) => {
+      const mitte = p.beginn[k] + p.staende[k] + (p.uebergaenge[k] || 0) / 2;
+      assert.ok(Math.abs(mitte - s) < 1e-6, `${mitte} statt ${s}`);
+    });
+    const z = vorlagenZustand(p, (p.bilder - 1) / FPS);
+    assert.equal(z.j, null, 'endet ohne offenen Übergang');
+    assert.ok(p.dauer <= REEL_MAX);
+  });
+}
+
+test('Musik mit fester Länge: Fotos laufen in Runden bis zum Ende, Schluss genau bei der Länge', () => {
+  const p = clipPlan([CLIP(30), CLIP(30)], { stil: 'v-beat', raster: RASTER, laenge: 30, musikRest: 120 });
+  assert.equal(p.dauer, 30);
+  assert.ok(p.runden > 1);
+});
+
+test('Musik kürzer als das Reel: Das Reel endet mit der Musik und sagt es', () => {
+  const m = [CLIP(20), CLIP(20), CLIP(20), CLIP(20)];
+  const p = clipPlan(m, { stil: GANZ, raster: RASTER.filter((r) => r <= 25), musikRest: 25 });
+  assert.ok(p.dauer <= 25);
+  assert.equal(p.gekappt, true);
+});
+
+test('Ganzer Clip steht nicht über sein Ende hinaus', () => {
+  const p = clipPlan([CLIP(2.3), CLIP(5)], { stil: GANZ, raster: RASTER, musikRest: 60 });
+  assert.equal(p.schnitte[0], 2);
+});
+
+test('Musik: Ein Clip springt nie zurück, auch wenn die Vorlage länger stehen will', () => {
+  const m = [CLIP(8), CLIP(1.2), CLIP(2.1), CLIP(8)];
+  for (const stil of VORLAGEN_IDS) {
+    const p = clipPlan(m, { stil, raster: RASTER, musikRest: 120 });
+    p.staende.forEach((s, k) => {
+      const gezeigt = p.vorlauf[k] + s + (p.uebergaenge[k] || 0);
+      assert.ok(gezeigt <= eigeneLaenge(m[k]) + 0.8, `${stil} Abschnitt ${k}: ${gezeigt}`);
+    });
+    const z = vorlagenZustand(p, (p.bilder - 1) / FPS);
+    assert.equal(z.j, null);
+  }
+  const g = clipPlan([CLIP(2), CLIP(2)], { stil: 'v-slide', raster: Array.from({ length: 40 }, (_, k) => 0.1 + k), musikRest: 40 });
+  assert.ok(g.staende[0] <= 2, `${g.staende[0]}`);
 });

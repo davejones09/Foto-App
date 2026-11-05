@@ -94,6 +94,18 @@
     <p class="rt-hinweis" data-t="clipsHinweis"></p>
     <button class="neben2" id="cl-waehlen" data-t="clipsWaehlen"></button>
     <div class="cl-liste"></div>
+    <p class="af-gruppe" data-t="musikTitel"></p>
+    <div class="cl-musik">
+      <button class="neben2" id="cl-musik-waehlen" data-t="musikWaehlen"></button>
+      <div class="cl-musik-info" hidden>
+        <div class="cl-musik-kopf"><span class="cl-musik-name"></span><button class="neben2" id="cl-musik-weg" data-t="clipWeg"></button></div>
+        <small class="cl-musik-takt"></small>
+        <audio class="cl-musik-probe" controls preload="metadata"></audio>
+        <label class="cl-regler"><span class="cl-musik-start"></span><input type="range" id="cl-musik-start" min="0" step="0.1" value="0"></label>
+        <p class="af-gruppe" data-t="musikSchnitte"></p>
+        <div class="af-tempi cl-alle" role="group"></div>
+      </div>
+    </div>
     <p class="af-gruppe" data-t="reelStil"></p>
     <div class="cl-stile"></div>
     <div class="af-tempi cl-laengen" role="group" hidden></div>
@@ -101,6 +113,27 @@
     <button class="haupt" id="cl-bauen" data-t="clipsBauen" disabled></button>
     <p class="cl-fort" hidden></p>
     <div class="cl-ergebnis"></div>
+  </div>
+  <div class="cl-editor" hidden>
+    <header class="leiste-oben">
+      <button class="neben2" id="ce-zuruecksetzen" data-t="clipZuruecksetzen"></button>
+      <h2 data-t="clipBearbeiten"></h2>
+      <button class="haupt" id="ce-fertig" data-t="fertig"></button>
+    </header>
+    <div class="ce-inhalt">
+      <canvas id="ce-bild" width="360" height="640"></canvas>
+      <div class="ce-regler">
+        <div class="af-tempi ce-modus" role="group">
+          <button data-modus="fuellen" data-t="clipFuellen"></button>
+          <button data-modus="ganz" data-t="clipGanz"></button>
+        </div>
+        <p class="rt-info ce-hinweis"></p>
+        <label class="cl-regler ce-zoom"><span data-t="clipZoom"></span><input type="range" id="ce-zoom" min="1" max="3" step="0.01" value="1"></label>
+        <label class="cl-regler ce-start"><span class="ce-start-text"></span><input type="range" id="ce-start" min="0" step="0.1"></label>
+        <label class="cl-regler ce-ende"><span class="ce-ende-text"></span><input type="range" id="ce-ende" min="0" step="0.1"></label>
+        <label class="cl-regler ce-laenge"><span class="ce-laenge-text"></span><input type="range" id="ce-laenge" min="0.5" max="10" step="0.1"></label>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -374,6 +407,7 @@
 
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="datei-clips" accept="video/*,image/*" multiple hidden>
+<input type="file" id="datei-musik" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden>
 <input type="file" id="dg-datei" accept="image/*" hidden>
 <input type="file" id="datei-collage" accept="image/*" multiple hidden>
 <input type="file" id="datei-collage-kamera" accept="image/*" capture="environment" hidden>
