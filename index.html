@@ -115,11 +115,7 @@
     <div class="cl-ergebnis"></div>
   </div>
   <div class="cl-editor" hidden>
-    <header class="leiste-oben">
-      <button class="neben2" id="ce-zuruecksetzen" data-t="clipZuruecksetzen"></button>
-      <h2 data-t="clipBearbeiten"></h2>
-      <button class="haupt" id="ce-fertig" data-t="fertig"></button>
-    </header>
+    <h2 class="ce-titel" data-t="clipBearbeiten"></h2>
     <div class="ce-inhalt">
       <canvas id="ce-bild" width="360" height="640"></canvas>
       <div class="ce-regler">
@@ -133,6 +129,10 @@
         <label class="cl-regler ce-ende"><span class="ce-ende-text"></span><input type="range" id="ce-ende" min="0" step="0.1"></label>
         <label class="cl-regler ce-laenge"><span class="ce-laenge-text"></span><input type="range" id="ce-laenge" min="0.5" max="10" step="0.1"></label>
       </div>
+    </div>
+    <div class="ce-knoepfe">
+      <button class="neben2" id="ce-zuruecksetzen" data-t="clipZuruecksetzen"></button>
+      <button class="haupt" id="ce-fertig" data-t="fertig"></button>
     </div>
   </div>
 </section>
@@ -405,6 +405,7 @@
 <!-- Querformat -->
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
+<div id="laden" role="status" hidden><p class="laden-text"></p><div class="laden-balken"><div></div></div></div>
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="datei-clips" accept="video/*,image/*" multiple hidden>
 <input type="file" id="datei-musik" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden>

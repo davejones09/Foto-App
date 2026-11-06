@@ -9,7 +9,8 @@ import { mp4TonProben } from '../metadaten.mjs';
 import { REEL_LAENGEN } from '../kennzahlen.mjs';
 import { VORLAGEN_IDS } from '../reelvorlagen.mjs';
 import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
-import { schnittRaster } from '../musik.mjs';
+import { schnittStellen } from '../musik.mjs';
+import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 
 const v = $('#v-clips');
 const liste = $('.cl-liste', v);
@@ -64,7 +65,9 @@ async function vorschaubild(m, canvas) {
 async function dazu(dateien) {
   const frei = MEDIEN_MAX - medien.length;
   if (dateien.length > frei) melde(f(T.clipsZuViele, { n: MEDIEN_MAX }));
-  for (const d of dateien.slice(0, Math.max(0, frei))) {
+  const liste = dateien.slice(0, Math.max(0, frei));
+  for (const [nr, d] of liste.entries()) {
+    ladeSchritt(nr + 1, liste.length);
     const typ = d.type.startsWith('image/') ? 'foto' : 'clip';
     const m = { id: ++zaehler, typ, datei: d, url: typ === 'clip' ? URL.createObjectURL(d) : null, dauer: 0, start: 0, leinwand: el('canvas', { width: 90, height: 160 }) };
     medien.push(m);
@@ -289,7 +292,7 @@ function editorEinrichten() {
 }
 
 // --- Musik ---
-const musikRaster = () => (musik ? schnittRaster(musik.schlaege, musik.start, musik.alle) : null);
+const musikRaster = () => (musik ? schnittStellen(musik.schlaege, musik.treffer, musik.start, musik.alle) : null);
 
 function musikZeigen() {
   $('.cl-musik-info', v).hidden = !musik;
@@ -306,6 +309,7 @@ function musikZeigen() {
 
 async function musikDazu(datei) {
   infoEl.textContent = T.musikLaedt;
+  ladeWarten(T.musikLaedt);
   try {
     const m = await aus.musikLaden(datei);
     if (musik) URL.revokeObjectURL(musik.url);
@@ -314,6 +318,8 @@ async function musikDazu(datei) {
   } catch (err) {
     protokolliere('musik', err);
     melde(T.musikFehler);
+  } finally {
+    ladeEnde();
   }
   musikZeigen();
   planZeigen();
@@ -325,6 +331,7 @@ function planJetzt() {
     stil,
     laenge: stil === GANZ && !musik ? null : laenge,
     raster,
+    takt: musik ? (60 / musik.bpm) * musik.alle : null,
     musikRest: musik ? musik.puffer.duration - musik.start : undefined,
   });
 }
@@ -442,6 +449,7 @@ musikEingabe.addEventListener('change', () => {
   const d = musikEingabe.files[0];
   musikEingabe.value = '';
   if (d) musikDazu(d);
+  else ladeEnde();
 });
 $('#cl-musik-weg', v).addEventListener('click', () => {
   URL.revokeObjectURL(musik.url);
@@ -462,7 +470,7 @@ $('#cl-waehlen', v).addEventListener('click', () => eingabe.click());
 eingabe.addEventListener('change', () => {
   const l = [...eingabe.files];
   eingabe.value = '';
-  dazu(l).catch((err) => { protokolliere('clips', err); melde(T.clipFehler); });
+  dazu(l).catch((err) => { protokolliere('clips', err); melde(T.clipFehler); }).finally(ladeEnde);
 });
 bauenKnopf.addEventListener('click', bauen);
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));

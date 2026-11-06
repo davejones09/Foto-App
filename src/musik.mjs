@@ -114,9 +114,113 @@ export function schlaegeErkennen(samples, rate) {
 // Gleichmäßiges Raster, falls kein Takt erkennbar ist oder die Musik still beginnt.
 export const rasterSchlaege = (dauer, bpm = 120) => Array.from({ length: Math.floor((dauer * bpm) / 60) }, (_, k) => (k * 60) / bpm);
 
-// Schläge ab dem Musikstart, auf Reel-Zeit umgerechnet, nur jeder „alle“-te.
-export function schnittRaster(schlaege, musikStart = 0, alle = 1) {
-  return schlaege.map((t) => t - musikStart).filter((t) => t > 0.05).filter((_, i) => i % alle === alle - 1);
+// --- Treffer: die Stellen, an denen man den Schnitt wirklich spürt ---
+
+const FFT_N = 1024;
+const FFT_HOP = 256;
+const TREFFER_VORLAUF = FFT_N / 2 - FFT_HOP; // Der Anstieg zeigt sich schon, wenn der Schlag ins Fenster kommt.
+
+function fftBetrag(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
+  }
+  for (let l = 2; l <= n; l <<= 1) {
+    const w = (-2 * Math.PI) / l;
+    for (let i = 0; i < n; i += l) {
+      for (let k = 0; k < l / 2; k++) {
+        const c = Math.cos(w * k);
+        const d = Math.sin(w * k);
+        const a = i + k;
+        const b = a + l / 2;
+        const tr = re[b] * c - im[b] * d;
+        const ti = re[b] * d + im[b] * c;
+        re[b] = re[a] - tr; im[b] = im[a] - ti;
+        re[a] += tr; im[a] += ti;
+      }
+    }
+  }
+}
+
+// Akzente der Musik mit Stärke 0 bis 1. Bässe zählen dreifach, denn dort sitzt der Schlag, den man spürt.
+export function trefferFinden(samples, rate) {
+  const rahmen = Math.max(0, Math.floor((samples.length - FFT_N) / FFT_HOP));
+  if (rahmen < 8) return [];
+  const fenster = Float32Array.from({ length: FFT_N }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / FFT_N));
+  const halb = FFT_N / 2;
+  const grenze = Math.max(2, Math.round((150 / rate) * FFT_N));
+  const re = new Float32Array(FFT_N);
+  const im = new Float32Array(FFT_N);
+  const vorher = new Float32Array(halb);
+  const kurve = new Float32Array(rahmen);
+  for (let f = 0; f < rahmen; f++) {
+    for (let i = 0; i < FFT_N; i++) { re[i] = samples[f * FFT_HOP + i] * fenster[i]; im[i] = 0; }
+    fftBetrag(re, im);
+    let bass = 0;
+    let rest = 0;
+    for (let k = 1; k < halb; k++) {
+      const w = Math.log1p(10 * Math.hypot(re[k], im[k]));
+      const d = w - vorher[k];
+      if (d > 0 && f > 0) { if (k < grenze) bass += d; else rest += d; }
+      vorher[k] = w;
+    }
+    // Je Band gemittelt: Sonst überstimmen die vielen hohen Frequenzen jeden Bass.
+    kurve[f] = (3 * bass) / (grenze - 1) + rest / (halb - grenze);
+  }
+  const proSek = rate / FFT_HOP;
+  const umfeld = Math.round(proSek * 0.5);
+  const nah = Math.round(proSek * 0.06);
+  const spitzen = [];
+  for (let f = 1; f < rahmen - 1; f++) {
+    const a = Math.max(0, f - nah);
+    const b = Math.min(rahmen - 1, f + nah);
+    let groesstes = true;
+    for (let i = a; i <= b && groesstes; i++) if (kurve[i] > kurve[f]) groesstes = false;
+    if (!groesstes || kurve[f] <= 0) continue;
+    let summe = 0;
+    const u0 = Math.max(0, f - umfeld);
+    const u1 = Math.min(rahmen - 1, f + umfeld);
+    for (let i = u0; i <= u1; i++) summe += kurve[i];
+    if (kurve[f] > (1.5 * summe) / (u1 - u0 + 1)) spitzen.push(f);
+  }
+  const sortiert = spitzen.map((f) => kurve[f]).sort((x, y) => x - y);
+  const oben = sortiert[Math.floor(sortiert.length * 0.95)] || 1;
+  return spitzen.map((f) => ({
+    t: Math.max(0, (f * FFT_HOP + TREFFER_VORLAUF) / rate),
+    s: Math.min(1, kurve[f] / oben),
+  }));
+}
+
+// Stellen für Schnitte ab dem Musikstart, in Reel-Zeit: jeder „alle“-te Schlag, auf den Akzent davor oder
+// danach gezogen, dazu starke Akzente neben dem Raster. Die Zählung beginnt dort, wo die Musik am stärksten trifft.
+export function schnittStellen(schlaege, treffer = [], musikStart = 0, alle = 1) {
+  const staerkster = (t, breite) => {
+    let best = null;
+    for (const h of treffer) if (Math.abs(h.t - t) <= breite && (!best || h.s > best.s)) best = h;
+    return best;
+  };
+  let phase = 0;
+  let bestSumme = -1;
+  for (let p = 0; p < alle; p++) {
+    let summe = 0;
+    for (let i = p; i < schlaege.length; i += alle) summe += staerkster(schlaege[i], 0.07)?.s ?? 0;
+    if (summe > bestSumme) { bestSumme = summe; phase = p; }
+  }
+  const stellen = [];
+  for (let i = phase; i < schlaege.length; i += alle) {
+    const h = staerkster(schlaege[i], 0.08);
+    stellen.push(h ? { t: h.t, s: h.s } : { t: schlaege[i], s: 0.15 });
+  }
+  for (const h of treffer) {
+    if (h.s >= 0.6 && !stellen.some((x) => Math.abs(x.t - h.t) < 0.12)) stellen.push({ t: h.t, s: h.s });
+  }
+  return stellen
+    .map((x) => ({ t: x.t - musikStart, s: x.s }))
+    .filter((x) => x.t > 0.05)
+    .sort((x, y) => x.t - y.t);
 }
 
 // --- Ton direkt aus den dekodierten Daten, ohne Web-Audio-Rendering ---

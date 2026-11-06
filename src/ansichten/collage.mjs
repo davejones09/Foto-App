@@ -2,9 +2,10 @@
 // den Ausschnitt, zwei Finger zoomen, Ziehen auf ein anderes Feld tauscht die Fotos. Immer hineingezoomt.
 import { registriere, zeige } from '../zustand.mjs';
 import { T, f, MONATE } from '../texte.mjs';
-import { $, $$, el, frage, melde, meldungWeg } from '../ui.mjs';
+import { $, $$, el, frage, melde } from '../ui.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
+import { ladeSchritt, ladeEnde } from '../laden.mjs';
 import { ctx2d, leinwand, freigeben } from '../bild.mjs';
 import { FARBEN, ABSTAND_MAX, FOTOS_MAX, masse, vorlagenFuer, vorlage, feldRechtecke, feldBei, bewege, belege } from '../collage.mjs';
 import * as werk from '../collagewerk.mjs';
@@ -281,7 +282,7 @@ async function dateienGewaehlt(liste) {
     const auswahl = liste.slice(0, Math.max(0, frei));
     let kaputt = 0;
     for (let k = 0; k < auswahl.length; k++) {
-      melde(f(T.collageEinlesen, { k: k + 1, n: auswahl.length }), [], 0);
+      ladeSchritt(k + 1, auswahl.length);
       try {
         await werk.fotoEinlesen(c.id, auswahl[k]);
       } catch (err) {
@@ -290,7 +291,6 @@ async function dateienGewaehlt(liste) {
         kaputt++;
       }
     }
-    meldungWeg();
     if (liste.length > frei) melde(T.collageZuViele);
     else if (kaputt) melde(f(T.collageKaputt, { n: kaputt }));
     await zeige('collage', { id: c.id });
@@ -303,7 +303,7 @@ for (const inp of [eingabe, kamera]) {
   inp.addEventListener('change', () => {
     const l = [...(inp.files || [])];
     inp.value = '';
-    dateienGewaehlt(l);
+    dateienGewaehlt(l).finally(ladeEnde);
   });
   inp.addEventListener('cancel', () => { vorgemerkt = null; });
 }

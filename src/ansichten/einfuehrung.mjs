@@ -530,7 +530,7 @@ function malen(jetzt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingQuality = 'high';
   const b = BILDER[seite];
-  const t = ruhig() ? b.still : ((jetzt - start) / 1000) % b.dauer;
+  const t = ruhig() ? b.still : (Math.max(0, jetzt - start) / 1000) % b.dauer;
   b.mal(ctx, cw, ch, t);
   if (!ruhig()) rafId = requestAnimationFrame(malen);
 }

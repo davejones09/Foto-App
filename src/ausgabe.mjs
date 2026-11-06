@@ -358,10 +358,11 @@ function tonSchreiben(ton, muxer) {
 export async function musikLaden(datei) {
   const bytes = await datei.arrayBuffer();
   const puffer = await new OfflineAudioContext(2, 1, TON_RATE).decodeAudioData(bytes);
-  const { schlaegeErkennen, rasterSchlaege, monoKlein } = await import('./musik.mjs');
+  const { schlaegeErkennen, trefferFinden, rasterSchlaege, monoKlein } = await import('./musik.mjs');
   const RATE = 22050;
-  const r = schlaegeErkennen(monoKlein(kanaeleVon(puffer), puffer.sampleRate, RATE), RATE);
-  return { puffer, ...r, schlaege: r.sicher ? r.schlaege : rasterSchlaege(puffer.duration), bpm: r.sicher ? r.bpm : 120 };
+  const mono = monoKlein(kanaeleVon(puffer), puffer.sampleRate, RATE);
+  const r = schlaegeErkennen(mono, RATE);
+  return { puffer, ...r, treffer: trefferFinden(mono, RATE), schlaege: r.sicher ? r.schlaege : rasterSchlaege(puffer.duration), bpm: r.sicher ? r.bpm : 120 };
 }
 
 // --- Reel: immer MP4 ---

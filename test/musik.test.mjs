@@ -1,7 +1,7 @@
 // Musik: Tempo und Lage der Schläge an erzeugter Musik, Raster.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { schlaegeErkennen, schnittRaster, rasterSchlaege, monoKlein, tonAusschnitt, spitze } from '../src/musik.mjs';
+import { schlaegeErkennen, rasterSchlaege, trefferFinden, schnittStellen, monoKlein, tonAusschnitt, spitze } from '../src/musik.mjs';
 
 const RATE = 22050;
 
@@ -77,12 +77,43 @@ test('Zu kurze Musik ergibt keine Schläge', () => {
   assert.deepEqual(schlaegeErkennen(new Float32Array(RATE), RATE).schlaege, []);
 });
 
-test('Raster: ab Musikstart und nur jeder n-te Schlag', () => {
-  const s = [0, 0.5, 1, 1.5, 2, 2.5, 3];
-  assert.deepEqual(schnittRaster(s, 0, 1), [0.5, 1, 1.5, 2, 2.5, 3]);
-  assert.deepEqual(schnittRaster(s, 1, 1), [0.5, 1, 1.5, 2]);
-  assert.deepEqual(schnittRaster(s, 0, 2), [1, 2, 3]);
-  assert.equal(rasterSchlaege(10, 120).length, 20);
+test('schnittStellen: ohne Akzente das Raster ab dem Musikstart', () => {
+  const s = [0.5, 1, 1.5, 2, 2.5, 3];
+  assert.deepEqual(schnittStellen(s, [], 0, 1).map((x) => x.t), s);
+  assert.deepEqual(schnittStellen(s, [], 1, 1).map((x) => x.t), [0.5, 1, 1.5, 2]);
+});
+
+test('schnittStellen: zählt ab dem stärksten Schlag und zieht auf den Akzent', () => {
+  const s = [0.5, 1, 1.5, 2, 2.5, 3];
+  const treffer = [{ t: 1.03, s: 1 }, { t: 2, s: 1 }, { t: 3, s: 1 }, { t: 0.5, s: 0.1 }, { t: 1.5, s: 0.1 }];
+  const r = schnittStellen(s, treffer, 0, 2);
+  assert.deepEqual(r.map((x) => x.t), [1.03, 2, 3]);
+  assert.equal(r[0].s, 1);
+});
+
+test('schnittStellen: starker Akzent neben dem Raster kommt dazu', () => {
+  const r = schnittStellen([1, 2, 3], [{ t: 1.75, s: 0.9 }, { t: 2.3, s: 0.2 }], 0, 1);
+  assert.deepEqual(r.map((x) => x.t), [1, 1.75, 2, 3]);
+});
+
+test('trefferFinden: Schläge auch im Off-Takt, zeitlich genau, Kick stärker als Hi-Hat', () => {
+  const n = RATE * 10;
+  const a = new Float32Array(n);
+  const r = zufall(5);
+  for (let i = 0; i < n; i++) a[i] = 0.01 * r();
+  const kicks = [1, 1.75, 2.5, 3, 4, 4.75, 5.5, 6, 7, 7.75, 8.5, 9];
+  const kick = (t) => { const o = Math.round(t * RATE); for (let i = 0; i < RATE * 0.15 && o + i < n; i++) a[o + i] += 0.8 * Math.exp(-i / (RATE * 0.04)) * Math.sin((2 * Math.PI * 70 * i) / RATE); };
+  const hat = (t) => { const o = Math.round(t * RATE); for (let i = 0; i < RATE * 0.03 && o + i < n; i++) a[o + i] += 0.1 * Math.exp(-i / (RATE * 0.008)) * r(); };
+  kicks.forEach(kick);
+  [1.25, 2.25, 3.25, 4.25, 5.25, 6.25].forEach(hat);
+  const t = trefferFinden(a, RATE);
+  for (const k of kicks) {
+    const h = t.find((x) => Math.abs(x.t - k) < 0.03);
+    assert.ok(h, `Kick bei ${k} fehlt: ${t.map((x) => x.t.toFixed(2))}`);
+    assert.ok(h.s > 0.4, `Kick bei ${k} zu schwach: ${h.s}`);
+  }
+  const hh = t.find((x) => Math.abs(x.t - 2.25) < 0.03);
+  if (hh) assert.ok(hh.s < 0.5, `Hi-Hat zu stark: ${hh.s}`);
 });
 
 test('tonAusschnitt: richtige Stelle, Stereo aus Mono, weiches Ende, Rest still', () => {
