@@ -65,7 +65,8 @@ function eigenPlan(medien, stil) {
 // Beim Suchen zählt die Stärke: Lieber ein kräftiger Akzent etwas daneben als ein schwacher genau am Wunsch.
 const MUSIK_UEBERGANG_MAX = 0.24;
 
-export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRest = REEL_MAX, takt = null }) {
+// fest: Schnitte, die der Nutzer selbst gesetzt hat, als Zeit, zu der das neue Bild steht (je Schnitt k).
+export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRest = REEL_MAX, takt = null, fest = null }) {
   const stellen = raster.map((r) => (typeof r === 'number' ? { t: r, s: 1 } : r));
   const v = VORLAGEN.find((x) => x.id === stil) || null;
   const n = medien.length;
@@ -111,6 +112,11 @@ export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRes
     }
     // Ein ganzer Clip darf nicht über sein Ende hinaus stehen: dann lieber der Schlag davor.
     if (best == null) best = eigen && davor != null ? davor : naechste;
+    if (fest?.[k] != null) {
+      const grenze = m.typ === 'clip' ? vorher + rest : Infinity;
+      best = Math.min(Math.max(fest[k], frueh), ende - 0.3, grenze);
+      if (best < frueh) best = null;
+    }
     if (best == null) { gekappt = laenge == null ? k < n - 1 : false; break; }
     schnitte.push(best - dauerTr / 2);
     arten.push(art);
@@ -151,9 +157,9 @@ export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRes
   };
 }
 
-export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, musikRest = REEL_MAX, takt = null } = {}) {
+export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, musikRest = REEL_MAX, takt = null, tempo = 'normal', fest = null } = {}) {
   let plan;
-  if (raster && raster.length && medien.length) plan = musikPlan(medien, { stil, raster, laenge, musikRest, takt });
+  if (raster && raster.length && medien.length) plan = musikPlan(medien, { stil, raster, laenge, musikRest, takt, fest });
   else if (stil === GANZ) plan = ganzPlan(medien);
   else if (medien.some((m) => m.eigen)) plan = eigenPlan(medien, stil);
   else plan = vorlagenPlan(medien.length, { laenge, vorlage: stil });
@@ -168,7 +174,7 @@ export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, mu
     vorlauf.push(k > 0 ? plan.uebergaenge[k - 1] || 0 : 0);
     benutzt[i] += vorlauf[k] + s + (plan.uebergaenge[k] || 0);
   });
-  return { ...plan, versatz, vorlauf, medienZahl: medien.length };
+  return { ...plan, versatz, vorlauf, medienZahl: medien.length, tempo };
 }
 
 // Stelle im Clip für einen Abschnitt des Plans, seit = Zeit seit seinem Beginn. Läuft am Ende von vorn.
@@ -178,14 +184,61 @@ export function clipZeit(medium, versatz, seit) {
   return start + (versatz + seit) % rest;
 }
 
+// --- Tempo: Rampen und Freeze. Jede Form verbraucht genau so viel Clip wie normales Tempo,
+// deshalb ändert sich am Plan nichts und kein Clip läuft über sein Ende. ---
+export const TEMPI = ['normal', 'rampe', 'freeze'];
+const RAMPE = { an: 0.5, ab: 0.45, start: 0.35 }; // langsam herein, schnell hinaus
+const FREEZE = { steht: 0.3, aufholen: 0.6 };
+
+// Zeit im Clip seit seinem Auftauchen (u) nach der Tempoform. U: wie lange er insgesamt zu sehen ist.
+// Gibt { t, rate } zurück: verbrauchte Clipzeit und momentane Geschwindigkeit.
+export function tempoForm(art, u, U, { anfang = true, schluss = true } = {}) {
+  if (art === 'rampe') {
+    const k = Math.min(1, U / (RAMPE.an + RAMPE.ab + 0.2));
+    const r1 = anfang ? RAMPE.an * k : 0;
+    const r2 = schluss ? RAMPE.ab * k : 0;
+    const a0 = RAMPE.start;
+    // Endgeschwindigkeit so, dass die Rampe am Ende wieder hereinholt, was der Anfang langsamer war.
+    const a1 = r2 > 0 ? 1 + (r1 * (1 - a0)) / r2 : 1;
+    const v0 = r1 > 0 ? a0 : 1;
+    if (r1 > 0 && u <= r1) { const g = v0 + ((1 - v0) * u) / r1; return { t: (u * (v0 + g)) / 2, rate: g }; }
+    const t1 = r1 > 0 ? (r1 * (v0 + 1)) / 2 : 0;
+    const b = U - r2;
+    if (u <= b) return { t: t1 + (u - r1), rate: 1 };
+    const tb = t1 + (b - r1);
+    const x = Math.min(u, U) - b;
+    const g = 1 + ((a1 - 1) * x) / r2;
+    return { t: tb + (x * (1 + g)) / 2 + Math.max(0, u - U), rate: g };
+  }
+  if (art === 'freeze' && anfang) {
+    const k = Math.min(1, U / (FREEZE.steht + FREEZE.aufholen + 0.2));
+    const f = FREEZE.steht * k;
+    const a = FREEZE.aufholen * k;
+    const schnell = (f + a) / a;
+    if (u <= f) return { t: 0, rate: 0 };
+    if (u <= f + a) return { t: (u - f) * schnell, rate: schnell };
+    return { t: u, rate: 1 };
+  }
+  return { t: u, rate: 1 };
+}
+
+// Wie lange Abschnitt k insgesamt zu sehen ist: Übergang herein, Stand, Übergang hinaus.
+export const sichtbar = (plan, k) => (plan.vorlauf?.[k] || 0) + plan.staende[k] + (plan.uebergaenge[k] || 0);
+
 // Stellen in den Clips zur Reel-Zeit t: zeitI für den laufenden Clip, zeitJ für den, der gerade hereinkommt.
+// rateI, rateJ: momentanes Tempo, für Vorschau und Originalton.
 export function clipStellen(plan, medien, z) {
+  const tempo = plan.tempo || 'normal';
   const m = medien[z.i];
-  const zeitI = m.typ === 'foto' ? 0 : clipZeit(m, plan.versatz[z.schritt] + plan.vorlauf[z.schritt], z.seit);
-  if (z.j == null) return { zeitI, zeitJ: 0 };
+  const k = z.schritt;
+  const letzter = k === plan.staende.length - 1;
+  const fi = tempoForm(tempo, (plan.vorlauf[k] || 0) + z.seit, sichtbar(plan, k), { anfang: k > 0, schluss: !letzter });
+  const zeitI = m.typ === 'foto' ? 0 : clipZeit(m, plan.versatz[k], fi.t);
+  if (z.j == null) return { zeitI, zeitJ: 0, rateI: fi.rate, rateJ: 1 };
   const n = medien[z.j];
-  const seitJ = Math.max(0, z.seit - plan.staende[z.schritt]);
-  return { zeitI, zeitJ: n.typ === 'foto' ? 0 : clipZeit(n, plan.versatz[z.schritt + 1], seitJ) };
+  const seitJ = Math.max(0, z.seit - plan.staende[k]);
+  const fj = tempoForm(tempo, seitJ, sichtbar(plan, k + 1), { anfang: true, schluss: k + 1 < plan.staende.length - 1 });
+  return { zeitI, zeitJ: n.typ === 'foto' ? 0 : clipZeit(n, plan.versatz[k + 1], fj.t), rateI: fi.rate, rateJ: fj.rate };
 }
 
 // Passt Quelle (qw × qh) in den Rahmen: mittiger Ausschnitt, der ihn füllt.
@@ -354,9 +407,26 @@ export async function suche(v, t) {
 }
 
 // Zeichnet das Reel. medien: [{ typ, url, datei, dauer, start }].
-export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
+// Clip in der Vorschau laufen lassen statt Bild für Bild zu suchen. Gesprungen wird nur, wenn er davonläuft.
+export function liveFolgen(v, zeit, rate = 1) {
+  const ziel = Math.max(0, Math.min(zeit, (v.duration || 0) - 0.05));
+  if (rate < 0.07) { if (!v.paused) v.pause(); if (Math.abs(v.currentTime - ziel) > 0.06 && !v.seeking) v.currentTime = ziel; return; }
+  const r = Math.min(4, rate);
+  if (Math.abs(v.playbackRate - r) > 0.02) v.playbackRate = r;
+  if (v.paused) {
+    if (Math.abs(v.currentTime - ziel) > 0.06) v.currentTime = ziel;
+    v.play().catch(() => {});
+  } else if (!v.seeking && Math.abs(v.currentTime - ziel) > 0.3) {
+    v.currentTime = ziel;
+  }
+}
+
+// live: für die Vorschau. Clips laufen in Echtzeit mit, statt für jedes Bild exakt gesucht zu werden.
+export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = false } = {}) {
   const kx = W / RAHMEN.w;
-  const clips = new Map(); // höchstens zwei gleichzeitig offen
+  const clips = new Map(); // beim Bauen höchstens zwei gleichzeitig offen, in der Vorschau drei
+  const offen = live ? 3 : 2;
+  const genutzt = new Set();
   const berichte = (i, v) => {
     const st = suchStatistik(v);
     if (!st.gesucht) return;
@@ -373,15 +443,18 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
       return { b: fotos.get(i), w: fotos.get(i).width, h: fotos.get(i).height };
     }
     if (!clips.has(i)) {
-      for (const [k, v] of clips) { if (clips.size < 2) break; berichte(k, v); clipWeg(v); clips.delete(k); }
+      for (const [k, v] of clips) { if (clips.size < offen) break; if (!live) berichte(k, v); clipWeg(v); clips.delete(k); }
       clips.set(i, await ladeClip(m.url));
     }
     const v = clips.get(i);
     return { b: v, w: v.videoWidth, h: v.videoHeight, video: true };
   }
-  async function zeichne(ctx, i, zeitImClip, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }) {
+  async function zeichne(ctx, i, zeitImClip, rate, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }) {
     const q = await quelle(i);
-    if (q.video) await suche(q.b, zeitImClip);
+    if (q.video && laufend) { genutzt.add(i); liveFolgen(q.b, zeitImClip, rate); } else if (q.video) {
+      if (!q.b.paused) q.b.pause();
+      await suche(q.b, zeitImClip);
+    }
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(W / 2 + dx * kx, H / 2 + dy * kx);
@@ -389,21 +462,30 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     zeichneQuelle(ctx, q.b, q.w, q.h, W, H, medien[i].rahmen, { s, qx, qy, gedreht: !!rot });
     ctx.restore();
   }
-  async function male(ctx, t) {
+  // Steht die Vorschau, wird genau gesucht wie beim Bauen. Nur beim Abspielen laufen die Clips mit.
+  let laufend = live;
+  async function male(ctx, t, { steht = false } = {}) {
+    laufend = live && !steht;
+    genutzt.clear();
+    try { await maleBild(ctx, t); } finally {
+      if (live) for (const [k, v] of clips) if (!genutzt.has(k) && !v.paused) v.pause();
+    }
+  }
+  async function maleBild(ctx, t) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
     const z = vorlagenZustand(plan, t);
-    const { zeitI, zeitJ } = clipStellen(plan, medien, z);
+    const { zeitI, zeitJ, rateI, rateJ } = clipStellen(plan, medien, z);
     const b = medien[z.i].typ === 'foto'
       ? bewegung(plan.bewegung, z.seit, plan.takt, z.lauf)
       : clipBewegung(plan.bewegung, plan.vorlauf[z.schritt] + z.seit, plan.takt, z.lauf);
-    if (z.j == null) { await zeichne(ctx, z.i, zeitI, b); return; }
+    if (z.j == null) { await zeichne(ctx, z.i, zeitI, rateI, b); return; }
     const u = uebergangLage(z.art, z.p);
     const bn = medien[z.j].typ === 'foto'
       ? bewegung(plan.bewegung, 0, plan.takt, 0)
       : clipBewegung(plan.bewegung, Math.max(0, z.seit - plan.staende[z.schritt]), plan.takt, 0);
     const mit = (basis, teil) => ({ ...basis, ...teil, s: basis.s * (teil.faktor ?? 1) });
-    if (u.a) await zeichne(ctx, z.i, zeitI, mit(b, u.a));
+    if (u.a) await zeichne(ctx, z.i, zeitI, rateI, mit(b, u.a));
     if (u.maske && u.b) {
       ctx.save();
       ctx.beginPath();
@@ -415,10 +497,10 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
         for (const r of l) ctx.rect(r.x, r.y, r.w, r.h);
       }
       ctx.clip();
-      await zeichne(ctx, z.j, zeitJ, bn);
+      await zeichne(ctx, z.j, zeitJ, rateJ, bn);
       ctx.restore();
     } else if (u.b) {
-      await zeichne(ctx, z.j, zeitJ, mit(bn, u.b));
+      await zeichne(ctx, z.j, zeitJ, rateJ, mit(bn, u.b));
     }
     if (u.blitz) {
       ctx.fillStyle = `rgba(255, 255, 255, ${u.blitz})`;
@@ -426,10 +508,11 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     }
   }
   function ende() {
-    for (const [k, v] of clips) { berichte(k, v); clipWeg(v); }
+    for (const [k, v] of clips) { if (!live) berichte(k, v); clipWeg(v); }
     clips.clear();
     for (const b of fotos.values()) b.close?.();
     fotos.clear();
   }
-  return { male, ende };
+  function pause() { for (const v of clips.values()) v.pause(); }
+  return { male, ende, pause };
 }

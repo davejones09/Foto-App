@@ -21,6 +21,7 @@ Lies vor der ersten Änderung in dieser Reihenfolge:
 - Wichtige Entscheidungen, die vom Konzept abweichen, gehören in `docs/ENTSCHEIDUNGEN.md`.
 - Einführung und Erstlauf müssen ohne jedes Vorwissen funktionieren. Das ist die wichtigste Anforderung an die Oberfläche.
 - Halte Commit-Nachrichten und PR-Titel kurz, zum Beispiel „Etappe 1“ oder „Einführung“.
+- Neue Funktionen kommen gebündelt als großes Update (0.22, 0.23 …) laut `docs/ROADMAP.md`, gebaut auf einem eigenen Branch, ein PR erst, wenn das Paket fertig ist. Kleine Updates (0.22.1 …) nur für Bugfixes, die sonst nichts ändern.
 
 ## Aufräumen (erledigt)
 

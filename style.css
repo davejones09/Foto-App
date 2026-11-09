@@ -428,6 +428,16 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-stil { flex: none; padding: 8px 14px; min-height: 40px; border-radius: 12px; background: var(--flaeche); color: var(--text2); font-size: 14px; }
 .cl-stil[aria-pressed="true"] { background: var(--text); color: var(--grund); }
 .cl-info, .cl-fort { margin: 0; color: var(--text2); font-size: 14px; }
+.cl-vorschau { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.cl-vorschau[hidden] { display: none; }
+.cl-vorschau-bild { position: relative; width: min(50vw, 250px); aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: #000; }
+#cl-vorschau { width: 100%; height: 100%; display: block; }
+.cl-vorschau-knopf { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; font-size: 0; }
+.cl-vorschau-knopf::before { content: ''; display: block; margin-left: 25px; border-style: solid; border-width: 12px 0 12px 20px; border-color: transparent transparent transparent #fff; }
+.cl-vorschau-knopf[hidden] { display: none; }
+.cl-zeitleiste { width: min(50vw, 250px); height: 28px; display: flex; align-items: center; touch-action: none; cursor: pointer; background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18)) center / 100% 4px no-repeat; }
+.cl-zeit-stand { height: 4px; width: 0; background: var(--akzent, #FFD400); border-radius: 2px; }
+.cl-vorschau-hinweis { color: var(--text2); font-size: 12px; text-align: center; max-width: 340px; }
 .cl-ergebnis { display: flex; flex-direction: column; gap: 10px; }
 .cl-video { width: 60%; align-self: center; border-radius: 12px; background: #000; }
 .af-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
@@ -501,3 +511,13 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .laden-balken > div { height: 100%; width: 35%; border-radius: 2px; background: var(--akzent, #FFD400); animation: laden-lauf 1.1s ease-in-out infinite; }
 #laden[data-stand] .laden-balken > div { animation: none; width: var(--stand, 0%); transition: width .2s; }
 @keyframes laden-lauf { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.cl-neu { min-height: 40px; padding: 0 12px; font-size: 14px; }
+.cl-neu[hidden] { visibility: hidden; display: inline-block; }
+#v-clips[data-modus="einfach"] .nur-erweitert { display: none !important; }
+.cl-modus { align-self: center; }
+.cl-welle { width: min(92vw, 480px); display: flex; flex-direction: column; gap: 4px; }
+.cl-welle[hidden] { display: none; }
+#cl-welle { width: 100%; height: 60px; display: block; touch-action: none; border-radius: 8px; background: rgba(255, 255, 255, .05); }
+.cl-welle-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cl-welle-hinweis { color: var(--text2); font-size: 12px; }
+.cl-ton[hidden] { display: none; }

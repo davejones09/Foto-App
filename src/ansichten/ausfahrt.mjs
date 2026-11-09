@@ -8,12 +8,16 @@ import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
 import { STILE, stileFuer } from '../reelstil.mjs';
 import { VORLAGEN_IDS, istVorlage } from '../reelvorlagen.mjs';
+import { schnittStellen } from '../musik.mjs';
+import { mp4TonProben } from '../metadaten.mjs';
+import { ladeWarten, ladeEnde } from '../laden.mjs';
 
 const v = $('#v-ausfahrt');
 const liste = $('.af-liste', v);
 const erinnerung = $('.af-erinnerung', v);
 let reelLaenge = 30;
 let reelStil = 'band';
+let reelMusik = null; // { puffer, bpm, schlaege, treffer, name, start, alle }
 let reelAuto = true;
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
@@ -213,7 +217,50 @@ function aufbauen() {
     if (auswahl.von > auswahl.bis) { auswahl.von = auswahl.bis; vonSel.value = String(auswahl.von); }
     reelAktualisieren();
   });
-  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil });
+  // Musik fürs Foto-Reel: Vorlagen schneiden auf die Schläge, Band und ruhige Stile laufen darunter.
+  const musikPlanDaten = () => (reelMusik ? {
+    stellen: schnittStellen(reelMusik.schlaege, reelMusik.treffer, reelMusik.start, reelMusik.alle),
+    takt: (60 / reelMusik.bpm) * reelMusik.alle,
+    rest: reelMusik.puffer.duration - reelMusik.start,
+  } : null);
+  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil, musik: musikPlanDaten() });
+  const musikEingabe = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.wav,.aac', hidden: true });
+  const musikName = el('span', { klasse: 'cl-musik-name' });
+  const musikStartText = el('span');
+  const musikStart = el('input', { type: 'range', min: '0', step: '0.1', value: '0' });
+  const musikInfo = el('div', { klasse: 'cl-musik-info af-musik-info' },
+    el('div', { klasse: 'cl-musik-kopf' }, musikName, el('button', { klasse: 'neben2', text: T.clipWeg, onclick: () => { reelMusik = null; musikZeigen(); reelAktualisieren(); } })),
+    el('label', { klasse: 'cl-regler' }, musikStartText, musikStart));
+  const musikKnopf = el('button', { klasse: 'neben2 af-musik-waehlen', text: T.musikWaehlen, onclick: () => musikEingabe.click() });
+  const musikEl = el('div', { klasse: 'af-musik' }, el('p', { klasse: 'af-gruppe', text: T.musikTitel }), musikKnopf, musikInfo, musikEingabe);
+  function musikZeigen() {
+    musikInfo.hidden = !reelMusik;
+    musikKnopf.hidden = !!reelMusik;
+    if (!reelMusik) return;
+    musikName.textContent = reelMusik.name;
+    musikStart.max = Math.max(0, reelMusik.puffer.duration - 3).toFixed(1);
+    musikStart.value = reelMusik.start;
+    musikStartText.textContent = f(T.musikStart, { s: `${reelMusik.start.toFixed(1).replace('.', ',')} s` });
+  }
+  musikEingabe.addEventListener('change', async () => {
+    const d = musikEingabe.files[0];
+    musikEingabe.value = '';
+    if (!d) return;
+    ladeWarten(T.musikLaedt);
+    try {
+      const m = await aus.musikLaden(d);
+      reelMusik = { ...m, name: d.name, start: 0, alle: m.bpm >= 100 ? 2 : 1 };
+    } catch (err) {
+      protokolliere('musik', err);
+      melde(T.musikFehler);
+    } finally {
+      ladeEnde();
+    }
+    musikZeigen();
+    reelAktualisieren();
+  });
+  musikStart.addEventListener('input', () => { reelMusik.start = Number(musikStart.value); musikZeigen(); reelAktualisieren(); });
+  musikZeigen();
   // Stil wählen, jede Kachel mit kurzer Live-Vorschau aus den ersten Fotos.
   const kachel = (st, klasse, text) => {
     const cv = el('canvas', { width: 144, height: 256 });
@@ -244,20 +291,26 @@ function aufbauen() {
     stileEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
-    tempoEl, vorschlagEl);
+    tempoEl, vorschlagEl, musikEl);
   const reelKarte = punkt({
     titel: f(T.reel, { laenge: reelLaenge }),
     zusatz,
     async bauen(fort, w) {
       const p = reelPlanJetzt();
-      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w });
+      let ton = null;
+      if (reelMusik) {
+        try { ton = await aus.tonKodieren(reelMusik.puffer, reelMusik.start, p.dauer); } catch (err) { protokolliere('musik', err); }
+      }
+      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton });
+      const mitTon = ton ? mp4TonProben(await blob.arrayBuffer()) === ton.pakete.length : false;
+      if (ton && !mitTon) protokolliere('musik', 'Tonspur fehlt im Foto-Reel');
       const titelBlob = await aus.titelbild(halte, p);
       fort(1);
       const video = datei(blob, 'reel.mp4');
       const titel = datei(titelBlob, 'reel-cover.jpg');
       return {
         knoepfe: [{ text: T.teilen, dateien: [video], haupt: true }, { text: T.inFotos, dateien: [video, titel] }],
-        hinweis: T.reelHinweis,
+        hinweis: reelMusik ? (mitTon ? `${T.reelHinweis} ${T.musikRechte}` : `${T.reelHinweis} ${T.musikKeinTon}`) : T.reelHinweis,
       };
     },
   });

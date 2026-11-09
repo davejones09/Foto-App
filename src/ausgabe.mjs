@@ -19,6 +19,7 @@ import { auftrag } from './rechner.mjs';
 import { MOTIV } from './serie.mjs';
 import { stilPlan, zustand, lage, reelAusschnitt, nahtGrenze, teilzeiten, RAHMEN, ZEITEN } from './reelstil.mjs';
 import { IST_DESKTOP } from './desktop.mjs';
+import { musikPlan } from './clipreel.mjs';
 import { istVorlage, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
 
 export class Abgebrochen extends Error {}
@@ -323,10 +324,19 @@ const kanaeleVon = (puffer) => Array.from({ length: puffer.numberOfChannels }, (
 
 export async function tonKodieren(puffer, start, dauer) {
   const { tonAusschnitt, spitze } = await import('./musik.mjs');
-  const { aacKodieren } = await import('./aac.mjs');
   const kanaele = tonAusschnitt(kanaeleVon(puffer), puffer.sampleRate, start, dauer, TON_RATE);
   const pegel = spitze(kanaele);
   if (pegel < 0.001) throw new Error(`Ton: Musik ist stumm (Pegel ${pegel}, Quelle ${puffer.sampleRate} Hz, ${puffer.numberOfChannels} Kanäle, ${puffer.duration.toFixed(1)} s, Start ${start})`);
+  return tonKodierenKanaele(kanaele, pegel);
+}
+
+export const musikKanaele = (puffer) => ({ kanaele: kanaeleVon(puffer), rate: puffer.sampleRate });
+
+// Fertig gemischte Spur (Stereo, TON_RATE) zu AAC.
+export async function tonKodierenKanaele(kanaele, pegel = null) {
+  const { aacKodieren } = await import('./aac.mjs');
+  if (pegel == null) pegel = (await import('./musik.mjs')).spitze(kanaele);
+  if (pegel < 0.001) throw new Error(`Ton: Spur ist stumm (Pegel ${pegel})`);
   const aac = await aacKodieren(kanaele, TON_RATE, { pause: kurz });
   if (!aac.pakete.length || !aac.beschreibung.length) throw new Error('Ton: keine Daten vom Encoder');
   return { ...aac, rate: TON_RATE, kanaele: 2, pegel };
@@ -500,8 +510,14 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
 }
 
 // Plan für den gewählten Abschnitt: Band wie bisher, sonst ein Stil-Plan über die Fotos von bis.
-export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band' } = {}) {
+// musik: { stellen, takt, rest } – Vorlagen schneiden dann auf die Schläge, Band und ruhige Stile laufen darunter.
+export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band', musik = null } = {}) {
   const b = bis == null ? halte.length - 1 : bis;
+  if (istVorlage(stil) && musik?.stellen?.length) {
+    const fotos = Array.from({ length: b - von + 1 }, () => ({ typ: 'foto' }));
+    const p = musikPlan(fotos, { stil, raster: musik.stellen, laenge, musikRest: musik.rest, takt: musik.takt });
+    return { ...p, vorlage: stil, von, bis: b, vorschlag: null, zuKurz: false };
+  }
   if (istVorlage(stil)) {
     const p = vorlagenPlan(b - von + 1, { laenge, vorlage: stil });
     return { ...p, von, bis: b, vorschlag: p.zuKurz ? { von, bis: Math.min(b, von + p.maxFotos - 1) } : null };
