@@ -7,7 +7,8 @@ import * as aus from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
 import { STILE, stileFuer } from '../reelstil.mjs';
-import { VORLAGEN_IDS, istVorlage } from '../reelvorlagen.mjs';
+import { VORLAGEN, GRUPPEN, istVorlage, eigeneVorlagen } from '../reelvorlagen.mjs';
+import { eigeneLaden, vorlagenName } from '../vorlagenwahl.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { ladeWarten, ladeEnde } from '../laden.mjs';
@@ -19,6 +20,8 @@ let reelLaenge = 30;
 let reelStil = 'band';
 let reelMusik = null; // { puffer, bpm, schlaege, treffer, name, start, alle }
 let reelAuto = true;
+let reelVariante = 0;
+let reelGruppe = null;
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
@@ -223,7 +226,7 @@ function aufbauen() {
     takt: (60 / reelMusik.bpm) * reelMusik.alle,
     rest: reelMusik.puffer.duration - reelMusik.start,
   } : null);
-  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil, musik: musikPlanDaten() });
+  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil, musik: musikPlanDaten(), variante: reelVariante });
   const musikEingabe = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.wav,.aac', hidden: true });
   const musikName = el('span', { klasse: 'cl-musik-name' });
   const musikStartText = el('span');
@@ -268,6 +271,7 @@ function aufbauen() {
       klasse, 'data-stil': st, 'aria-pressed': String(st === reelStil),
       onclick: () => {
         reelStil = st;
+        reelVariante = 0;
         try { localStorage.setItem('nahtlos-reel-stil', st); } catch {}
         for (const b of [...stilKnoepfe, ...vorlagenKnoepfe]) b.setAttribute('aria-pressed', String(b.dataset.stil === st));
         reelAktualisieren();
@@ -275,7 +279,30 @@ function aufbauen() {
     }, cv, el('span', { text }));
   };
   const stilKnoepfe = STILE.map((st) => kachel(st, 'af-stil', T[`stil_${st}`]));
-  const vorlagenKnoepfe = VORLAGEN_IDS.map((st) => kachel(st, 'af-vorlage', T[`vorlage_${st.slice(2)}`]));
+  // Vorlagen nach Stimmung: Nur die Kacheln der gewählten Stimmung sind zu sehen und laufen.
+  const eigene = eigeneVorlagen().filter((v) => v.id !== 'e-neu');
+  const gruppeVon = (id) => (id?.startsWith('e-') ? 'eigene' : VORLAGEN.find((v) => v.id === id)?.gruppe);
+  if (!reelGruppe) reelGruppe = gruppeVon(reelStil) || 'energie';
+  const vorlagenKnoepfe = [...VORLAGEN.map((v) => v.id), ...eigene.map((v) => v.id)].map((st) => {
+    const k = kachel(st, 'af-vorlage', vorlagenName(st));
+    k.dataset.gruppe = gruppeVon(st);
+    return k;
+  });
+  let vorlagenMoeglich = true;
+  const kachelnFiltern = () => {
+    for (const k of vorlagenKnoepfe) k.hidden = !vorlagenMoeglich || k.dataset.gruppe !== reelGruppe;
+    for (const g of gruppenEl.children) g.setAttribute('aria-pressed', String(g.dataset.gruppe === reelGruppe));
+  };
+  const gruppenEl = el('div', { klasse: 'cl-stile af-gruppen', role: 'group', 'aria-label': T.vorlagenStimmung },
+    ...[...GRUPPEN, ...(eigene.length ? ['eigene'] : [])].map((g) => el('button', {
+      klasse: 'cl-stil', 'data-gruppe': g, text: T[`gruppe_${g}`],
+      onclick: () => { reelGruppe = g; kachelnFiltern(); },
+    })));
+  const wuerfelText = el('small');
+  const wuerfelEl = el('div', { klasse: 'vw-variante af-variante' },
+    el('button', { klasse: 'neben2 vw-wuerfel', text: T.variante, onclick: () => { reelVariante = 1 + Math.floor(Math.random() * 9998); reelAktualisieren(); } }),
+    wuerfelText,
+    el('button', { klasse: 'link af-original', text: T.varianteZurueck, onclick: () => { reelVariante = 0; reelAktualisieren(); } }));
   const stileEl = el('div', { klasse: 'af-stile', role: 'group', 'aria-label': T.reelStil }, ...stilKnoepfe);
   const vorlagenEl = el('div', { klasse: 'af-stile af-vorlagen', role: 'group', 'aria-label': T.reelVorlagen }, ...vorlagenKnoepfe);
   vorschauenStoppen();
@@ -286,7 +313,9 @@ function aufbauen() {
       el('button', { klasse: 'link af-clips', text: T.clipsTitel, onclick: () => zeige('clips') }),
       el('button', { klasse: 'link af-tipps', text: T.tippTitel, onclick: () => zeige('reeltipps') })),
     el('p', { klasse: 'af-gruppe', text: T.reelVorlagen }),
+    gruppenEl,
     vorlagenEl,
+    wuerfelEl,
     el('p', { klasse: 'af-gruppe', text: T.reelStil }),
     stileEl,
     laengen,
@@ -318,6 +347,9 @@ function aufbauen() {
     const p = reelPlanJetzt();
     $('.af-titel', reelKarte).textContent = f(T.reel, { laenge: p.laenge });
     autoKnopf.hidden = !istVorlage(reelStil);
+    wuerfelEl.hidden = !istVorlage(reelStil);
+    wuerfelText.textContent = reelVariante ? f(T.varianteNr, { n: reelVariante }) : T.varianteOriginal;
+    $('.af-original', wuerfelEl).hidden = !reelVariante;
     autoKnopf.setAttribute('aria-pressed', String(autoAn()));
     for (const b of laengenKnoepfe) b.setAttribute('aria-pressed', String(!autoAn() && Number(b.dataset.laenge) === reelLaenge));
     const n = p.bis - p.von + 1;
@@ -336,16 +368,18 @@ function aufbauen() {
     }
     reelKarte.dataset.stil = p.stil;
   }
+  kachelnFiltern();
   reelAktualisieren();
   aus.reelWeg().then((w) => {
     // Ein Stil, der im Ausweichweg (Echtzeit) nicht sauber geht, wird ausgeblendet.
     const moeglich = stileFuer(w);
     for (const b of stilKnoepfe) b.hidden = !moeglich.includes(b.dataset.stil);
     // Die Vorlagen brauchen Bild für Bild genaues Rechnen, das geht nur mit WebCodecs.
-    const vorlagenMoeglich = w?.art === 'webcodecs';
-    for (const b of vorlagenKnoepfe) b.hidden = !vorlagenMoeglich;
+    vorlagenMoeglich = w?.art === 'webcodecs';
+    kachelnFiltern();
     vorlagenEl.hidden = !vorlagenMoeglich;
-    vorlagenEl.previousElementSibling.hidden = !vorlagenMoeglich;
+    gruppenEl.hidden = !vorlagenMoeglich;
+    gruppenEl.previousElementSibling.hidden = !vorlagenMoeglich;
     if (w && !(moeglich.includes(reelStil) || (vorlagenMoeglich && istVorlage(reelStil)))) stilKnoepfe[0].click();
     if (w) return;
     $('.af-titel', reelKarte).disabled = true;
@@ -410,6 +444,8 @@ $('#af-zurueck').addEventListener('click', () => zeige('strecke'));
 registriere('ausfahrt', {
   async betreten() {
     await neuLaden();
+    await eigeneLaden().catch(() => {});
+    try { const st = localStorage.getItem('nahtlos-reel-stil'); if (st?.startsWith('e-') && istVorlage(st)) reelStil = st; } catch {}
     aufbauen();
   },
   verlassen() { vorschauenStoppen(); },
