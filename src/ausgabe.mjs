@@ -407,12 +407,43 @@ function reelBildMaler(strecke, halte, plan) {
 
 // --- Reel-Stile: jedes Foto formatfüllend in 9:16, der Ausschnitt folgt der Motivkarte ---
 // Zeichnet ein Bild des Stils in einen Rahmen W × H. klein: nur die Vorschauen (für die Live-Vorschau).
-export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = FAHRT_H } = {}) {
+// fotos: { art: auto | ganz | fuellen, grund: unscharf | schwarz | weiss } wie im Reel aus Clips.
+// Ganz heißt: das Foto unbeschnitten in der Mitte, dahinter der Hintergrund. Die Naht braucht volle Bilder.
+export function fotoGanz(halt, fotos, stil) {
+  if (!fotos || stil === 'naht' || stil === 'band') return false;
+  if (fotos.art === 'ganz') return true;
+  if (fotos.art === 'auto') return breiteVon(halt) / HALT_H > 0.9;
+  return false;
+}
+
+export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = FAHRT_H, fotos = null } = {}) {
   const lager = new Kachellager(4);
   const profile = await haltProfile(halte).catch(() => halte.map(() => null));
   const ausschnitte = halte.map((h, i) => reelAusschnitt(breiteVon(h), profile[i]));
+  const ganz = halte.map((h) => fotoGanz(h, fotos, plan.stil));
+  const grund = fotos?.grund || 'unscharf';
+  let unscharf = null;
   const art = klein ? 'vorschau' : 'bild';
   const kx = W / RAHMEN.w;
+  function ganzZeichnen(ctx, bm, k, s) {
+    const f = bm.height / HALT_H;
+    const bw = breiteVon(halte[k]);
+    const dw = W * s;
+    const dh = H * s;
+    if (grund === 'schwarz' || grund === 'weiss') {
+      ctx.fillStyle = grund === 'weiss' ? '#fff' : '#000';
+      ctx.fillRect(-dw / 2, -dh / 2, dw, dh);
+    } else {
+      unscharf ??= Object.assign(document.createElement('canvas'), { width: 18, height: 32 });
+      const a = ausschnitte[k];
+      unscharf.getContext('2d').drawImage(bm, a.x0 * f, 0, a.w * f, HALT_H * f, 0, 0, 18, 32);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(unscharf, -dw / 2, -dh / 2, dw, dh);
+    }
+    const g = Math.min(W / bw, H / HALT_H) * s;
+    ctx.drawImage(bm, 0, 0, bw * f, HALT_H * f, (-bw * g) / 2, (-HALT_H * g) / 2, bw * g, HALT_H * g);
+  }
   // qx, qy: Versatz innerhalb des Ausschnitts in Rahmenpixeln, nur so weit, wie der Zoom Spielraum lässt.
   async function foto(ctx, k, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }) {
     const bm = await lager.hole(halte[k], art);
@@ -422,6 +453,11 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
     ctx.globalAlpha = alpha;
     ctx.translate(W / 2 + dx * kx, H / 2 + dy * kx);
     if (rot) ctx.rotate(rot);
+    if (ganz[k]) {
+      ganzZeichnen(ctx, bm, k, s);
+      ctx.restore();
+      return;
+    }
     // Gedreht muss die Zielfläche selbst größer werden, sonst liegen die Ecken frei.
     if (s >= 1 && !rot) {
       const sw = a.w / s;
@@ -526,7 +562,7 @@ export async function reel(strecke, halte, plan, opt = {}) {
   if (!weg) throw new KeinMp4('Kein MP4');
   if (plan.stil && plan.stil !== 'band') {
     const teil = halte.slice(plan.von, plan.bis + 1);
-    const m = await stilMaler(teil, plan);
+    const m = await stilMaler(teil, plan, { fotos: opt.fotos });
     try {
       return await sauber(await videoBauen(weg, opt.ueber ? opt.ueber(m.male) : m.male, plan.bilder, opt));
     } finally {
@@ -556,7 +592,7 @@ export function titelAusschnitt(halte, plan) {
   return { s, x0, y: 0 };
 }
 
-export async function titelbild(halte, plan) {
+export async function titelbild(halte, plan, { fotos = null } = {}) {
   const c = leinwand(FAHRT_B, FAHRT_H, 'srgb');
   const ctx = ctx2d(c);
   ctx.imageSmoothingQuality = 'high';
@@ -565,7 +601,7 @@ export async function titelbild(halte, plan) {
     let k = 0;
     teil.forEach((h, i) => { if (i > 0 && (h.wert ?? -1) > (teil[k].wert ?? -1)) k = i; });
     const ruhig = { ...stilPlan(teil.length, { laenge: Math.max(plan.laenge, teil.length * 3), stil: 'sanft' }), stil: 'sanft' };
-    const m = await stilMaler(teil, ruhig);
+    const m = await stilMaler(teil, ruhig, { fotos: plan.stil === 'naht' ? null : fotos });
     try {
       await m.male(ctx, ruhig.beginn[k] + 0.01);
       return await sauber(await alsBlob(c, 'image/jpeg', 0.92));
@@ -588,7 +624,7 @@ export async function titelbild(halte, plan) {
 }
 
 // Live-Vorschau eines Stils in einer kleinen Leinwand, in Schleife. Liefert eine Funktion zum Stoppen.
-export function stilVorschau(canvas, halte, stil, { nurSichtbar = false } = {}) {
+export function stilVorschau(canvas, halte, stil, { nurSichtbar = false, fotos = null } = {}) {
   let aktiv = true;
   // Viele Vorschauen gleichzeitig wären am iPhone zu viel: Nur rechnen, was gerade zu sehen ist.
   let sichtbar = true;
@@ -609,7 +645,7 @@ export function stilVorschau(canvas, halte, stil, { nurSichtbar = false } = {}) 
     let plan;
     if (istVorlage(stil)) {
       plan = vorlagenPlan(teil.length, { vorlage: stil });
-      maler = await stilMaler(teil, plan, { klein: true, W, H });
+      maler = await stilMaler(teil, plan, { klein: true, W, H, fotos });
     } else if (stil === 'band') {
       plan = reelPlanBand(teil, { laenge: 4 });
       const lager = new Kachellager(4);
@@ -621,7 +657,7 @@ export function stilVorschau(canvas, halte, stil, { nurSichtbar = false } = {}) 
     } else {
       const z = ZEITEN[stil];
       plan = { ...stilPlan(teil.length, { laenge: teil.length * 0.9 + (teil.length - 1) * z.uebergang, stil }), stil };
-      maler = await stilMaler(teil, plan, { klein: true, W, H });
+      maler = await stilMaler(teil, plan, { klein: true, W, H, fotos });
     }
     const t0 = performance.now();
     const schritt = async () => {

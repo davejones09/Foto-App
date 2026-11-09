@@ -42,6 +42,7 @@ Die Nummern entsprechen der gemeinsamen Ideenliste.
 ## Nächstes Update
 
 - Fotos im Reel aus Clips einmal für alle festlegen: Automatisch (Hochformat füllt, Quer und Quadrat bleiben ganz), Ganz zeigen, Ausfüllen. Hintergrund beim ganzen Foto: unscharf, schwarz oder weiß. Von Hand angepasste Fotos bleiben, wie sie sind.
+- Dieselbe Wahl im Reel des Fotoprojekts (Stile und Vorlagen). Beim Band und bei der Naht nicht, die leben von vollen Bildern.
 - Bis zu 100 Clips und Fotos statt 30. Passen bei „Ganze Clips“ nicht alle in 90 s, stehen die Fotos kürzer (bis 0,8 s), statt hinten wegzufallen.
 
 Bugfixes:

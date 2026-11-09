@@ -23,6 +23,7 @@ let reelMusik = null; // { puffer, bpm, schlaege, treffer, name, start, alle }
 let reelAuto = true;
 let reelVariante = 0;
 let reelGruppe = null;
+const reelFotos = { art: 'auto', grund: 'unscharf' }; // wie die Fotos ins Hochformat kommen
 const reelTitel = { text: '', stil: 'klar', lage: 'unten' };
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
@@ -30,6 +31,7 @@ try {
   const st = localStorage.getItem('nahtlos-reel-stil');
   if (STILE.includes(st) || istVorlage(st)) reelStil = st;
   if (localStorage.getItem('nahtlos-reel-auto') === '0') reelAuto = false;
+  Object.assign(reelFotos, JSON.parse(localStorage.getItem('nahtlos-reel-fotos') || '{}'));
 } catch {}
 let vorschauStopp = [];
 const vorschauenStoppen = () => { for (const s of vorschauStopp) s(); vorschauStopp = []; };
@@ -325,9 +327,37 @@ function aufbauen() {
     el('button', { klasse: 'link af-original', text: T.varianteZurueck, onclick: () => { reelVariante = 0; reelAktualisieren(); } }));
   const stileEl = el('div', { klasse: 'af-stile', role: 'group', 'aria-label': T.reelStil }, ...stilKnoepfe);
   const vorlagenEl = el('div', { klasse: 'af-stile af-vorlagen', role: 'group', 'aria-label': T.reelVorlagen }, ...vorlagenKnoepfe);
-  vorschauenStoppen();
-  for (const b of stilKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil));
-  for (const b of vorlagenKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil, { nurSichtbar: true }));
+  const vorschauenStarten = () => {
+    vorschauenStoppen();
+    for (const b of stilKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil, { fotos: reelFotos }));
+    for (const b of vorlagenKnoepfe) vorschauStopp.push(aus.stilVorschau($('canvas', b), halte, b.dataset.stil, { nurSichtbar: true, fotos: reelFotos }));
+  };
+  vorschauenStarten();
+  // Fotos im Reel: einmal für alle, wie im Reel aus Clips. Beim Band und der Naht gibt es nur volle Bilder.
+  const fotoKnopf = (feld, wert, text) => el('button', {
+    'data-wert': wert, text,
+    onclick: () => {
+      reelFotos[feld] = wert;
+      try { localStorage.setItem('nahtlos-reel-fotos', JSON.stringify(reelFotos)); } catch {}
+      fotosZeigen();
+      vorschauenStarten();
+    },
+  });
+  const fotoArtEl = el('div', { klasse: 'af-tempi af-fotoart', role: 'group' },
+    fotoKnopf('art', 'auto', T.fotosAuto), fotoKnopf('art', 'ganz', T.fotosGanz), fotoKnopf('art', 'fuellen', T.fotosFuellen));
+  const fotoGrundEl = el('div', { klasse: 'af-tempi af-fotogrund', role: 'group' },
+    fotoKnopf('grund', 'unscharf', T.grundUnscharf), fotoKnopf('grund', 'schwarz', T.grundSchwarz), fotoKnopf('grund', 'weiss', T.grundWeiss));
+  const fotoInfo = el('p', { klasse: 'rt-info af-fotos-info' });
+  const fotosEl = el('div', { klasse: 'af-fotos' }, el('p', { klasse: 'af-gruppe', text: T.fotosTitel }), fotoArtEl, fotoGrundEl, fotoInfo);
+  function fotosZeigen() {
+    fotosEl.hidden = reelStil === 'band' || reelStil === 'naht';
+    for (const b of fotoArtEl.children) b.setAttribute('aria-pressed', String(b.dataset.wert === reelFotos.art));
+    for (const b of fotoGrundEl.children) b.setAttribute('aria-pressed', String(b.dataset.wert === reelFotos.grund));
+    const ganz = halte.some((h) => aus.fotoGanz(h, reelFotos, reelStil === 'band' ? 'sanft' : reelStil));
+    fotoGrundEl.hidden = !ganz;
+    fotoInfo.textContent = { auto: T.fotosInfoAutoAlle, ganz: T.fotosInfoGanz, fuellen: T.fotosInfoFuellen }[reelFotos.art];
+  }
+  fotosZeigen();
   const zusatz = el('div', { klasse: 'af-reel' },
     el('div', { klasse: 'af-links' },
       el('button', { klasse: 'link af-clips', text: T.clipsTitel, onclick: () => zeige('clips') }),
@@ -338,6 +368,7 @@ function aufbauen() {
     wuerfelEl,
     el('p', { klasse: 'af-gruppe', text: T.reelStil }),
     stileEl,
+    fotosEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
     tempoEl, vorschlagEl, musikEl, textEl);
@@ -352,10 +383,10 @@ function aufbauen() {
       }
       const signatur = await signaturLaden().catch(() => null);
       const ueber = (male) => ueberlagern(male, { texte: { titel: { ...reelTitel } }, signatur, W: 1080, H: 1920, dauer: p.dauer });
-      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton, ueber });
+      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton, ueber, fotos: reelFotos });
       const mitTon = ton ? mp4TonProben(await blob.arrayBuffer()) === ton.pakete.length : false;
       if (ton && !mitTon) protokolliere('musik', 'Tonspur fehlt im Foto-Reel');
-      const titelBlob = await aus.titelbild(halte, p);
+      const titelBlob = await aus.titelbild(halte, p, { fotos: reelFotos });
       fort(1);
       const video = datei(blob, 'reel.mp4');
       const titel = datei(titelBlob, 'reel-cover.jpg');
@@ -389,6 +420,7 @@ function aufbauen() {
       if (p.vorschlag) vorschlagText.textContent = f(T.reelZuKurz, { laenge: p.laenge, von: p.vorschlag.von + 1, bis: p.vorschlag.bis + 1 });
     }
     reelKarte.dataset.stil = p.stil;
+    fotosZeigen();
   }
   kachelnFiltern();
   reelAktualisieren();

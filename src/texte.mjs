@@ -198,6 +198,7 @@ export const T = {
   grundSchwarz: 'Schwarz',
   grundWeiss: 'Weiß',
   fotosInfoAuto: 'Hochformate füllen das Bild, Quer- und Quadratformate bleiben ganz. Gilt für alle Fotos, die du nicht selbst angepasst hast.',
+  fotosInfoAutoAlle: 'Hochformate füllen das Bild, Quer- und Quadratformate bleiben ganz.',
   fotosInfoGanz: 'Jedes Foto bleibt ganz und unbeschnitten. Dahinter liegt der gewählte Hintergrund.',
   fotosInfoFuellen: 'Jedes Foto füllt das Bild, der Ausschnitt folgt dem Motiv.',
   fotosEigene: '{n} selbst angepasst, die bleiben, wie sie sind.',

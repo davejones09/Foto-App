@@ -191,6 +191,9 @@ test('Foto: Ausschnitt verschieben, zoomen, ganz zeigen, Länge einstellen', asy
   await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 1, null, { timeout: 20000 });
   await page.click('.cl-bearbeiten');
   await page.waitForSelector('.cl-editor:not([hidden])');
+  // Querformat: automatisch ganz gezeigt. Zum Verschieben auf Ausfüllen stellen.
+  assert.equal(await page.getAttribute('.ce-modus [data-modus="ganz"]', 'aria-pressed'), 'true');
+  await page.click('.ce-modus [data-modus="fuellen"]');
   const farbe = () => page.evaluate(() => {
     const c = document.querySelector('#ce-bild');
     const d = c.getContext('2d').getImageData(c.width >> 1, c.height >> 1, 1, 1).data;

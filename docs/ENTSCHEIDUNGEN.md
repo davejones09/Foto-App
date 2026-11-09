@@ -192,4 +192,5 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
   - **Hintergrund beim ganzen Foto:** unscharf, schwarz oder weiß. Der unscharfe Hintergrund ist ein stark verkleinertes Abbild hinter dem Foto, das Foto selbst bleibt unverändert und unbeschnitten.
   - **100 statt 30 Medien.** Der Entwurf speichert die Originale, bei 100 großen Fotos kann der Speicher knapp werden. Dafür gibt es die bekannte Meldung. Bei „Ganze Clips“ rücken Fotos ohne eigene Länge zusammen (höchstens 2,5 s, mindestens 0,8 s), damit alle in 90 s passen.
   - **Entwurf:** neue optionale Felder `fotoArt`, `fotoGrund`, je Medium `motiv`, `pw`, `ph`. Alte Entwürfe brauchen keine Migration, ihre Rahmen gelten als von Hand gesetzt.
+  - **Auch im Reel des Fotoprojekts:** Stile Sanft, Schwung, Zoom und alle Vorlagen zeigen Fotos auf Wunsch ganz. Gezeigt wird das Originalfoto des Halts, nicht die Überlappung. Band und Naht bleiben formatfüllend, weil dort die Übergänge an den echten Nähten hängen. Die Wahl gilt für alle Projekte und liegt in `localStorage` (`nahtlos-reel-fotos`).
 

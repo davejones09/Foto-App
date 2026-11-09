@@ -170,3 +170,48 @@ test('Nur der Ausweichweg (ohne WebCodecs): Schwung und Naht sind ausgeblendet',
   else assert.deepEqual(sichtbar, [], 'ohne MP4-Weg gar kein Stil');
   await ctx.close();
 });
+
+test('Fotos im Reel: ganz zeigen mit Hintergrund, beim Band und der Naht keine Wahl', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await dreiFotos(page);
+  const karte = reelKarte(page);
+  await karte.locator('.af-stil[data-stil="band"]').click();
+  assert.ok(await karte.locator('.af-fotos').isHidden());
+  await karte.locator('.af-stil[data-stil="sanft"]').click();
+  assert.ok(await karte.locator('.af-fotos').isVisible());
+  // Kamerahalte sind Hochformat: automatisch füllen sie, der Hintergrund ist nicht gefragt
+  assert.equal(await karte.locator('.af-fotoart [data-wert="auto"]').getAttribute('aria-pressed'), 'true');
+  assert.ok(await karte.locator('.af-fotogrund').isHidden());
+  await karte.locator('.af-fotoart [data-wert="ganz"]').click();
+  assert.ok(await karte.locator('.af-fotogrund').isVisible());
+  await karte.locator('.af-fotogrund [data-wert="weiss"]').click();
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('nahtlos-reel-fotos')).grund), 'weiss');
+  await karte.locator('.af-stil[data-stil="naht"]').click();
+  assert.ok(await karte.locator('.af-fotos').isHidden());
+  const r = await page.evaluate(async () => {
+    const aus = await import('./src/ausgabe.mjs');
+    const db = await import('./src/speicher.mjs');
+    const halte = (await db.halte(localStorage.getItem('nahtlos-aktiv'))).filter((h) => h.bild);
+    const probe = async (stil, fotos) => {
+      const plan = aus.reelStilPlan(halte, { laenge: 15, stil });
+      const m = await aus.stilMaler(halte, plan, { fotos });
+      const c = new OffscreenCanvas(1080, 1920);
+      const k = c.getContext('2d', { willReadFrequently: true });
+      await m.male(k, 0.2);
+      m.ende();
+      const oben = k.getImageData(540, 20, 1, 1).data;
+      const mitte = k.getImageData(540, 960, 1, 1).data;
+      return { oben: [...oben].slice(0, 3), mitte: [...mitte].slice(0, 3) };
+    };
+    return {
+      ganz: await probe('sanft', { art: 'ganz', grund: 'weiss' }),
+      voll: await probe('sanft', { art: 'auto', grund: 'weiss' }),
+      naht: await probe('naht', { art: 'ganz', grund: 'weiss' }),
+    };
+  });
+  assert.ok(r.ganz.oben.every((x) => x > 245), `weißer Rand oben: ${r.ganz.oben}`);
+  assert.ok(r.ganz.mitte.some((x) => x < 230), `Foto in der Mitte: ${r.ganz.mitte}`);
+  assert.ok(r.voll.oben.some((x) => x < 240), `ohne Rand: ${r.voll.oben}`);
+  assert.ok(r.naht.oben.some((x) => x < 240), `Naht ohne Rand: ${r.naht.oben}`);
+  assert.deepEqual(fehler, []);
+});
