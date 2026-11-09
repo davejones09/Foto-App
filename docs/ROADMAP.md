@@ -13,7 +13,7 @@ Die Nummern entsprechen der gemeinsamen Ideenliste.
 - 8 Musik auch für Foto-Reels
 - 22 Tempo-Rampen und Freeze
 
-## 0.23 Vielfalt
+## 0.23 Vielfalt (fertig)
 
 - 14 Reel-Vorlagen in Stimmungsgruppen
 - 18 Variante-Knopf für Reels und Collagen

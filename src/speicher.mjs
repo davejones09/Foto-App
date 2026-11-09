@@ -143,6 +143,12 @@ async function pruefe(eintraege) {
   }
 }
 
+// Eine einzelne Datei schreiben und prüfen, etwa das Logo der Signatur.
+export async function dateiSchreiben(e) {
+  await tx('dateien', 'readwrite', (t) => anfrage(t.objectStore('dateien').put(e)));
+  await pruefe([e]);
+}
+
 export function datei(schluessel) {
   return tx('dateien', 'readonly', (t) => anfrage(t.objectStore('dateien').get(schluessel)));
 }

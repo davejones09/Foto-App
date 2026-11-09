@@ -7,7 +7,7 @@ import { ctx2d, leinwand, pixel, alsBlob, ladeBild, freigeben, verkleinere, raum
 import { auftrag } from './rechner.mjs';
 import { anschliessen } from './uebergang.mjs';
 import {
-  masse, vorlage, vorlagenFuer, feldRechtecke, zerlege, ausschnitt, vorschlag, drehe, zurueckDrehen,
+  masse, vorlage, vorlagenFuer, feldRechtecke, zerlege, ausschnitt, vorschlag, drehe, zurueckDrehen, variiere, gestaltung, filmLoecher, polaroid,
   FOTOS_MAX,
 } from './collage.mjs';
 import { blobSauber } from './metadaten.mjs';
@@ -63,11 +63,26 @@ export function geometrie(c, W) {
   const { h } = masse(c.format, W);
   const n = c.fotos.length;
   if (n < 2) return { W, H: h, r: [{ x: 0, y: 0, w: W, h }], n: [], e: [{ x: 0, y: 0, w: W, h }], baum: null };
-  const v = vorlage(c.vorlage, n);
+  const v = variiere(vorlage(c.vorlage, n), c.variante || 0);
+  const gest = gestaltung(c.stil, W, h);
+  if (gest) {
+    // Felder in der Gestaltungsfläche, mit dem Abstand der Art
+    const fl = gest.flaeche;
+    const zellen = feldRechtecke(v, fl.w, fl.h, { abstand: gest.abstand }).map((q) => ({ x: q.x + fl.x, y: q.y + fl.y, w: q.w, h: q.h }));
+    if (c.stil === 'polaroid') {
+      const p = zellen.map((z, i) => polaroid(z, i, c.variante || 0));
+      const r = p.map((x) => x.foto);
+      return { W, H: h, r, n: [], e: r, baum: null, gest, polaroid: p };
+    }
+    return { W, H: h, r: zellen, n: [], e: zellen, baum: null, gest };
+  }
   const nahtlos = c.stil === 'nahtlos';
   const r = feldRechtecke(v, W, h, { abstand: nahtlos ? 0 : c.abstand });
   if (!nahtlos) return { W, H: h, r, n: [], e: r, baum: null };
-  const z = zerlege(r, W, h);
+  const kante = c.kante ?? 1;
+  const z = zerlege(r, W, h, { kante });
+  // Ganz hart: keine Überblendung, die Felder stoßen aneinander.
+  if (z.schnitte.every((x) => x.breite === 0)) return { W, H: h, r, n: [], e: r, baum: null };
   return { W, H: h, r, n: z.schnitte, e: z.bereiche, baum: z.baum };
 }
 
@@ -102,13 +117,37 @@ export async function zeichne(ctx, c, W, { quelle, danach = null, ueberblenden =
     return bild;
   };
   if (!g.baum) {
-    ctx.fillStyle = c.stil === 'rahmen' && c.fotos.length >= 2 ? c.farbe : '#000';
+    const grund = g.gest ? (g.gest.grund ?? c.farbe) : (c.stil === 'rahmen' && c.fotos.length >= 2 ? c.farbe : '#000');
+    ctx.fillStyle = grund;
     ctx.fillRect(0, 0, g.W, g.H);
+    if (c.stil === 'film') {
+      ctx.fillStyle = '#e9e6df';
+      const rund = Math.max(1, Math.round(g.W * 0.004));
+      for (const l of filmLoecher(g.W, g.H)) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(l.x, l.y, l.w, l.h, rund) : ctx.rect(l.x, l.y, l.w, l.h); ctx.fill(); }
+    }
+    if (c.stil === 'magazin') magazinKopf(ctx, c, g);
     for (let i = 0; i < c.felder.length; i++) {
       const b = await feldBild(i);
       const r = g.r[i];
       const e = g.e[i];
-      ctx.drawImage(b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
+      if (g.polaroid) {
+        const p = g.polaroid[i];
+        const z = p.rahmen;
+        ctx.save();
+        ctx.translate(z.x + z.w / 2, z.y + z.h / 2);
+        ctx.rotate(p.drehung);
+        ctx.translate(-(z.x + z.w / 2), -(z.y + z.h / 2));
+        ctx.shadowColor = 'rgba(0,0,0,0.28)';
+        ctx.shadowBlur = Math.round(g.W * 0.012);
+        ctx.shadowOffsetY = Math.round(g.W * 0.004);
+        ctx.fillStyle = '#fbfaf7';
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.shadowColor = 'transparent';
+        ctx.drawImage(b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
+        ctx.restore();
+      } else {
+        ctx.drawImage(b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
+      }
       freigeben(b);
     }
     return g;
@@ -184,6 +223,8 @@ export async function ausgabe(c, { fortschritt } = {}) {
       ueberblenden: c.stil === 'nahtlos' ? workerUeberblenden : null,
       fortschritt,
     });
+    const { signaturLaden, signaturZeichnen } = await import('./reeltext.mjs');
+    signaturZeichnen(ctx, g0.w, g0.h, await signaturLaden().catch(() => null));
     return await blobSauber(await alsBlob(cv, 'image/jpeg', 0.95));
   } finally {
     freigeben(cv);
@@ -205,7 +246,7 @@ export async function titelbildSpeichern(c, quellen) {
 }
 
 // --- Sicherung: eigener Projekttyp im selben ZIP-Format ---
-const EINSTELLUNGEN = ['name', 'erstellt', 'format', 'vorlage', 'stil', 'abstand', 'farbe'];
+const EINSTELLUNGEN = ['name', 'erstellt', 'format', 'vorlage', 'stil', 'abstand', 'farbe', 'kante', 'variante', 'titel'];
 
 export async function sicherung(c, { fortschritt } = {}) {
   const dateien = [];
@@ -248,7 +289,7 @@ export async function einspielen(manifest, eintraege, { fortschritt } = {}) {
       fortschritt?.((i + 1) / manifest.fotos.length);
     }
     const einst = {};
-    for (const k of ['vorlage', 'abstand', 'farbe', 'erstellt']) if (manifest.collage[k] != null) einst[k] = manifest.collage[k];
+    for (const k of ['vorlage', 'abstand', 'farbe', 'erstellt', 'kante', 'variante', 'titel']) if (manifest.collage[k] != null) einst[k] = manifest.collage[k];
     einst.felder = (manifest.felder || []).filter((f) => zuordnung.has(f.foto)).map((f) => ({ foto: zuordnung.get(f.foto), t: f.t || null }));
     return await db.aendereCollage(neu.id, einst);
   } catch (err) {
@@ -258,3 +299,20 @@ export async function einspielen(manifest, eintraege, { fortschritt } = {}) {
 }
 
 export { entpacke, FOTOS_MAX };
+
+// Magazin: Titel in Serifenschrift über einer feinen Linie. Systemschrift, nichts aus dem Netz.
+function magazinKopf(ctx, c, g) {
+  const fl = g.gest.flaeche;
+  const titel = (c.titel ?? c.name ?? '').trim();
+  ctx.save();
+  ctx.fillStyle = '#1c1b19';
+  ctx.textBaseline = 'alphabetic';
+  let groesse = Math.round(g.W * 0.075);
+  const schrift = (px) => `600 ${px}px ui-serif, "New York", Georgia, serif`;
+  ctx.font = schrift(groesse);
+  while (groesse > 12 && ctx.measureText(titel).width > fl.w) { groesse -= 2; ctx.font = schrift(groesse); }
+  const y = Math.round(g.gest.kopf * 0.62);
+  ctx.fillText(titel, fl.x, y);
+  ctx.fillRect(fl.x, Math.round(g.gest.kopf * 0.8), fl.w, Math.max(1, Math.round(g.W * 0.002)));
+  ctx.restore();
+}

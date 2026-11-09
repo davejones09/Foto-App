@@ -124,7 +124,7 @@ test('Collage: vier Fotos aus der Mediathek, wählen, verschieben, zoomen, tausc
   assert.equal(st.n, 4);
   assert.equal(st.vorlage, 'z4-raster');
   assert.equal(st.format, '4:5');
-  assert.equal(await page.locator('.co-vorlage').count(), 8, 'Vorlagen passend zur Fotoanzahl');
+  assert.equal(await page.locator('.co-vorlage').count(), (await page.evaluate(async () => (await import('./src/collage.mjs')).vorlagenFuer(4).length)), 'Vorlagen passend zur Fotoanzahl');
   assert.match(await page.textContent('.co-hinweis'), /^Antippen wählt ein Feld/);
 
   // Antippen wählt, Ziehen verschiebt, Mausrad zoomt
@@ -235,12 +235,12 @@ test('Collage aus der Kamera: ein Foto reicht nicht, zwei schon, dann Foto entfe
   await (await mehr).setFiles([zwei, drei]);
   await warteAuf(page, () => !document.querySelector('#co-export').disabled && document.querySelector('.co-bild').dataset.bereit === '1', null, 60000);
   assert.equal((await stand(page))[0].n, 3);
-  assert.equal(await page.locator('.co-vorlage').count(), 8);
+  assert.equal(await page.locator('.co-vorlage').count(), (await page.evaluate(async () => (await import('./src/collage.mjs')).vorlagenFuer(3).length)));
   const m = await feldMitte(page, 0);
   await page.mouse.click(m.x, m.y);
   await warteAuf(page, () => !document.querySelector('#co-entfernen').disabled);
   await page.click('#co-entfernen');
-  await warteAuf(page, () => document.querySelectorAll('.co-vorlage').length === 6 && document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+  await warteAuf(page, () => document.querySelectorAll('.co-vorlage').length === 8 && document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
   let st = (await stand(page))[0];
   for (let i = 0; i < 50 && st.felder.length !== 2; i++) { await page.waitForTimeout(100); st = (await stand(page))[0]; }
   assert.equal(st.n, 2);
@@ -249,4 +249,72 @@ test('Collage aus der Kamera: ein Foto reicht nicht, zwei schon, dann Foto entfe
   assert.equal(dateien, 2 * 2 + 1, 'Rohbild und Vorschau je Foto, dazu das Titelbild: entferntes Foto ist weg');
   assert.deepEqual(fehler, []);
   await ctx.close();
+});
+
+test('Collage-Arten: Kanten-Regler, Film, Polaroid, Magazin mit Titel, Würfeln', async () => {
+  const { page, fehler } = await seite();
+  await page.goto(s.url);
+  await bisHauptmenue(page);
+  const liste = await fotos(page, 3);
+  await page.click('#v-start .neu-karte[data-art="collage"]');
+  const wahl = page.waitForEvent('filechooser');
+  await page.click('#dialog button:has-text("Mediathek")');
+  await (await wahl).setFiles(liste);
+  await warteAuf(page, () => !document.querySelector('#co-export').disabled && document.querySelector('.co-bild').dataset.bereit === '1', null, 60000);
+  const bild = () => page.evaluate(() => {
+    const c = document.querySelector('.co-bild');
+    return c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  });
+  // Nahtlos: Kanten-Regler erscheint, hart und weich unterscheiden sich nur an den Kanten
+  await page.click('.co-stile [data-stil="nahtlos"]');
+  assert.ok(await page.locator('.co-kante').isVisible());
+  await warteAuf(page, () => document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+  await page.locator('.co-kante-regler').fill('0');
+  await page.waitForTimeout(600);
+  await warteAuf(page, () => document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+  const hart = await bild();
+  await page.locator('.co-kante-regler').fill('100');
+  await page.waitForTimeout(600);
+  await warteAuf(page, () => document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+  const weich = await bild();
+  let unterschied = 0;
+  for (let i = 0; i < hart.length; i += 4) if (Math.abs(hart[i] - weich[i]) > 3) unterschied++;
+  assert.ok(unterschied > 0, 'weich überblendet');
+  assert.ok(unterschied < hart.length / 4 / 2, 'nur an den Kanten');
+  await page.screenshot({ path: `${ERGEBNISSE}/co-nahtlos-weich.png` });
+  for (const art of ['film', 'polaroid', 'magazin']) {
+    await page.click(`.co-stile [data-stil="${art}"]`);
+    await warteAuf(page, () => document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+    await page.screenshot({ path: `${ERGEBNISSE}/co-${art}.png` });
+  }
+  assert.ok(await page.locator('.co-titel').isVisible());
+  await page.fill('.co-titel .co-titel-eingabe', 'Sommer');
+  await page.waitForTimeout(600);
+  const st1 = (await stand(page))[0];
+  // Würfeln ändert die Aufteilung
+  const vorher = await page.evaluate(async () => {
+    const werk = await import('./src/collagewerk.mjs');
+    const { aktuelleCollage } = await import('./src/ansichten/collage.mjs');
+    return JSON.stringify(werk.geometrie(aktuelleCollage(), 1000).r);
+  });
+  await page.click('.co-wuerfel');
+  await warteAuf(page, () => document.querySelector('.co-bild').dataset.bereit === '1', null, 30000);
+  const nachher = await page.evaluate(async () => {
+    const werk = await import('./src/collagewerk.mjs');
+    const { aktuelleCollage } = await import('./src/ansichten/collage.mjs');
+    return JSON.stringify(werk.geometrie(aktuelleCollage(), 1000).r);
+  });
+  assert.notEqual(nachher, vorher);
+  await page.waitForTimeout(600);
+  const gespeichert = await page.evaluate(async () => {
+    const db = await import('./src/speicher.mjs');
+    const l = await db.collagen();
+    return { stil: l[0].stil, titel: l[0].titel, variante: l[0].variante, kante: l[0].kante };
+  });
+  assert.equal(gespeichert.stil, 'magazin');
+  assert.equal(gespeichert.titel, 'Sommer');
+  assert.ok(gespeichert.variante > 0);
+  assert.equal(gespeichert.kante, 1);
+  void st1;
+  assert.deepEqual(fehler, []);
 });

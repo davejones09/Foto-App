@@ -125,6 +125,14 @@
     <p class="af-gruppe" data-t="reelStil"></p>
     <div class="cl-stile"></div>
     <div class="af-tempi cl-laengen" role="group" hidden></div>
+    <div class="cl-text">
+      <p class="af-gruppe" data-t="textTitel"></p>
+      <input type="text" id="cl-titel" class="co-titel-eingabe" maxlength="60" autocomplete="off" enterkeyhint="done" data-aria="textTitelFeld">
+      <div class="cl-stile cl-textstil" role="group"></div>
+      <div class="af-tempi cl-textlage" role="group">
+        <button data-lage="oben" data-t="lageOben"></button><button data-lage="mitte" data-t="lageMitte"></button><button data-lage="unten" data-t="lageUnten"></button>
+      </div>
+    </div>
     <div class="cl-ton nur-erweitert" hidden>
       <p class="af-gruppe" data-t="tonTitel"></p>
       <label class="cl-regler"><span class="cl-ton-text"></span><input type="range" id="cl-ton" min="0" max="1" step="0.05" value="0.35"></label>
@@ -156,6 +164,7 @@
         <label class="cl-regler ce-start"><span class="ce-start-text"></span><input type="range" id="ce-start" min="0" step="0.1"></label>
         <label class="cl-regler ce-ende"><span class="ce-ende-text"></span><input type="range" id="ce-ende" min="0" step="0.1"></label>
         <label class="cl-regler ce-laenge"><span class="ce-laenge-text"></span><input type="range" id="ce-laenge" min="0.5" max="10" step="0.1"></label>
+        <label class="cl-regler ce-text"><span data-t="textZeile"></span><input type="text" id="ce-text" class="co-titel-eingabe" maxlength="60" autocomplete="off" enterkeyhint="done"></label>
       </div>
     </div>
     <div class="ce-knoepfe">
@@ -185,6 +194,21 @@
     <button class="ei-zeile" id="ei-einfuehrung"><span data-t="einfOeffnen"></span><small data-t="einfuehrungText"></small></button>
     <button class="ei-zeile" id="ei-diagnose"><span data-t="diagnoseTitel"></span><small data-t="diagnoseText"></small></button>
     <div class="ei-zeile ei-version"><span data-t="version"></span><button class="version" id="version"></button></div>
+  </div>
+  <div class="ei-sig">
+    <p class="af-gruppe" data-t="signaturTitel"></p>
+    <small class="vw-hinweis" data-t="signaturText"></small>
+    <div class="af-tempi ei-sig-an" role="group"><button data-an="0" data-t="signaturAus"></button><button data-an="1" data-t="signaturAn"></button></div>
+    <div class="ei-sig-mehr">
+      <div class="af-tempi ei-sig-art" role="group"><button data-art="text" data-t="signaturArtText"></button><button data-art="logo" data-t="signaturArtLogo"></button></div>
+      <input type="text" class="co-titel-eingabe ei-sig-text" maxlength="30" autocomplete="off" enterkeyhint="done" data-aria="signaturArtText">
+      <div class="ei-sig-logo-zeile"><button class="neben2 ei-sig-logo" data-t="signaturLogoWaehlen"></button><small data-t="signaturLogoHinweis"></small></div>
+      <input type="file" class="ei-sig-datei" accept="image/png,image/*" hidden>
+      <p class="vw-titel" data-t="signaturLage"></p>
+      <div class="cl-stile ei-sig-lage vw-umbruch" role="group"></div>
+      <div class="af-tempi ei-sig-groesse" role="group"><button data-groesse="klein" data-t="signaturKlein"></button><button data-groesse="mittel" data-t="signaturMittel"></button></div>
+      <canvas class="ei-sig-vorschau" width="270" height="480"></canvas>
+    </div>
   </div>
 </section>
 
@@ -382,13 +406,20 @@
       <div class="af-tempi co-formate" role="group">
         <button data-format="4:5">4:5</button><button data-format="1:1">1:1</button><button data-format="9:16">9:16</button>
       </div>
-      <div class="af-tempi co-stile" role="group">
-        <button data-stil="rahmen" data-t="stilRahmen"></button><button data-stil="nahtlos" data-t="stilNahtlos"></button>
-      </div>
+      <button class="neben2 co-wuerfel" data-t="variante"></button>
+    </div>
+    <div class="cl-stile co-stile" role="group">
+      <button class="cl-stil" data-stil="rahmen" data-t="stilRahmen"></button><button class="cl-stil" data-stil="nahtlos" data-t="stilNahtlos"></button><button class="cl-stil" data-stil="film" data-t="stilFilm"></button><button class="cl-stil" data-stil="polaroid" data-t="stilPolaroid"></button><button class="cl-stil" data-stil="magazin" data-t="stilMagazin"></button>
     </div>
     <div class="co-reihe co-rahmen">
       <input type="range" class="co-abstand" min="0" max="50" step="1" data-aria="abstand">
       <div class="co-farben" role="group"></div>
+    </div>
+    <div class="co-reihe co-kante" hidden>
+      <small data-t="kanteHart"></small><input type="range" class="co-kante-regler" min="0" max="100" step="1" data-aria="kanteTitel"><small data-t="kanteWeich"></small>
+    </div>
+    <div class="co-reihe co-titel" hidden>
+      <input type="text" class="co-titel-eingabe" maxlength="40" autocomplete="off" enterkeyhint="done" data-aria="magazinTitel">
     </div>
     <div class="co-reihe">
       <button class="neben2" id="co-mediathek" data-t="quelleMediathek"></button>

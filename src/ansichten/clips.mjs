@@ -8,11 +8,13 @@ import * as aus from '../ausgabe.mjs';
 import { protokolliere, serienEintrag } from '../diagnose.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { REEL_LAENGEN } from '../kennzahlen.mjs';
-import { VORLAGEN_IDS } from '../reelvorlagen.mjs';
+import { VORLAGEN_IDS, istVorlage, vorlageAus, eigeneSetzen, eigeneVorlagen } from '../reelvorlagen.mjs';
 import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
+import { vorlagenWahl, eigeneLaden } from '../vorlagenwahl.mjs';
+import { TEXT_STILE, ueberlagern, signaturLaden } from '../reeltext.mjs';
 import { clipTonLaden, mischen, wavAus } from '../tonmix.mjs';
 
 const v = $('#v-clips');
@@ -36,7 +38,12 @@ let erstesMal = true;
 let modus = 'einfach';
 let anteil = 0.35; // 0 nur Musik, 0,5 beide voll, 1 nur Originalton
 let tempo = 'normal';
+let variante = 0;
+const wahl = { stil: GANZ, variante: 0 };
+let wahlUI = null;
 let fest = []; // selbst gesetzte Schnitte, Index = Schnitt
+const titel = { text: '', stil: 'klar', lage: 'unten' };
+let signatur = null;
 let musik = null; // { name, url, puffer, bpm, schlaege, sicher, start, alle }
 
 const zeitText = (s) => `${s.toFixed(1).replace('.', ',')} s`;
@@ -113,21 +120,22 @@ async function entwurfDatei(m) {
 
 const entwurfMedium = (m) => ({
   id: m.eid, typ: m.typ, name: m.datei.name, mime: m.datei.type, groesse: m.datei.size, teile: m.teile,
-  start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer,
+  start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer, text: m.text || '',
 });
 
-function entwurfSichern() {
+function entwurfSichern(sofort = false) {
   if (stellt) return;
   clearTimeout(entwurfTakt);
   entwurfTakt = setTimeout(() => {
     const leer = !medien.length && !musik;
     const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
-      stil, laenge, anteil, tempo, fest: [...fest],
+      stil, variante, laenge, anteil, tempo, fest: [...fest], titel: { ...titel },
+      kombination: stil === 'e-neu' ? { ...vorlageAus('e-neu') } : null,
       medien: medien.filter((m) => m.teile).map(entwurfMedium),
       musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
     });
     arbeit.catch((err) => protokolliere('entwurf', err));
-  }, 300);
+  }, sofort ? 0 : 300);
 }
 
 async function entwurfLaden() {
@@ -137,7 +145,10 @@ async function entwurfLaden() {
   stellt = true;
   let fehlt = 0;
   try {
+    if (e.stil === 'e-neu' && e.kombination) eigeneSetzen([...eigeneVorlagen(), { ...e.kombination, id: 'e-neu' }]);
     stil = e.stil ?? GANZ;
+    variante = e.variante ?? 0;
+    Object.assign(titel, e.titel || {});
     laenge = e.laenge ?? null;
     anteil = e.anteil ?? anteil;
     tempo = e.tempo ?? 'normal';
@@ -147,7 +158,7 @@ async function entwurfLaden() {
       if (!b) { fehlt++; continue; }
       const d = new File([b], x.name, { type: x.mime });
       const m = neuesMedium(d, x.typ, {
-        eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen,
+        eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen, text: x.text || '',
         ...(x.ende != null ? { ende: x.ende } : {}), ...(x.laenge != null ? { laenge: x.laenge } : {}), ...(x.rahmen ? { rahmen: x.rahmen } : {}),
       });
       await vorschaubild(m, m.leinwand);
@@ -182,8 +193,11 @@ async function neuBeginnen() {
   musik = null;
   $('.cl-musik-probe', v).removeAttribute('src');
   stil = GANZ;
+  variante = 0;
+  Object.assign(titel, { text: '', stil: 'klar', lage: 'unten' });
   laenge = null;
   tempo = 'normal';
+  stileBauen();
   fest = [];
   ergebnisEl.replaceChildren();
   clearTimeout(entwurfTakt);
@@ -294,6 +308,7 @@ async function editorOeffnen(m) {
       await suche(q, m.start);
     }
     aktuell = { m, q, qw, qh, video: m.typ === 'clip' };
+    $('#ce-text', v).value = m.text || '';
     editor.hidden = false;
     editorRegler();
     editorMalen();
@@ -316,6 +331,7 @@ function editorSchliessen() {
 
 function editorEinrichten() {
   $('#ce-fertig', v).addEventListener('click', editorSchliessen);
+  $('#ce-text', v).addEventListener('input', (e) => { if (aktuell) aktuell.m.text = e.target.value; });
   $('#ce-zuruecksetzen', v).addEventListener('click', () => {
     const { m } = aktuell;
     m.rahmen = { x: 0.5, y: 0.5, zoom: 1, modus: 'fuellen' };
@@ -449,6 +465,8 @@ async function musikDazu(datei, alt = null) {
 }
 
 function planJetzt() {
+  // Eine Vorlage, die es nicht mehr gibt (gelöscht, ungespeicherte Kombination): ganze Clips.
+  if (stil !== GANZ && !istVorlage(stil)) { stil = GANZ; variante = 0; wahl.stil = GANZ; wahl.variante = 0; wahlUI?.zeigen(); }
   const raster = musikRaster();
   return clipPlan(medien, {
     stil,
@@ -456,6 +474,7 @@ function planJetzt() {
     raster,
     takt: musik ? (60 / musik.bpm) * musik.alle : null,
     tempo,
+    variante,
     fest: musik ? fest : null,
     musikRest: musik ? musik.puffer.duration - musik.start : undefined,
   });
@@ -463,11 +482,11 @@ function planJetzt() {
 
 function planZeigen() {
   entwurfSichern();
+  textZeigen();
   $('#cl-neu', v).hidden = !medien.length && !musik;
   bauenKnopf.disabled = laeuft || medien.length === 0;
   laengenEl.hidden = stil === GANZ && !musik;
   for (const b of laengenEl.children) b.setAttribute('aria-pressed', String((b.dataset.laenge ? Number(b.dataset.laenge) : null) === laenge));
-  for (const b of stileEl.children) b.setAttribute('aria-pressed', String(b.dataset.stil === stil));
   for (const b of $('.cl-tempo', v).children) b.setAttribute('aria-pressed', String(b.dataset.tempo === tempo));
   tonZeigen();
   if (!medien.length) { infoEl.textContent = T.clipsLeer; vorschauAktualisieren(null); welleZeigen(null); return; }
@@ -492,9 +511,20 @@ let spieler = null;
 let vorschauPlan = null;
 let vorschauTakt = 0;
 
+// Titel am Anfang, je Abschnitt der Text seines Mediums.
+function texteFuer(p) {
+  const zeilen = p.staende.map((s, k) => ({ von: p.beginn[k], bis: p.beginn[k] + s, text: medien[k % medien.length]?.text || '' }));
+  return { titel: { ...titel }, zeilen };
+}
+
+function malerMitText(p, W, H, live) {
+  const m = clipMaler(medien.slice(), p, { W, H, live });
+  return { ...m, male: ueberlagern(m.male, { texte: texteFuer(p), signatur, W, H, dauer: p.dauer }) };
+}
+
 function vorschauDaten(p) {
   return {
-    maler: () => clipMaler(medien.slice(), p, { W: vorschauCanvas.width, H: vorschauCanvas.height, live: true }),
+    maler: () => malerMitText(p, vorschauCanvas.width, vorschauCanvas.height, true),
     dauer: p.dauer,
   };
 }
@@ -605,11 +635,17 @@ function aufbauen() {
 }
 
 function stileBauen() {
-  const ids = [GANZ, ...VORLAGEN_IDS];
-  stileEl.replaceChildren(...ids.map((id) => el('button', {
-    'data-stil': id, klasse: 'cl-stil', text: id === GANZ ? T.clipsGanz : T[`vorlage_${id.slice(2)}`],
-    onclick: () => { stil = id; planZeigen(); },
-  })));
+  wahl.stil = stil;
+  wahl.variante = variante;
+  if (!wahlUI) {
+    wahlUI = vorlagenWahl({
+      zustand: wahl,
+      extra: [{ stil: GANZ, text: T.clipsGanz }],
+      erweitert: () => modus === 'erweitert',
+      wechsel: () => { stil = wahl.stil; variante = wahl.variante; planZeigen(); },
+    });
+    stileEl.replaceWith(wahlUI.el);
+  } else wahlUI.zeigen();
   laengenEl.replaceChildren(
     el('button', { text: T.reelAuto, onclick: () => { laenge = null; planZeigen(); } }),
     ...REEL_LAENGEN.map((l) => el('button', { 'data-laenge': l, text: f(T.reelSekunden, { s: l }), onclick: () => { laenge = l; planZeigen(); } })),
@@ -627,7 +663,7 @@ async function bauen() {
   fort(0);
   const w = aus.hintergrundWaechter();
   const p = planJetzt();
-  const m = clipMaler(medien, p);
+  const m = malerMitText(p, 1080, 1920, false);
   try {
     const ton = musik || hatClips() ? await tonBauen(p) : null;
     const blob = await aus.videoAusMaler(m.male, p.bilder, { fortschritt: fort, waechter: w, ton });
@@ -738,11 +774,24 @@ zeitleiste.addEventListener('pointerdown', (e) => {
   zeitleisteZiehen(e);
 });
 zeitleiste.addEventListener('pointermove', (e) => { if (e.buttons) zeitleisteZiehen(e); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) vorschauPause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { vorschauPause(); if (medien.length || musik) entwurfSichern(true); } });
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));
+
+function textZeigen() {
+  const feld = $('#cl-titel', v);
+  if (document.activeElement !== feld) feld.value = titel.text;
+  for (const b of $('.cl-textstil', v).children) b.setAttribute('aria-pressed', String(b.dataset.textstil === titel.stil));
+  for (const b of $('.cl-textlage', v).children) b.setAttribute('aria-pressed', String(b.dataset.lage === titel.lage));
+}
+$('.cl-textstil', v).replaceChildren(...Object.keys(TEXT_STILE).map((k) => el('button', {
+  klasse: 'cl-stil', 'data-textstil': k, text: T[`textstil_${k}`], onclick: () => { titel.stil = k; textZeigen(); planZeigen(); },
+})));
+for (const b of $('.cl-textlage', v).children) b.addEventListener('click', () => { titel.lage = b.dataset.lage; textZeigen(); planZeigen(); });
+$('#cl-titel', v).addEventListener('input', (e) => { titel.text = e.target.value; planZeigen(); });
 
 function modusSetzen(neu, merken = false) {
   modus = neu === 'erweitert' ? 'erweitert' : 'einfach';
+  wahlUI?.zeigen();
   v.dataset.modus = modus;
   for (const b of $('.cl-modus', v).children) b.setAttribute('aria-pressed', String(b.dataset.modus === modus));
   if (merken) db.setzeEinstellung('reelModus', modus).catch(() => {});
@@ -883,6 +932,8 @@ registriere('clips', {
   verlassen() { vorschauAus(); },
   async betreten(_, alt) {
     if (alt && alt !== 'clips') zurueck = alt;
+    signatur = await signaturLaden().catch(() => null);
+    if (erstesMal) await eigeneLaden();
     if (erstesMal) modusSetzen(await db.einstellung('reelModus').catch(() => null) || 'einfach');
     musikZeigen();
     aufbauen();

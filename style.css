@@ -521,3 +521,26 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-welle-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .cl-welle-hinweis { color: var(--text2); font-size: 12px; }
 .cl-ton[hidden] { display: none; }
+.vw { display: flex; flex-direction: column; gap: 8px; }
+.vw-liste[hidden], .vw-variante[hidden] { display: none; }
+.vw-variante { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vw-variante small { color: var(--text2); font-size: 13px; }
+.vw-wuerfel { min-height: 40px; padding: 0 14px; }
+.vw-bau { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.vw-titel { margin: 4px 0 0; font-size: 13px; color: var(--text2); }
+.vw-hinweis { color: var(--text2); font-size: 12px; }
+.vw-umbruch { flex-wrap: wrap; overflow: visible; }
+.vw-speichern-zeile { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-top: 6px; }
+.co-reihe[hidden] { display: none; }
+.co-kante input { flex: 1; }
+.co-kante small { color: var(--text2); font-size: 13px; }
+.co-titel-eingabe { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); padding: 0 12px; font-size: 16px; }
+.co-wuerfel { flex: none; min-height: 40px; padding: 0 14px; }
+.ei-sig { padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
+.ei-sig-mehr { display: flex; flex-direction: column; gap: 10px; }
+.ei-sig-mehr[hidden], .ei-sig-text[hidden], .ei-sig-logo-zeile[hidden] { display: none; }
+.ei-sig-logo-zeile { display: flex; gap: 10px; align-items: center; }
+.ei-sig-logo-zeile small { color: var(--text2); font-size: 12px; }
+.ei-sig-vorschau { width: 135px; height: 240px; align-self: center; border-radius: 10px; background: #000; }
+#v-einstellungen { overflow-y: auto; }
+#v-einstellungen .ei-liste { flex: none; overflow: visible; }

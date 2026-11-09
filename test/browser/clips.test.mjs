@@ -59,6 +59,7 @@ test('Clips wählen, ordnen, richtige Stelle im Clip, bauen', async () => {
   assert.ok(Math.abs(r['4.5'][1] - 150) < 25, `Blau bei 4,5 s: ${r['4.5']}`);
 
   // Vorlage, Reihenfolge, Startpunkt
+  await page.locator('.cl-stil[data-gruppe="reise"]').click();
   await page.locator('.cl-stil[data-stil="v-slide"]').click();
   assert.ok(await page.locator('.cl-laengen').isVisible());
   await page.locator('.cl-zeile').nth(1).locator('button[aria-label="Nach oben"]').click();
@@ -260,6 +261,7 @@ test('Musik: Takt erkannt, Schnitte darauf, Video enthält Ton', async () => {
   await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
   assert.match(await page.locator('.cl-musik-takt').textContent(), /1(19|20|21) BPM/);
   assert.equal(await page.locator('.cl-alle button[aria-pressed="true"]').textContent(), 'Alle 2');
+  await page.locator('.cl-stil[data-gruppe="reise"]').click();
   await page.locator('.cl-stil[data-stil="v-slide"]').click();
   await page.click('#cl-bauen');
   await page.waitForSelector('.cl-video', { timeout: 120000 });
@@ -343,6 +345,7 @@ test('Musik: Der Übergang landet auf dem Schlag', async () => {
   await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
   await page.setInputFiles('#datei-musik', [wav(120, 20)]);
   await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
+  await page.locator('.cl-stil[data-gruppe="reise"]').click();
   await page.locator('.cl-stil[data-stil="v-slide"]').click();
   await page.click('#cl-bauen');
   await page.waitForSelector('.cl-video', { timeout: 120000 });
@@ -428,6 +431,7 @@ test('Entwurf: Clips, Musik und Stil überstehen das Schließen der App, „Neu 
   await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
   await page.setInputFiles('#datei-musik', [wav(120, 20)]);
   await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
+  await page.locator('.cl-stil[data-gruppe="reise"]').click();
   await page.locator('.cl-stil[data-stil="v-slide"]').click();
   await page.locator('.cl-zeile').first().locator('button', { hasText: '↓' }).click();
   await page.waitForTimeout(800);
@@ -436,7 +440,7 @@ test('Entwurf: Clips, Musik und Stil überstehen das Schließen der App, „Neu 
   await zuClips();
   await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
   await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
-  assert.equal(await page.locator('.cl-stil[aria-pressed="true"]').getAttribute('data-stil'), 'v-slide');
+  assert.equal(await page.locator('.vw-liste .cl-stil[aria-pressed="true"]').getAttribute('data-stil'), 'v-slide');
   assert.match(await page.locator('#meldung p').textContent(), /Entwurf ist wieder da/);
   // Reihenfolge blieb: zuerst Blau (2 s), dann Rot (3 s)
   const infos = await page.locator('.cl-zeile small').allTextContents();
@@ -584,5 +588,95 @@ test('Erweitert: Originalton im Reel, Ton-Regler, Tempo, Schnitte auf der Wellen
   await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
   await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
   await page.waitForFunction(() => document.querySelector('#v-clips').dataset.modus === 'erweitert');
+  assert.deepEqual(fehler, []);
+});
+
+test('Vorlagen: Stimmungen, Würfeln ändert die Vorschau, eigene Kombination speichern und wiederfinden', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm'), join(DATEN, 'clip-ton.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 3, null, { timeout: 30000 });
+  assert.ok(await page.locator('.vw-liste').isHidden(), 'Ganze Clips: keine Vorlagenliste');
+  for (const g of ['energie', 'cinematic', 'ruhig', 'retro', 'minimal', 'reise', 'food', 'hotel']) {
+    await page.locator(`.vw-gruppen [data-gruppe="${g}"]`).click();
+    assert.ok(await page.locator('.vw-liste .cl-stil').count() >= 3, `${g}: mindestens drei`);
+    assert.equal(await page.locator('.vw-liste .cl-stil[aria-pressed="true"]').count(), 1);
+  }
+  await page.locator('.vw-gruppen [data-gruppe="cinematic"]').click();
+  await page.locator('.vw-liste [data-stil="v-kino"]').click();
+  assert.match(await page.locator('.vw-variante small').textContent(), /Original/);
+  await page.click('.vw-wuerfel');
+  assert.match(await page.locator('.vw-variante small').textContent(), /Variante \d+/);
+  await page.click('.vw-variante .link');
+  assert.match(await page.locator('.vw-variante small').textContent(), /Original/);
+  // Bausteine nur im erweiterten Modus
+  assert.ok(await page.locator('.vw-bau').isHidden());
+  await page.locator('.cl-modus button[data-modus="erweitert"]').click();
+  assert.ok(await page.locator('.vw-bau').isVisible());
+  await page.locator('.vw-rhythmus [data-rhythmus="schnell"]').click();
+  await page.locator('.vw-uebergaenge [data-uebergang="tuer"]').click();
+  await page.locator('.vw-bewegung [data-bewegung="schwenk"]').click();
+  assert.equal(await page.locator('.vw-uebergaenge [aria-pressed="true"]').count(), 2);
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-bausteine.png` });
+  await page.click('.vw-speichern');
+  await page.fill('#dialog .d-eingabe', 'Mein Test');
+  await page.locator('#dialog button', { hasText: 'Speichern' }).click();
+  await page.waitForSelector('.vw-liste .cl-stil[aria-pressed="true"]:has-text("Mein Test")');
+  await page.waitForTimeout(800);
+  // Neu laden: Die eigene Vorlage ist noch da und baut
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 3, null, { timeout: 30000 });
+  await page.locator('.vw-gruppen [data-gruppe="eigene"]').click();
+  await page.waitForSelector('.vw-liste .cl-stil:has-text("Mein Test")');
+  const plan = await page.evaluate(async () => {
+    const { vorlageAus, eigeneVorlagen } = await import('./src/reelvorlagen.mjs');
+    const e = eigeneVorlagen().find((x) => x.name === 'Mein Test');
+    return vorlageAus(e.id);
+  });
+  assert.deepEqual(plan.schlaege, [1]);
+  assert.ok(plan.arten.includes('tuer'));
+  assert.equal(plan.bewegung, 'schwenk');
+  assert.deepEqual(fehler, []);
+});
+
+test('Text und Signatur: Titel in der Vorschau, Signatur aus den Einstellungen oben rechts', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  // Signatur einstellen
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('einstellungen'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'einstellungen');
+  await page.locator('.ei-sig-an [data-an="1"]').click();
+  await page.fill('.ei-sig-text', 'AB');
+  await page.locator('.ei-sig-lage [data-lage="or"]').click();
+  await page.locator('.ei-sig-vorschau').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${ERGEBNISSE}/ei-signatur.png` });
+  await page.waitForTimeout(400);
+  // Reel mit Titel
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.fill('#cl-titel', 'Hallo Welt');
+  await page.locator('.cl-textlage [data-lage="mitte"]').click();
+  await page.waitForTimeout(400);
+  // Mitte der Vorschau bei 1,5 s: weiße Schrift; oben rechts: Signatur
+  await page.locator('.cl-zeitleiste').scrollIntoViewIfNeeded();
+  const leiste = await page.locator('.cl-zeitleiste').boundingBox();
+  await page.mouse.click(leiste.x + leiste.width * 0.3, leiste.y + leiste.height / 2);
+  await page.waitForTimeout(800);
+  const hell = await page.evaluate(() => {
+    const c = document.querySelector('#cl-vorschau');
+    const k = c.getContext('2d');
+    const zaehle = (x, y, w, h) => { const d = k.getImageData(x, y, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 190 && d[i + 1] > 190 && d[i + 2] > 190) n++; return n; };
+    return { mitte: zaehle(30, c.height * 0.4, c.width - 60, c.height * 0.12), ecke: zaehle(c.width * 0.75, 0, c.width * 0.25, c.height * 0.12), unten: zaehle(0, c.height * 0.85, c.width, c.height * 0.15) };
+  });
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-text.png` });
+  assert.ok(hell.mitte > 50, `Titel sichtbar: ${hell.mitte}`);
+  assert.ok(hell.ecke > 5, `Signatur sichtbar: ${hell.ecke}`);
+  assert.equal(hell.unten, 0);
   assert.deepEqual(fehler, []);
 });
