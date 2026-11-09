@@ -111,7 +111,7 @@ registriere('start', {
 $('#ei-zurueck').addEventListener('click', () => zeige('start'));
 $('#ei-einspielen').addEventListener('click', einspielenWaehlen);
 $('#ei-einfuehrung').addEventListener('click', () => zeige('einfuehrung', { danach: 'einstellungen' }));
-registriere('einstellungen', {});
+// Die Ansicht „einstellungen“ registriert ansichten/signatur.mjs.
 
 // Für die Diagnose aus app.mjs: der Knopf in den Einstellungen.
 export function diagnoseKnopf(oeffnen) { $('#ei-diagnose').addEventListener('click', oeffnen); }

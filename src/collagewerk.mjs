@@ -223,6 +223,8 @@ export async function ausgabe(c, { fortschritt } = {}) {
       ueberblenden: c.stil === 'nahtlos' ? workerUeberblenden : null,
       fortschritt,
     });
+    const { signaturLaden, signaturZeichnen } = await import('./reeltext.mjs');
+    signaturZeichnen(ctx, g0.w, g0.h, await signaturLaden().catch(() => null));
     return await blobSauber(await alsBlob(cv, 'image/jpeg', 0.95));
   } finally {
     freigeben(cv);

@@ -528,14 +528,14 @@ export async function reel(strecke, halte, plan, opt = {}) {
     const teil = halte.slice(plan.von, plan.bis + 1);
     const m = await stilMaler(teil, plan);
     try {
-      return await sauber(await videoBauen(weg, m.male, plan.bilder, opt));
+      return await sauber(await videoBauen(weg, opt.ueber ? opt.ueber(m.male) : m.male, plan.bilder, opt));
     } finally {
       m.ende();
     }
   }
   const { male, ende } = reelBildMaler(strecke, halte, plan);
   try {
-    return await sauber(await videoBauen(weg, male, plan.bilder, opt));
+    return await sauber(await videoBauen(weg, opt.ueber ? opt.ueber(male) : male, plan.bilder, opt));
   } finally {
     ende();
   }

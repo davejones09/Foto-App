@@ -5,6 +5,7 @@ import { T, f, MONATE } from '../texte.mjs';
 import { $, $$, el, frage, melde } from '../ui.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
+import { signaturLaden, signaturZeichnen } from '../reeltext.mjs';
 import { ladeSchritt, ladeEnde } from '../laden.mjs';
 import { ctx2d, leinwand, freigeben } from '../bild.mjs';
 import { FARBEN, ABSTAND_MAX, FOTOS_MAX, masse, vorlagenFuer, vorlage, feldRechtecke, feldBei, bewege, belege } from '../collage.mjs';
@@ -37,6 +38,7 @@ let ziel = -1;
 let geo = null;
 let W = 0;
 let puffer = null;
+let signatur = null;
 
 const collageName = (d = new Date()) => f(T.collageName, { monat: MONATE[d.getMonth()], jahr: d.getFullYear() });
 
@@ -72,6 +74,7 @@ async function zeichnen({ schnell = false } = {}) {
   geo = g;
   const ctx = ctx2d(canvas);
   ctx.drawImage(puffer, 0, 0);
+  signaturZeichnen(ctx, canvas.width, canvas.height, signatur);
   const rahmen = (i, gestrichelt) => {
     const r = g.r[i];
     if (!r) return;
@@ -393,6 +396,7 @@ registriere('collage', {
     const roh = id ? await db.collage(id) : null;
     if (!roh) { zeige('start'); return; }
     c = werk.vervollstaendige(roh);
+    signatur = await signaturLaden().catch(() => null);
     sel = -1;
     ziel = -1;
     canvas.dataset.bereit = '0';

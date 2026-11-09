@@ -642,3 +642,41 @@ test('Vorlagen: Stimmungen, Würfeln ändert die Vorschau, eigene Kombination sp
   assert.equal(plan.bewegung, 'schwenk');
   assert.deepEqual(fehler, []);
 });
+
+test('Text und Signatur: Titel in der Vorschau, Signatur aus den Einstellungen oben rechts', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  // Signatur einstellen
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('einstellungen'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'einstellungen');
+  await page.locator('.ei-sig-an [data-an="1"]').click();
+  await page.fill('.ei-sig-text', 'AB');
+  await page.locator('.ei-sig-lage [data-lage="or"]').click();
+  await page.locator('.ei-sig-vorschau').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${ERGEBNISSE}/ei-signatur.png` });
+  await page.waitForTimeout(400);
+  // Reel mit Titel
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.fill('#cl-titel', 'Hallo Welt');
+  await page.locator('.cl-textlage [data-lage="mitte"]').click();
+  await page.waitForTimeout(400);
+  // Mitte der Vorschau bei 1,5 s: weiße Schrift; oben rechts: Signatur
+  await page.locator('.cl-zeitleiste').scrollIntoViewIfNeeded();
+  const leiste = await page.locator('.cl-zeitleiste').boundingBox();
+  await page.mouse.click(leiste.x + leiste.width * 0.3, leiste.y + leiste.height / 2);
+  await page.waitForTimeout(800);
+  const hell = await page.evaluate(() => {
+    const c = document.querySelector('#cl-vorschau');
+    const k = c.getContext('2d');
+    const zaehle = (x, y, w, h) => { const d = k.getImageData(x, y, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 190 && d[i + 1] > 190 && d[i + 2] > 190) n++; return n; };
+    return { mitte: zaehle(30, c.height * 0.4, c.width - 60, c.height * 0.12), ecke: zaehle(c.width * 0.75, 0, c.width * 0.25, c.height * 0.12), unten: zaehle(0, c.height * 0.85, c.width, c.height * 0.15) };
+  });
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-text.png` });
+  assert.ok(hell.mitte > 50, `Titel sichtbar: ${hell.mitte}`);
+  assert.ok(hell.ecke > 5, `Signatur sichtbar: ${hell.ecke}`);
+  assert.equal(hell.unten, 0);
+  assert.deepEqual(fehler, []);
+});

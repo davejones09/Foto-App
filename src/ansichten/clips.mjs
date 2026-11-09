@@ -14,6 +14,7 @@ import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
 import { vorlagenWahl, eigeneLaden } from '../vorlagenwahl.mjs';
+import { TEXT_STILE, ueberlagern, signaturLaden } from '../reeltext.mjs';
 import { clipTonLaden, mischen, wavAus } from '../tonmix.mjs';
 
 const v = $('#v-clips');
@@ -41,6 +42,8 @@ let variante = 0;
 const wahl = { stil: GANZ, variante: 0 };
 let wahlUI = null;
 let fest = []; // selbst gesetzte Schnitte, Index = Schnitt
+const titel = { text: '', stil: 'klar', lage: 'unten' };
+let signatur = null;
 let musik = null; // { name, url, puffer, bpm, schlaege, sicher, start, alle }
 
 const zeitText = (s) => `${s.toFixed(1).replace('.', ',')} s`;
@@ -117,7 +120,7 @@ async function entwurfDatei(m) {
 
 const entwurfMedium = (m) => ({
   id: m.eid, typ: m.typ, name: m.datei.name, mime: m.datei.type, groesse: m.datei.size, teile: m.teile,
-  start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer,
+  start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer, text: m.text || '',
 });
 
 function entwurfSichern(sofort = false) {
@@ -126,7 +129,7 @@ function entwurfSichern(sofort = false) {
   entwurfTakt = setTimeout(() => {
     const leer = !medien.length && !musik;
     const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
-      stil, variante, laenge, anteil, tempo, fest: [...fest],
+      stil, variante, laenge, anteil, tempo, fest: [...fest], titel: { ...titel },
       kombination: stil === 'e-neu' ? { ...vorlageAus('e-neu') } : null,
       medien: medien.filter((m) => m.teile).map(entwurfMedium),
       musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
@@ -145,6 +148,7 @@ async function entwurfLaden() {
     if (e.stil === 'e-neu' && e.kombination) eigeneSetzen([...eigeneVorlagen(), { ...e.kombination, id: 'e-neu' }]);
     stil = e.stil ?? GANZ;
     variante = e.variante ?? 0;
+    Object.assign(titel, e.titel || {});
     laenge = e.laenge ?? null;
     anteil = e.anteil ?? anteil;
     tempo = e.tempo ?? 'normal';
@@ -154,7 +158,7 @@ async function entwurfLaden() {
       if (!b) { fehlt++; continue; }
       const d = new File([b], x.name, { type: x.mime });
       const m = neuesMedium(d, x.typ, {
-        eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen,
+        eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen, text: x.text || '',
         ...(x.ende != null ? { ende: x.ende } : {}), ...(x.laenge != null ? { laenge: x.laenge } : {}), ...(x.rahmen ? { rahmen: x.rahmen } : {}),
       });
       await vorschaubild(m, m.leinwand);
@@ -190,6 +194,7 @@ async function neuBeginnen() {
   $('.cl-musik-probe', v).removeAttribute('src');
   stil = GANZ;
   variante = 0;
+  Object.assign(titel, { text: '', stil: 'klar', lage: 'unten' });
   laenge = null;
   tempo = 'normal';
   stileBauen();
@@ -303,6 +308,7 @@ async function editorOeffnen(m) {
       await suche(q, m.start);
     }
     aktuell = { m, q, qw, qh, video: m.typ === 'clip' };
+    $('#ce-text', v).value = m.text || '';
     editor.hidden = false;
     editorRegler();
     editorMalen();
@@ -325,6 +331,7 @@ function editorSchliessen() {
 
 function editorEinrichten() {
   $('#ce-fertig', v).addEventListener('click', editorSchliessen);
+  $('#ce-text', v).addEventListener('input', (e) => { if (aktuell) aktuell.m.text = e.target.value; });
   $('#ce-zuruecksetzen', v).addEventListener('click', () => {
     const { m } = aktuell;
     m.rahmen = { x: 0.5, y: 0.5, zoom: 1, modus: 'fuellen' };
@@ -475,6 +482,7 @@ function planJetzt() {
 
 function planZeigen() {
   entwurfSichern();
+  textZeigen();
   $('#cl-neu', v).hidden = !medien.length && !musik;
   bauenKnopf.disabled = laeuft || medien.length === 0;
   laengenEl.hidden = stil === GANZ && !musik;
@@ -503,9 +511,20 @@ let spieler = null;
 let vorschauPlan = null;
 let vorschauTakt = 0;
 
+// Titel am Anfang, je Abschnitt der Text seines Mediums.
+function texteFuer(p) {
+  const zeilen = p.staende.map((s, k) => ({ von: p.beginn[k], bis: p.beginn[k] + s, text: medien[k % medien.length]?.text || '' }));
+  return { titel: { ...titel }, zeilen };
+}
+
+function malerMitText(p, W, H, live) {
+  const m = clipMaler(medien.slice(), p, { W, H, live });
+  return { ...m, male: ueberlagern(m.male, { texte: texteFuer(p), signatur, W, H, dauer: p.dauer }) };
+}
+
 function vorschauDaten(p) {
   return {
-    maler: () => clipMaler(medien.slice(), p, { W: vorschauCanvas.width, H: vorschauCanvas.height, live: true }),
+    maler: () => malerMitText(p, vorschauCanvas.width, vorschauCanvas.height, true),
     dauer: p.dauer,
   };
 }
@@ -644,7 +663,7 @@ async function bauen() {
   fort(0);
   const w = aus.hintergrundWaechter();
   const p = planJetzt();
-  const m = clipMaler(medien, p);
+  const m = malerMitText(p, 1080, 1920, false);
   try {
     const ton = musik || hatClips() ? await tonBauen(p) : null;
     const blob = await aus.videoAusMaler(m.male, p.bilder, { fortschritt: fort, waechter: w, ton });
@@ -757,6 +776,18 @@ zeitleiste.addEventListener('pointerdown', (e) => {
 zeitleiste.addEventListener('pointermove', (e) => { if (e.buttons) zeitleisteZiehen(e); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { vorschauPause(); if (medien.length || musik) entwurfSichern(true); } });
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));
+
+function textZeigen() {
+  const feld = $('#cl-titel', v);
+  if (document.activeElement !== feld) feld.value = titel.text;
+  for (const b of $('.cl-textstil', v).children) b.setAttribute('aria-pressed', String(b.dataset.textstil === titel.stil));
+  for (const b of $('.cl-textlage', v).children) b.setAttribute('aria-pressed', String(b.dataset.lage === titel.lage));
+}
+$('.cl-textstil', v).replaceChildren(...Object.keys(TEXT_STILE).map((k) => el('button', {
+  klasse: 'cl-stil', 'data-textstil': k, text: T[`textstil_${k}`], onclick: () => { titel.stil = k; textZeigen(); planZeigen(); },
+})));
+for (const b of $('.cl-textlage', v).children) b.addEventListener('click', () => { titel.lage = b.dataset.lage; textZeigen(); planZeigen(); });
+$('#cl-titel', v).addEventListener('input', (e) => { titel.text = e.target.value; planZeigen(); });
 
 function modusSetzen(neu, merken = false) {
   modus = neu === 'erweitert' ? 'erweitert' : 'einfach';
@@ -901,6 +932,7 @@ registriere('clips', {
   verlassen() { vorschauAus(); },
   async betreten(_, alt) {
     if (alt && alt !== 'clips') zurueck = alt;
+    signatur = await signaturLaden().catch(() => null);
     if (erstesMal) await eigeneLaden();
     if (erstesMal) modusSetzen(await db.einstellung('reelModus').catch(() => null) || 'einfach');
     musikZeigen();

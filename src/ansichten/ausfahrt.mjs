@@ -9,6 +9,7 @@ import { protokolliere } from '../diagnose.mjs';
 import { STILE, stileFuer } from '../reelstil.mjs';
 import { VORLAGEN, GRUPPEN, istVorlage, eigeneVorlagen } from '../reelvorlagen.mjs';
 import { eigeneLaden, vorlagenName } from '../vorlagenwahl.mjs';
+import { TEXT_STILE, ueberlagern, signaturLaden } from '../reeltext.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { ladeWarten, ladeEnde } from '../laden.mjs';
@@ -22,6 +23,7 @@ let reelMusik = null; // { puffer, bpm, schlaege, treffer, name, start, alle }
 let reelAuto = true;
 let reelVariante = 0;
 let reelGruppe = null;
+const reelTitel = { text: '', stil: 'klar', lage: 'unten' };
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
@@ -235,6 +237,14 @@ function aufbauen() {
     el('div', { klasse: 'cl-musik-kopf' }, musikName, el('button', { klasse: 'neben2', text: T.clipWeg, onclick: () => { reelMusik = null; musikZeigen(); reelAktualisieren(); } })),
     el('label', { klasse: 'cl-regler' }, musikStartText, musikStart));
   const musikKnopf = el('button', { klasse: 'neben2 af-musik-waehlen', text: T.musikWaehlen, onclick: () => musikEingabe.click() });
+  // Titel am Anfang des Reels
+  const titelFeld = el('input', { type: 'text', klasse: 'co-titel-eingabe af-titel-feld', maxlength: '60', autocomplete: 'off', 'aria-label': T.textTitelFeld, value: reelTitel.text });
+  titelFeld.addEventListener('input', () => { reelTitel.text = titelFeld.value; });
+  const titelStile = el('div', { klasse: 'cl-stile af-textstil' }, ...Object.keys(TEXT_STILE).map((k) => el('button', {
+    klasse: 'cl-stil', 'data-textstil': k, text: T[`textstil_${k}`], 'aria-pressed': String(k === reelTitel.stil),
+    onclick: (e) => { reelTitel.stil = k; for (const b of e.currentTarget.parentNode.children) b.setAttribute('aria-pressed', String(b.dataset.textstil === k)); },
+  })));
+  const textEl = el('div', { klasse: 'af-text' }, el('p', { klasse: 'af-gruppe', text: T.textTitel }), titelFeld, titelStile);
   const musikEl = el('div', { klasse: 'af-musik' }, el('p', { klasse: 'af-gruppe', text: T.musikTitel }), musikKnopf, musikInfo, musikEingabe);
   function musikZeigen() {
     musikInfo.hidden = !reelMusik;
@@ -320,7 +330,7 @@ function aufbauen() {
     stileEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
-    tempoEl, vorschlagEl, musikEl);
+    tempoEl, vorschlagEl, musikEl, textEl);
   const reelKarte = punkt({
     titel: f(T.reel, { laenge: reelLaenge }),
     zusatz,
@@ -330,7 +340,9 @@ function aufbauen() {
       if (reelMusik) {
         try { ton = await aus.tonKodieren(reelMusik.puffer, reelMusik.start, p.dauer); } catch (err) { protokolliere('musik', err); }
       }
-      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton });
+      const signatur = await signaturLaden().catch(() => null);
+      const ueber = (male) => ueberlagern(male, { texte: { titel: { ...reelTitel } }, signatur, W: 1080, H: 1920, dauer: p.dauer });
+      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton, ueber });
       const mitTon = ton ? mp4TonProben(await blob.arrayBuffer()) === ton.pakete.length : false;
       if (ton && !mitTon) protokolliere('musik', 'Tonspur fehlt im Foto-Reel');
       const titelBlob = await aus.titelbild(halte, p);
