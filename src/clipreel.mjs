@@ -3,7 +3,7 @@
 // ist das Ergebnis genau, auch wenn das Rechnen länger dauert als das Video. Ohne Ton.
 
 import { FPS, RAHMEN } from './reelstil.mjs';
-import { VORLAGEN, UEBERGAENGE, TAKT, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
+import { VORLAGEN, UEBERGAENGE, TAKT, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, maskePfad, vorlageAus } from './reelvorlagen.mjs';
 import { serienEintrag } from './diagnose.mjs';
 
 export const GANZ = 'c-ganz';
@@ -49,8 +49,8 @@ function ganzPlan(medien) {
 }
 
 // Vorlage, in der einzelne Medien eine eigene Länge haben: Der Takt der Vorlage gilt nur für die übrigen.
-function eigenPlan(medien, stil) {
-  const v = VORLAGEN.find((x) => x.id === stil);
+function eigenPlan(medien, stil, variante = 0) {
+  const v = vorlageAus(stil, variante);
   const staende = medien.map((m, k) => (m.eigen ? eigeneLaenge(m) : v.schlaege[k % v.schlaege.length] * TAKT));
   const arten = staende.slice(1).map((_, k) => v.arten[k % v.arten.length]);
   return planAus(staende, arten.map((x) => UEBERGAENGE[x]), arten, {
@@ -66,9 +66,9 @@ function eigenPlan(medien, stil) {
 const MUSIK_UEBERGANG_MAX = 0.24;
 
 // fest: Schnitte, die der Nutzer selbst gesetzt hat, als Zeit, zu der das neue Bild steht (je Schnitt k).
-export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRest = REEL_MAX, takt = null, fest = null }) {
+export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRest = REEL_MAX, takt = null, fest = null, variante = 0 }) {
   const stellen = raster.map((r) => (typeof r === 'number' ? { t: r, s: 1 } : r));
-  const v = VORLAGEN.find((x) => x.id === stil) || null;
+  const v = vorlageAus(stil, variante) || null;
   const n = medien.length;
   const ende = Math.min(laenge ?? REEL_MAX, musikRest, REEL_MAX);
   const abstand = takt ?? (stellen.length > 1 ? (stellen[stellen.length - 1].t - stellen[0].t) / (stellen.length - 1) : 0.5);
@@ -157,12 +157,12 @@ export function musikPlan(medien, { stil = GANZ, raster, laenge = null, musikRes
   };
 }
 
-export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, musikRest = REEL_MAX, takt = null, tempo = 'normal', fest = null } = {}) {
+export function clipPlan(medien, { laenge = null, stil = GANZ, raster = null, musikRest = REEL_MAX, takt = null, tempo = 'normal', fest = null, variante = 0 } = {}) {
   let plan;
-  if (raster && raster.length && medien.length) plan = musikPlan(medien, { stil, raster, laenge, musikRest, takt, fest });
+  if (raster && raster.length && medien.length) plan = musikPlan(medien, { stil, raster, laenge, musikRest, takt, fest, variante });
   else if (stil === GANZ) plan = ganzPlan(medien);
-  else if (medien.some((m) => m.eigen)) plan = eigenPlan(medien, stil);
-  else plan = vorlagenPlan(medien.length, { laenge, vorlage: stil });
+  else if (medien.some((m) => m.eigen)) plan = eigenPlan(medien, stil, variante);
+  else plan = vorlagenPlan(medien.length, { laenge, vorlage: stil, variante });
   // Wie viel des Clips frühere Runden schon gezeigt haben: Die nächste Runde läuft dort weiter.
   const versatz = [];
   const benutzt = new Array(medien.length).fill(0);
@@ -489,13 +489,7 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = fal
     if (u.maske && u.b) {
       ctx.save();
       ctx.beginPath();
-      if (u.maske === 'kreis') {
-        const k = kreisMaske(z.p, W, H);
-        ctx.arc(k.x, k.y, k.r, 0, Math.PI * 2);
-      } else {
-        const l = u.maske === 'streifen' ? streifenMaske(z.p, W, H) : kachelMaske(z.p, W, H);
-        for (const r of l) ctx.rect(r.x, r.y, r.w, r.h);
-      }
+      maskePfad(ctx, u.maske, z.p, W, H);
       ctx.clip();
       await zeichne(ctx, z.j, zeitJ, rateJ, bn);
       ctx.restore();
@@ -503,7 +497,7 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = fal
       await zeichne(ctx, z.j, zeitJ, rateJ, mit(bn, u.b));
     }
     if (u.blitz) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${u.blitz})`;
+      ctx.fillStyle = `rgba(${u.farbe ?? '255, 255, 255'}, ${u.blitz})`;
       ctx.fillRect(0, 0, W, H);
     }
   }

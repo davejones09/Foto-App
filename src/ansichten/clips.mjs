@@ -8,11 +8,12 @@ import * as aus from '../ausgabe.mjs';
 import { protokolliere, serienEintrag } from '../diagnose.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { REEL_LAENGEN } from '../kennzahlen.mjs';
-import { VORLAGEN_IDS } from '../reelvorlagen.mjs';
+import { VORLAGEN_IDS, istVorlage, vorlageAus, eigeneSetzen, eigeneVorlagen } from '../reelvorlagen.mjs';
 import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
+import { vorlagenWahl, eigeneLaden } from '../vorlagenwahl.mjs';
 import { clipTonLaden, mischen, wavAus } from '../tonmix.mjs';
 
 const v = $('#v-clips');
@@ -36,6 +37,9 @@ let erstesMal = true;
 let modus = 'einfach';
 let anteil = 0.35; // 0 nur Musik, 0,5 beide voll, 1 nur Originalton
 let tempo = 'normal';
+let variante = 0;
+const wahl = { stil: GANZ, variante: 0 };
+let wahlUI = null;
 let fest = []; // selbst gesetzte Schnitte, Index = Schnitt
 let musik = null; // { name, url, puffer, bpm, schlaege, sicher, start, alle }
 
@@ -116,18 +120,19 @@ const entwurfMedium = (m) => ({
   start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer,
 });
 
-function entwurfSichern() {
+function entwurfSichern(sofort = false) {
   if (stellt) return;
   clearTimeout(entwurfTakt);
   entwurfTakt = setTimeout(() => {
     const leer = !medien.length && !musik;
     const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
-      stil, laenge, anteil, tempo, fest: [...fest],
+      stil, variante, laenge, anteil, tempo, fest: [...fest],
+      kombination: stil === 'e-neu' ? { ...vorlageAus('e-neu') } : null,
       medien: medien.filter((m) => m.teile).map(entwurfMedium),
       musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
     });
     arbeit.catch((err) => protokolliere('entwurf', err));
-  }, 300);
+  }, sofort ? 0 : 300);
 }
 
 async function entwurfLaden() {
@@ -137,7 +142,9 @@ async function entwurfLaden() {
   stellt = true;
   let fehlt = 0;
   try {
+    if (e.stil === 'e-neu' && e.kombination) eigeneSetzen([...eigeneVorlagen(), { ...e.kombination, id: 'e-neu' }]);
     stil = e.stil ?? GANZ;
+    variante = e.variante ?? 0;
     laenge = e.laenge ?? null;
     anteil = e.anteil ?? anteil;
     tempo = e.tempo ?? 'normal';
@@ -182,8 +189,10 @@ async function neuBeginnen() {
   musik = null;
   $('.cl-musik-probe', v).removeAttribute('src');
   stil = GANZ;
+  variante = 0;
   laenge = null;
   tempo = 'normal';
+  stileBauen();
   fest = [];
   ergebnisEl.replaceChildren();
   clearTimeout(entwurfTakt);
@@ -449,6 +458,8 @@ async function musikDazu(datei, alt = null) {
 }
 
 function planJetzt() {
+  // Eine Vorlage, die es nicht mehr gibt (gelöscht, ungespeicherte Kombination): ganze Clips.
+  if (stil !== GANZ && !istVorlage(stil)) { stil = GANZ; variante = 0; wahl.stil = GANZ; wahl.variante = 0; wahlUI?.zeigen(); }
   const raster = musikRaster();
   return clipPlan(medien, {
     stil,
@@ -456,6 +467,7 @@ function planJetzt() {
     raster,
     takt: musik ? (60 / musik.bpm) * musik.alle : null,
     tempo,
+    variante,
     fest: musik ? fest : null,
     musikRest: musik ? musik.puffer.duration - musik.start : undefined,
   });
@@ -467,7 +479,6 @@ function planZeigen() {
   bauenKnopf.disabled = laeuft || medien.length === 0;
   laengenEl.hidden = stil === GANZ && !musik;
   for (const b of laengenEl.children) b.setAttribute('aria-pressed', String((b.dataset.laenge ? Number(b.dataset.laenge) : null) === laenge));
-  for (const b of stileEl.children) b.setAttribute('aria-pressed', String(b.dataset.stil === stil));
   for (const b of $('.cl-tempo', v).children) b.setAttribute('aria-pressed', String(b.dataset.tempo === tempo));
   tonZeigen();
   if (!medien.length) { infoEl.textContent = T.clipsLeer; vorschauAktualisieren(null); welleZeigen(null); return; }
@@ -605,11 +616,17 @@ function aufbauen() {
 }
 
 function stileBauen() {
-  const ids = [GANZ, ...VORLAGEN_IDS];
-  stileEl.replaceChildren(...ids.map((id) => el('button', {
-    'data-stil': id, klasse: 'cl-stil', text: id === GANZ ? T.clipsGanz : T[`vorlage_${id.slice(2)}`],
-    onclick: () => { stil = id; planZeigen(); },
-  })));
+  wahl.stil = stil;
+  wahl.variante = variante;
+  if (!wahlUI) {
+    wahlUI = vorlagenWahl({
+      zustand: wahl,
+      extra: [{ stil: GANZ, text: T.clipsGanz }],
+      erweitert: () => modus === 'erweitert',
+      wechsel: () => { stil = wahl.stil; variante = wahl.variante; planZeigen(); },
+    });
+    stileEl.replaceWith(wahlUI.el);
+  } else wahlUI.zeigen();
   laengenEl.replaceChildren(
     el('button', { text: T.reelAuto, onclick: () => { laenge = null; planZeigen(); } }),
     ...REEL_LAENGEN.map((l) => el('button', { 'data-laenge': l, text: f(T.reelSekunden, { s: l }), onclick: () => { laenge = l; planZeigen(); } })),
@@ -738,11 +755,12 @@ zeitleiste.addEventListener('pointerdown', (e) => {
   zeitleisteZiehen(e);
 });
 zeitleiste.addEventListener('pointermove', (e) => { if (e.buttons) zeitleisteZiehen(e); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) vorschauPause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { vorschauPause(); if (medien.length || musik) entwurfSichern(true); } });
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));
 
 function modusSetzen(neu, merken = false) {
   modus = neu === 'erweitert' ? 'erweitert' : 'einfach';
+  wahlUI?.zeigen();
   v.dataset.modus = modus;
   for (const b of $('.cl-modus', v).children) b.setAttribute('aria-pressed', String(b.dataset.modus === modus));
   if (merken) db.setzeEinstellung('reelModus', modus).catch(() => {});
@@ -883,6 +901,7 @@ registriere('clips', {
   verlassen() { vorschauAus(); },
   async betreten(_, alt) {
     if (alt && alt !== 'clips') zurueck = alt;
+    if (erstesMal) await eigeneLaden();
     if (erstesMal) modusSetzen(await db.einstellung('reelModus').catch(() => null) || 'einfach');
     musikZeigen();
     aufbauen();

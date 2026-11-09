@@ -97,3 +97,98 @@ test('Masken: am Ende ist die ganze Fläche bedeckt, ohne Lücken', () => {
     assert.ok(halb > 0 && halb < W * H, `${fn.name} halb`);
   }
 });
+
+test('Gruppen: jede Vorlage gehört zu einer Stimmung, jede Stimmung hat mindestens drei', async () => {
+  const { VORLAGEN, GRUPPEN, gueltig } = await import('../src/reelvorlagen.mjs');
+  assert.ok(VORLAGEN.length >= 30);
+  for (const v of VORLAGEN) {
+    assert.ok(GRUPPEN.includes(v.gruppe), `${v.id}: Gruppe ${v.gruppe}`);
+    assert.ok(gueltig(v), `${v.id} gültig`);
+  }
+  for (const g of GRUPPEN) assert.ok(VORLAGEN.filter((v) => v.gruppe === g).length >= 3, `${g} zu klein`);
+  assert.equal(new Set(VORLAGEN.map((v) => v.id)).size, VORLAGEN.length);
+});
+
+test('Übergänge: am Anfang nur das alte Bild, am Ende nur das neue, voll deckend', async () => {
+  const { UEBERGANG_IDS, uebergangLage } = await import('../src/reelvorlagen.mjs');
+  for (const art of UEBERGANG_IDS) {
+    const e = uebergangLage(art, 1);
+    if (art !== 'schnitt') {
+      assert.ok(e.b, `${art}: neues Bild am Ende`);
+      assert.ok((e.b.alpha ?? 1) > 0.99, `${art}: am Ende deckend`);
+      assert.ok(Math.abs(e.b.dx ?? 0) < 1 && Math.abs(e.b.dy ?? 0) < 1, `${art}: am Ende an seinem Platz`);
+      assert.ok(Math.abs((e.b.faktor ?? 1) - 1) < 1e-6, `${art}: am Ende ohne Zoom`);
+      assert.ok(!e.blitz, `${art}: am Ende kein Blitz`);
+    }
+    const a = uebergangLage(art, 0);
+    if (art !== 'schnitt') assert.ok(a.a, `${art}: altes Bild am Anfang`);
+    assert.ok(!a.blitz, `${art}: am Anfang kein Blitz`);
+  }
+});
+
+test('Masken decken am Ende das ganze Bild', async () => {
+  const { maskePfad, jalousieMaske } = await import('../src/reelvorlagen.mjs');
+  const W = 108;
+  const H = 192;
+  // Kleiner Rasterer für die Pfade: Punkt-in-Polygon und Rechtecke
+  const pruefe = (maske, p) => {
+    const formen = [];
+    let poly = null;
+    const ctx = {
+      arc: (x, y, r) => formen.push({ kreis: { x, y, r } }),
+      rect: (x, y, w, h) => formen.push({ rect: { x, y, w, h } }),
+      moveTo: (x, y) => { poly = [[x, y]]; },
+      lineTo: (x, y) => poly.push([x, y]),
+      closePath: () => formen.push({ poly }),
+    };
+    maskePfad(ctx, maske, p, W, H);
+    const drin = (px, py) => formen.some((f) => {
+      if (f.kreis) return Math.hypot(px - f.kreis.x, py - f.kreis.y) <= f.kreis.r;
+      if (f.rect) return px >= f.rect.x && px < f.rect.x + f.rect.w && py >= f.rect.y && py < f.rect.y + f.rect.h;
+      let c = false;
+      const q = f.poly;
+      for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+        if ((q[i][1] > py) !== (q[j][1] > py) && px < ((q[j][0] - q[i][0]) * (py - q[i][1])) / (q[j][1] - q[i][1]) + q[i][0]) c = !c;
+      }
+      return c;
+    });
+    let n = 0;
+    for (let y = 0.5; y < H; y += 3) for (let x = 0.5; x < W; x += 3) if (drin(x, y)) n++;
+    return n / (Math.ceil(H / 3) * Math.ceil(W / 3));
+  };
+  for (const m of ['kreis', 'streifen', 'kacheln', 'diagonal', 'jalousie', 'tuer']) {
+    assert.ok(pruefe(m, 1) > 0.999, `${m}: am Ende voll`);
+    assert.ok(pruefe(m, 0) < 0.02, `${m}: am Anfang leer`);
+    const mitte = pruefe(m, 0.5);
+    assert.ok(mitte > 0.05 && mitte < 0.95, `${m}: in der Mitte halb (${mitte})`);
+  }
+  assert.equal(jalousieMaske(1, W, H).reduce((s, r) => s + r.h, 0), H);
+});
+
+test('Varianten: ohne Variante das Original, sonst anders, gleich bei gleicher Zahl, in der Stimmung', async () => {
+  const { VORLAGEN, vorlageAus, gueltig } = await import('../src/reelvorlagen.mjs');
+  for (const v of VORLAGEN) {
+    assert.equal(vorlageAus(v.id, 0), v);
+    let anders = 0;
+    for (let k = 1; k <= 6; k++) {
+      const a = vorlageAus(v.id, k);
+      assert.ok(gueltig(a), `${v.id}/${k}`);
+      assert.deepEqual(a, vorlageAus(v.id, k));
+      assert.equal(a.gruppe, v.gruppe);
+      if (JSON.stringify([a.arten, a.schlaege, a.bewegung]) !== JSON.stringify([v.arten, v.schlaege, v.bewegung])) anders++;
+    }
+    assert.ok(anders >= 3, `${v.id}: nur ${anders} von 6 Varianten anders`);
+  }
+});
+
+test('Eigene Vorlagen: werden gefunden, ungültige abgelehnt', async () => {
+  const { eigeneSetzen, istVorlage, vorlageAus, vorlagenPlan } = await import('../src/reelvorlagen.mjs');
+  eigeneSetzen([{ id: 'e-test', name: 'Test', schlaege: [2, 1], arten: ['blende', 'schnitt'], bewegung: 'drift' }, { id: 'e-kaputt', schlaege: [], arten: ['x'], bewegung: 'y' }]);
+  assert.ok(istVorlage('e-test'));
+  assert.ok(!istVorlage('e-kaputt'));
+  assert.equal(vorlageAus('e-test').arten[0], 'blende');
+  const p = vorlagenPlan(4, { vorlage: 'e-test' });
+  assert.equal(p.arten[0], 'blende');
+  eigeneSetzen([]);
+  assert.ok(!istVorlage('e-test'));
+});
