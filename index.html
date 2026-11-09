@@ -98,6 +98,7 @@
     <p class="rt-hinweis" data-t="clipsHinweis"></p>
     <button class="neben2" id="cl-waehlen" data-t="clipsWaehlen"></button>
     <button class="link" id="cl-rueckblick" data-t="rueckblickKnopf"></button>
+    <button class="link" id="cl-weiterfilmen" data-t="akKnopf"></button>
     <div class="cl-liste"></div>
     <p class="af-gruppe" data-t="musikTitel"></p>
     <div class="cl-musik">
@@ -172,6 +173,13 @@
         <label class="cl-regler ce-start"><span class="ce-start-text"></span><input type="range" id="ce-start" min="0" step="0.1"></label>
         <label class="cl-regler ce-ende"><span class="ce-ende-text"></span><input type="range" id="ce-ende" min="0" step="0.1"></label>
         <label class="cl-regler ce-laenge"><span class="ce-laenge-text"></span><input type="range" id="ce-laenge" min="0.5" max="10" step="0.1"></label>
+        <p class="af-gruppe ce-wechsel-titel" data-t="wechselTitel"></p>
+        <div class="af-tempi ce-wechsel" role="group">
+          <button data-wechsel="" data-t="wechselNormal"></button>
+          <button data-wechsel="fahrzeug" data-t="wechselFahrzeug"></button>
+          <button data-wechsel="stehen" data-t="wechselStehen"></button>
+        </div>
+        <p class="rt-info ce-wechsel-info"></p>
         <label class="cl-regler ce-text"><span data-t="textZeile"></span><input type="text" id="ce-text" class="co-titel-eingabe" maxlength="60" autocomplete="off" enterkeyhint="done"></label>
       </div>
     </div>

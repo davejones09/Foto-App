@@ -33,11 +33,11 @@ Die Nummern entsprechen der gemeinsamen Ideenliste.
 - 5 Tagesrückblick
 - 24 Reiseroute als Grafik
 
-## 0.25 Kamera und Erkennung
+## 0.25 Kamera und Erkennung (fertig)
 
-- 17 Stehender Vordergrund
-- 20 Fahrzeug-Übergang
-- 13 Anschluss-Kamera für Clips
+- 17 Stehender Vordergrund: Menschen und Dinge aus dem letzten Bild bleiben über der nächsten Szene stehen und blenden aus
+- 20 Fahrzeug-Übergang: Die App sucht im Clip das Bild, in dem das Fahrzeug am meisten bedeckt, schneidet dort, und das Fahrzeug fährt über der nächsten Szene weiter
+- 13 Nahtlos weiterfilmen: Das letzte Bild liegt halb durchsichtig im Sucher, eine Zahl zeigt, wie gut der neue Clip ansetzt
 
 ## Für alles gilt
 

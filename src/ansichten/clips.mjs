@@ -17,6 +17,11 @@ import { instaZeichnen } from '../instagram.mjs';
 import { vorlagenWahl, eigeneLaden } from '../vorlagenwahl.mjs';
 import { TEXT_STILE, ueberlagern, signaturLaden } from '../reeltext.mjs';
 import { clipTonLaden, mischen, wavAus } from '../tonmix.mjs';
+import { anschlussKamera } from '../anschlusskamera.mjs';
+
+// Erkennung erst laden, wenn ein Wechsel mit Vordergrund sie braucht (rund 13 MB).
+const erkennung = () => import('../erkennung.mjs');
+const vordergrundMaske = async (c, art) => (await erkennung()).vordergrundMaske(c, art);
 
 const v = $('#v-clips');
 const liste = $('.cl-liste', v);
@@ -159,6 +164,7 @@ async function entwurfDatei(m) {
 const entwurfMedium = (m) => ({
   id: m.eid, typ: m.typ, name: m.datei.name, mime: m.datei.type, groesse: m.datei.size, teile: m.teile,
   start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer, text: m.text || '',
+  wechsel: m.wechsel ?? null,
 });
 
 function entwurfSichern(sofort = false) {
@@ -199,6 +205,7 @@ async function entwurfLaden() {
       const m = neuesMedium(d, x.typ, {
         eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen, text: x.text || '',
         ...(x.ende != null ? { ende: x.ende } : {}), ...(x.laenge != null ? { laenge: x.laenge } : {}), ...(x.rahmen ? { rahmen: x.rahmen } : {}),
+        ...(x.wechsel ? { wechsel: x.wechsel } : {}),
       });
       await vorschaubild(m, m.leinwand);
       if (m.fehler) { fehlt++; if (m.url) URL.revokeObjectURL(m.url); continue; }
@@ -328,6 +335,58 @@ function editorRegler() {
     $('#ce-laenge', v).value = eigeneLaenge(m);
     $('.ce-laenge-text', v).textContent = f(T.clipLaengeWert, { s: zeitText(eigeneLaenge(m)) });
   }
+  const art = m.wechsel?.art || '';
+  for (const b of $('.ce-wechsel', v).children) {
+    b.setAttribute('aria-pressed', String(b.dataset.wechsel === art));
+    b.hidden = b.dataset.wechsel === 'fahrzeug' && !video;
+    b.disabled = wechselSucht;
+  }
+  if (!wechselSucht) {
+    const letzter = medien.indexOf(m) === medien.length - 1;
+    $('.ce-wechsel-info', v).textContent = letzter && art ? T.wechselLetzter
+      : art === 'fahrzeug' ? T.wechselInfoFahrzeug : art === 'stehen' ? T.wechselInfoStehen : T.wechselInfoNormal;
+  }
+}
+
+// Wechsel mit Vordergrund: Fahrzeug suchen oder prüfen, ob im letzten Bild etwas steht.
+let wechselSucht = false;
+let erkennungBekannt = false;
+async function wechselSetzen(art) {
+  if (!aktuell || wechselSucht) return;
+  const { m } = aktuell;
+  if (!art) { delete m.wechsel; editorRegler(); planZeigen(); return; }
+  wechselSucht = true;
+  editorRegler();
+  const info = $('.ce-wechsel-info', v);
+  info.textContent = erkennungBekannt ? T.wechselSucht : T.erkennungLaedt;
+  try {
+    const e = await erkennung();
+    await e.erkenner();
+    erkennungBekannt = true;
+    if (art === 'fahrzeug') {
+      const r = await e.fahrzeugSuchen(m, (p) => { info.textContent = `${T.wechselSucht} ${Math.round(p * 100)} %`; });
+      if (!r) { melde(T.wechselKeinFahrzeug); return; }
+      m.wechsel = { art, t: r.t, aus: r.aus, bis: r.bis };
+      m.ende = Math.min(m.dauer, Math.max(r.t, 0.3));
+      if (m.start > m.ende - 0.3) m.start = Math.max(0, m.ende - 2);
+      m.eigen = true;
+      melde(f(T.wechselGefunden, { s: zeitText(r.t), aus: zeitText(r.aus) }));
+      editorZeigeStelle(m.ende - 0.05);
+    } else {
+      m.wechsel = { art, aus: 1.1 };
+      if (aktuell.video) await suche(aktuell.q, Math.max(0, (m.ende ?? m.dauer) - 0.06));
+      const a = await e.vordergrundIm(aktuell.q, m);
+      if (aktuell.video) editorZeigeStelle((m.ende ?? m.dauer) - 0.06);
+      if (a < 0.02) melde(T.wechselKeinVordergrund);
+    }
+  } catch (err) {
+    protokolliere('erkennung', err);
+    melde(T.erkennungFehler);
+  } finally {
+    wechselSucht = false;
+    if (aktuell) editorRegler();
+    planZeigen();
+  }
 }
 
 async function editorOeffnen(m) {
@@ -378,11 +437,13 @@ function editorEinrichten() {
     delete m.ende;
     delete m.laenge;
     m.eigen = false;
+    delete m.wechsel;
     editorRegler();
     if (aktuell.video) editorZeigeStelle(0);
     else editorMalen();
     planZeigen();
   });
+  for (const b of $('.ce-wechsel', v).children) b.addEventListener('click', () => wechselSetzen(b.dataset.wechsel));
   for (const b of $('.ce-modus', v).children) {
     b.addEventListener('click', () => {
       aktuell.m.rahmen.modus = b.dataset.modus;
@@ -557,7 +618,7 @@ function texteFuer(p) {
 }
 
 function malerMitText(p, W, H, live) {
-  const m = clipMaler(medien.slice(), p, { W, H, live });
+  const m = clipMaler(medien.slice(), p, { W, H, live, maske: medien.some((x) => x.wechsel) ? vordergrundMaske : null });
   const stationen = route.split(',');
   return { ...m, male: ueberlagern(m.male, { texte: texteFuer(p), signatur, W, H, dauer: p.dauer, route: { stationen, beginn: p.beginn } }) };
 }
@@ -796,6 +857,17 @@ $('.cl-alle', v).replaceChildren(...[1, 2, 4].map((n) => el('button', {
   'data-alle': n, text: T[`musikAlle${n}`], onclick: () => { musik.alle = n; fest = []; musikZeigen(); planZeigen(); },
 })));
 $('#cl-waehlen', v).addEventListener('click', () => eingabe.click());
+// Nahtlos weiterfilmen: Jeder neue Clip landet sofort im Reel und im Entwurf.
+$('#cl-weiterfilmen', v).addEventListener('click', () => {
+  vorschauPause();
+  anschlussKamera({
+    letztes: medien[medien.length - 1] || null,
+    neu: async (datei) => {
+      try { await dazu([datei]); } finally { ladeEnde(); }
+      return medien[medien.length - 1];
+    },
+  }).catch((err) => { protokolliere('weiterfilmen', err); melde(T.akFehler); });
+});
 eingabe.addEventListener('change', () => {
   const l = [...eingabe.files];
   eingabe.value = '';
