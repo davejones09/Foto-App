@@ -51,6 +51,7 @@ export async function anschlussKamera({ letztes, neu }) {
     }
   }
   const vid = el('video', { klasse: 'ak-video', playsinline: true, muted: true, autoplay: true });
+  vid.muted = true;
   vid.srcObject = stream;
   const geist = el('canvas', { klasse: 'ak-geist', width: 540, height: 960 });
   const wert = el('div', { klasse: 'ak-wert', 'aria-live': 'polite' });

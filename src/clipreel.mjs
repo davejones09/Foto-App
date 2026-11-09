@@ -51,8 +51,16 @@ function ganzPlan(medien) {
 // Vorlage, in der einzelne Medien eine eigene Länge haben: Der Takt der Vorlage gilt nur für die übrigen.
 function eigenPlan(medien, stil, variante = 0) {
   const v = vorlageAus(stil, variante);
-  const staende = medien.map((m, k) => (m.eigen ? eigeneLaenge(m) : v.schlaege[k % v.schlaege.length] * TAKT));
-  const arten = staende.slice(1).map((_, k) => v.arten[k % v.arten.length]);
+  const arten = medien.slice(1).map((_, k) => v.arten[k % v.arten.length]);
+  // Ein Fahrzeug-Wechsel schneidet genau an der Spitze, also am eingestellten Ende des Clips:
+  // Der hereinkommende Übergang und die erste Hälfte des hinausgehenden zählen mit.
+  const staende = medien.map((m, k) => {
+    if (!m.eigen) return v.schlaege[k % v.schlaege.length] * TAKT;
+    if (m.wechsel?.art !== 'fahrzeug') return eigeneLaenge(m);
+    const rein = k > 0 ? UEBERGAENGE[arten[k - 1]] : 0;
+    const raus = k < medien.length - 1 ? UEBERGAENGE[arten[k]] / 2 : 0;
+    return Math.max(0.3, eigeneLaenge(m) - rein - raus);
+  });
   return planAus(staende, arten.map((x) => UEBERGAENGE[x]), arten, {
     stil, bewegung: v.bewegung, n: medien.length, maxFotos: medien.length, takt: TAKT, eigeneLaengen: true,
   });
@@ -241,6 +249,63 @@ export function clipStellen(plan, medien, z) {
   return { zeitI, zeitJ: n.typ === 'foto' ? 0 : clipZeit(n, plan.versatz[k + 1], fj.t), rateI: fi.rate, rateJ: fj.rate };
 }
 
+// --- Vordergrund bleibt: Wechsel mit Fahrzeug oder stehender Figur ---
+// Am Schnitt aus Medium A bleibt dessen Vordergrund (ein Fahrzeug, eine Person) über der neuen Szene liegen.
+// Beim Fahrzeug läuft A weiter, bis es aus dem Bild ist; die stehende Figur ist das eingefrorene letzte Bild.
+// Das Ausschneiden erledigt die Erkennung (erkennung.mjs), hier steht nur die Rechnung.
+export const WECHSEL = ['fahrzeug', 'stehen'];
+const STEHEN_AUS = 1.1;
+const AUSBLENDEN = 0.35;
+
+// Bester Moment für den Wechsel aus Proben { t, a } (a = Anteil des Fahrzeugs am Bild). Die Spitze ist
+// das Bild, in dem das Fahrzeug am meisten bedeckt; aus: wie lange es danach noch im Bild bleibt.
+export function spitzeFinden(proben, { mind = 0.15, zeitEnde = Infinity } = {}) {
+  let best = null;
+  for (const p of proben) if (!best || p.a > best.a + 1e-9) best = p;
+  if (!best || best.a < mind) return null;
+  let weg = null;
+  for (const p of proben) if (p.t > best.t && p.a < Math.max(0.03, best.a * 0.12)) { weg = p.t; break; }
+  const bis = Math.min(weg ?? best.t + 1.2, zeitEnde - 0.05);
+  const aus = Math.max(0.4, Math.min(1.5, bis - best.t + 0.1));
+  return { t: best.t, anteil: best.a, aus: Math.round(aus * 100) / 100 };
+}
+
+// Liegt zur Reel-Zeit t ein Vordergrund über dem Bild? Dann { k, a, art, seit, alpha, s }, sonst null.
+// k: Schnitt, a: Index des Mediums, dessen Vordergrund bleibt, seit: Zeit seit dem Schnitt (Mitte des Übergangs).
+export function vordergrundLage(plan, medien, t) {
+  const z = vorlagenZustand(plan, Math.max(0, Math.min(t, plan.dauer)));
+  let k;
+  let seit;
+  if (z.j != null && z.p >= 0.5) { k = z.schritt; seit = z.seit - plan.staende[k] - plan.uebergaenge[k] / 2; }
+  else if (z.schritt > 0) { k = z.schritt - 1; seit = (plan.uebergaenge[k] || 0) / 2 + z.seit; }
+  else return null;
+  const a = k % medien.length;
+  const w = medien[a]?.wechsel;
+  if (!w || !WECHSEL.includes(w.art)) return null;
+  // Endet vor dem nächsten Übergang, damit nie drei Medien gleichzeitig offen sein müssen.
+  const platz = (plan.uebergaenge[k] || 0) / 2 + plan.staende[k + 1] - 0.02;
+  const aus = Math.min(w.aus ?? STEHEN_AUS, platz);
+  if (seit < 0 || seit >= aus) return null;
+  const blende = Math.min(AUSBLENDEN, aus / 2);
+  const alpha = seit > aus - blende ? Math.max(0, (aus - seit) / blende) : 1;
+  return { k, a, art: w.art, seit, alpha, s: w.art === 'stehen' ? 1 + (0.04 * seit) / aus : 1 };
+}
+
+// Stelle im Clip von A für den Vordergrund: am Schnitt eingefroren oder weiterlaufend. Ohne Umlauf an den Anfang.
+export function vordergrundZeit(plan, medien, lage) {
+  const m = medien[lage.a];
+  if (m.typ === 'foto') return 0;
+  const k = lage.k;
+  const u = (plan.vorlauf?.[k] || 0) + plan.staende[k] + (plan.uebergaenge[k] || 0) / 2;
+  const f = tempoForm(plan.tempo || 'normal', u, sichtbar(plan, k), { anfang: k > 0, schluss: true });
+  const start = m.start || 0;
+  const rest = Math.max(0.05, (m.ende ?? m.dauer) - start);
+  const roh = (plan.versatz?.[k] || 0) + f.t;
+  const schnitt = start + (roh <= rest + 1e-6 ? Math.min(roh, rest) : roh % rest);
+  const zeit = lage.art === 'fahrzeug' ? schnitt + lage.seit : schnitt;
+  return Math.max(0, Math.min(zeit, (m.dauer || zeit + 1) - 0.05));
+}
+
 // Passt Quelle (qw × qh) in den Rahmen: mittiger Ausschnitt, der ihn füllt.
 export function deckAusschnitt(qw, qh, rw = RAHMEN.w, rh = RAHMEN.h) {
   const quer = qw / qh > rw / rh;
@@ -422,7 +487,8 @@ export function liveFolgen(v, zeit, rate = 1) {
 }
 
 // live: für die Vorschau. Clips laufen in Echtzeit mit, statt für jedes Bild exakt gesucht zu werden.
-export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = false } = {}) {
+// maske: async (Leinwand, art) => Leinwand beliebiger Größe (wird auf W × H gezogen), deckend wo der Vordergrund ist (aus erkennung.mjs).
+export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = false, maske = null } = {}) {
   const kx = W / RAHMEN.w;
   const clips = new Map(); // beim Bauen höchstens zwei gleichzeitig offen, in der Vorschau drei
   const offen = live ? 3 : 2;
@@ -449,9 +515,9 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = fal
     const v = clips.get(i);
     return { b: v, w: v.videoWidth, h: v.videoHeight, video: true };
   }
-  async function zeichne(ctx, i, zeitImClip, rate, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }) {
+  async function zeichne(ctx, i, zeitImClip, rate, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }, exakt = false) {
     const q = await quelle(i);
-    if (q.video && laufend) { genutzt.add(i); liveFolgen(q.b, zeitImClip, rate); } else if (q.video) {
+    if (q.video && laufend && !exakt) { genutzt.add(i); liveFolgen(q.b, zeitImClip, rate); } else if (q.video) {
       if (!q.b.paused) q.b.pause();
       await suche(q.b, zeitImClip);
     }
@@ -479,8 +545,10 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = fal
     const b = medien[z.i].typ === 'foto'
       ? bewegung(plan.bewegung, z.seit, plan.takt, z.lauf)
       : clipBewegung(plan.bewegung, plan.vorlauf[z.schritt] + z.seit, plan.takt, z.lauf);
-    if (z.j == null) { await zeichne(ctx, z.i, zeitI, rateI, b); return; }
-    const u = uebergangLage(z.art, z.p);
+    if (z.j == null) { await zeichne(ctx, z.i, zeitI, rateI, b); await vordergrund(ctx, t); return; }
+    // Wechsel mit Vordergrund: harter Schnitt in der Mitte, das Bleibende legt sich darüber.
+    const mitWechsel = maske && WECHSEL.includes(medien[z.i].wechsel?.art);
+    const u = mitWechsel ? (z.p < 0.5 ? { a: {} } : { b: {} }) : uebergangLage(z.art, z.p);
     const bn = medien[z.j].typ === 'foto'
       ? bewegung(plan.bewegung, 0, plan.takt, 0)
       : clipBewegung(plan.bewegung, Math.max(0, z.seit - plan.staende[z.schritt]), plan.takt, 0);
@@ -499,6 +567,99 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = fal
     if (u.blitz) {
       ctx.fillStyle = `rgba(${u.farbe ?? '255, 255, 255'}, ${u.blitz})`;
       ctx.fillRect(0, 0, W, H);
+    }
+    await vordergrund(ctx, t);
+  }
+
+  // --- Vordergrund, der über der neuen Szene bleibt ---
+  let ebene = null;
+  let klein = null;
+  const stehend = new Map(); // Schnitt -> ausgeschnittene Figur (einmal gerechnet)
+  const zuletzt = new Map(); // Schnitt -> letzte Maske des Fahrzeugs (für die Vorschau)
+  const offenRechnet = new Set();
+  const leinwand = (w, h) => (typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }));
+  async function ausschneiden(lage, zeit, exakt) {
+    ebene ??= leinwand(W, H);
+    klein ??= leinwand(288, 512);
+    const e = ebene.getContext('2d');
+    e.globalCompositeOperation = 'source-over';
+    e.clearRect(0, 0, W, H);
+    await zeichne(e, lage.a, zeit, lage.art === 'fahrzeug' ? 1 : 0, { s: 1 }, exakt);
+    klein.getContext('2d').drawImage(ebene, 0, 0, 288, 512);
+    return maske(klein, lage.art);
+  }
+  function auflegen(ctx, bild, m, lage) {
+    const e = ebene.getContext('2d');
+    if (bild !== ebene) { e.globalCompositeOperation = 'source-over'; e.clearRect(0, 0, W, H); e.drawImage(bild, 0, 0); }
+    e.globalCompositeOperation = 'destination-in';
+    e.drawImage(m, 0, 0, W, H);
+    e.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.globalAlpha = lage.alpha;
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(lage.s, lage.s);
+    ctx.drawImage(ebene, -W / 2, -H / 2);
+    ctx.restore();
+  }
+  async function vordergrund(ctx, t) {
+    if (!maske) return;
+    const lage = vordergrundLage(plan, medien, t);
+    if (!lage) return;
+    const zeit = vordergrundZeit(plan, medien, lage);
+    try {
+      if (lage.art === 'stehen') {
+        // Einmal genau ausschneiden und als fertiges Bild merken.
+        if (!stehend.has(lage.k)) {
+          if (laufend && offenRechnet.has(lage.k)) return;
+          const arbeit = (async () => {
+            const m = await ausschneiden(lage, zeit, true);
+            if (!m) return null;
+            const fertig = leinwand(W, H);
+            const f = fertig.getContext('2d');
+            f.drawImage(ebene, 0, 0);
+            f.globalCompositeOperation = 'destination-in';
+            f.drawImage(m, 0, 0, W, H);
+            return fertig;
+          })();
+          if (laufend) { offenRechnet.add(lage.k); arbeit.then((b) => stehend.set(lage.k, b)).catch(() => stehend.set(lage.k, null)); return; }
+          stehend.set(lage.k, await arbeit);
+        }
+        const b = stehend.get(lage.k);
+        if (!b) return;
+        ebene ??= leinwand(W, H);
+        const e = ebene.getContext('2d');
+        e.clearRect(0, 0, W, H);
+        e.drawImage(b, 0, 0);
+        ctx.save();
+        ctx.globalAlpha = lage.alpha;
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(lage.s, lage.s);
+        ctx.drawImage(ebene, -W / 2, -H / 2);
+        ctx.restore();
+        return;
+      }
+      // Fahrzeug: Beim Bauen jedes Bild genau, in der Vorschau die jeweils letzte fertige Maske.
+      if (!laufend) {
+        const m = await ausschneiden(lage, zeit, false);
+        if (m) auflegen(ctx, ebene, m, lage);
+        return;
+      }
+      ebene ??= leinwand(W, H);
+      klein ??= leinwand(288, 512);
+      const e = ebene.getContext('2d');
+      e.globalCompositeOperation = 'source-over';
+      e.clearRect(0, 0, W, H);
+      await zeichne(e, lage.a, zeit, 1, { s: 1 });
+      if (!offenRechnet.has(lage.k)) {
+        offenRechnet.add(lage.k);
+        const k2 = klein.getContext('2d');
+        k2.drawImage(ebene, 0, 0, 288, 512);
+        maske(klein, lage.art).then((m) => { if (m) zuletzt.set(lage.k, m); }).catch(() => {}).finally(() => offenRechnet.delete(lage.k));
+      }
+      const m = zuletzt.get(lage.k);
+      if (m) auflegen(ctx, ebene, m, lage);
+    } catch (err) {
+      serienEintrag(`Vordergrund ${lage.k + 1}: ${err?.message || err}`);
     }
   }
   function ende() {

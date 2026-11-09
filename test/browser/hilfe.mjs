@@ -15,7 +15,7 @@ mkdirSync(ERGEBNISSE, { recursive: true });
 
 const TYPEN = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.mjs': 'text/javascript', '.js': 'text/javascript',
-  '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.jpg': 'image/jpeg',
+  '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.jpg': 'image/jpeg', '.wasm': 'application/wasm',
 };
 
 export async function server() {
