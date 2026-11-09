@@ -187,4 +187,9 @@ Abweichungen vom Konzept und Festlegungen, die das Konzept offen ließ. Neueste 
   - **Vorschau:** Beim Bauen wird jedes Bild genau ausgeschnitten. In der Sofort-Vorschau rechnet die Maske nebenher, und es gilt die jeweils letzte fertige, damit die Vorschau flüssig bleibt.
   - **Nahtlos weiterfilmen:** Aufnahme in der App über MediaRecorder, bei iOS als MP4. Der Wert vergleicht die Form des Sucherbilds mit dem letzten Bild des vorigen Clips (dasselbe Merkmal wie bei Vorher und nachher). Jeder Clip landet sofort im Reel und im Entwurf. Geht die App in den Hintergrund, endet die Aufnahme sauber.
   - **Entwurf:** Das neue Feld `wechsel` ist optional, alte Entwürfe brauchen keine Migration.
+- **Nächstes Update: Fotos im Reel aus Clips.**
+  - **Einmal für alle statt jedes Foto einzeln:** David will Fotos nicht einzeln anpassen, das Beschneiden aufs Hochformat hat Querformate zerstört. Standard ist jetzt „Automatisch“: Hochformate (bis 0,9 Breite zu Höhe) füllen nach dem Motiv, Quer- und Quadratformate bleiben ganz. Die Wahl gilt nur für Fotos mit automatischem Rahmen (`rahmen.auto`), alles von Hand Angepasste bleibt.
+  - **Hintergrund beim ganzen Foto:** unscharf, schwarz oder weiß. Der unscharfe Hintergrund ist ein stark verkleinertes Abbild hinter dem Foto, das Foto selbst bleibt unverändert und unbeschnitten.
+  - **100 statt 30 Medien.** Der Entwurf speichert die Originale, bei 100 großen Fotos kann der Speicher knapp werden. Dafür gibt es die bekannte Meldung. Bei „Ganze Clips“ rücken Fotos ohne eigene Länge zusammen (höchstens 2,5 s, mindestens 0,8 s), damit alle in 90 s passen.
+  - **Entwurf:** neue optionale Felder `fotoArt`, `fotoGrund`, je Medium `motiv`, `pw`, `ph`. Alte Entwürfe brauchen keine Migration, ihre Rahmen gelten als von Hand gesetzt.
 

@@ -58,10 +58,12 @@ test('Wechsel im Editor: Vordergrund bleibt, ohne Fahrzeug bleibt die Wahl, Entw
   await page.screenshot({ path: `${ERGEBNISSE}/wechsel-editor.png` });
   await page.click('#ce-fertig');
   // Der Entwurf enthält den Wechsel
-  await page.waitForFunction(async () => {
-    const e = await (await import('./src/speicher.mjs')).reelEntwurf();
-    return e?.medien?.[0]?.wechsel?.art === 'stehen';
-  }, null, { timeout: 10000 });
+  let gemerkt = null;
+  for (let i = 0; i < 60 && gemerkt !== 'stehen'; i++) {
+    gemerkt = await page.evaluate(async () => (await (await import('./src/speicher.mjs')).reelEntwurf())?.medien?.[0]?.wechsel?.art ?? null);
+    if (gemerkt !== 'stehen') await page.waitForTimeout(150);
+  }
+  assert.equal(gemerkt, 'stehen');
   // Vorschau mit Vordergrund malt ohne Fehler über den Schnitt
   const ok = await page.evaluate(async () => {
     const { clipPlan, clipMaler } = await import('./src/clipreel.mjs');

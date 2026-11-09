@@ -7,7 +7,8 @@ import { VORLAGEN, UEBERGAENGE, TAKT, vorlagenPlan, vorlagenZustand, bewegung, u
 import { serienEintrag } from './diagnose.mjs';
 
 export const GANZ = 'c-ganz';
-export const MEDIEN_MAX = 30;
+export const MEDIEN_MAX = 100;
+export const FOTO_STAND_MIN = 0.8;
 export const REEL_MAX = 90;
 export const FOTO_STAND = 2.5;
 
@@ -33,18 +34,29 @@ function planAus(staende, tr, arten, grund) {
 }
 
 // Ganze Clips: harte Schnitte, jeder Clip läuft in seiner eigenen Länge. Bei 90 Sekunden ist Schluss.
+// Passt es nicht, rücken zuerst die Fotos ohne eigene Länge zusammen (bis 0,8 s), damit alle drankommen.
+export function fotoStandFuer(medien) {
+  const frei = medien.filter((m) => m.typ === 'foto' && m.laenge == null);
+  if (!frei.length) return FOTO_STAND;
+  const rest = medien.filter((m) => !frei.includes(m)).reduce((x, m) => x + eigeneLaenge(m), 0);
+  const platz = (REEL_MAX - rest) / frei.length;
+  return Math.max(FOTO_STAND_MIN, Math.min(FOTO_STAND, Math.floor(platz * 10) / 10));
+}
+
 function ganzPlan(medien) {
+  const fs = fotoStandFuer(medien);
+  const laenge = (m) => (m.typ === 'foto' && m.laenge == null ? fs : eigeneLaenge(m));
   const staende = [];
   let t = 0;
   for (const m of medien) {
     if (t >= REEL_MAX) break;
-    const s = Math.min(eigeneLaenge(m), REEL_MAX - t);
+    const s = Math.min(laenge(m), REEL_MAX - t);
     staende.push(s);
     t += s;
   }
-  const gesamt = medien.reduce((x, m) => x + eigeneLaenge(m), 0);
+  const gesamt = medien.reduce((x, m) => x + laenge(m), 0);
   return planAus(staende, staende.slice(1).map(() => 0), staende.slice(1).map(() => 'schnitt'), {
-    stil: GANZ, bewegung: 'keine', n: medien.length, maxFotos: medien.length, gekappt: gesamt > REEL_MAX + 1e-9,
+    stil: GANZ, bewegung: 'keine', n: medien.length, maxFotos: medien.length, gekappt: gesamt > REEL_MAX + 1e-9, fotoStand: fs,
   });
 }
 
@@ -306,6 +318,19 @@ export function vordergrundZeit(plan, medien, lage) {
   return Math.max(0, Math.min(zeit, (m.dauer || zeit + 1) - 0.05));
 }
 
+// --- Fotos im Reel: einmal für alle festlegen statt jedes einzeln ---
+// art: auto (Hochformat füllt, Quer und Quadrat ganz), fuellen (Ausschnitt nach dem Motiv), ganz (ganzes Foto).
+// grund: Hintergrund beim ganzen Foto, unscharf (das Foto selbst, stark weichgezeichnet), schwarz oder weiss.
+// Der Rahmen merkt sich mit auto, dass er nicht von Hand gesetzt ist; nur solche ändert die Wahl.
+export const FOTO_ARTEN = ['auto', 'ganz', 'fuellen'];
+export const FOTO_GRUENDE = ['unscharf', 'schwarz', 'weiss'];
+export function fotoRahmen(m, art = 'auto', grund = 'unscharf') {
+  const quer = m.pw && m.ph ? m.pw / m.ph > 0.9 : false;
+  const wahl = art === 'auto' ? (quer ? 'ganz' : 'fuellen') : art;
+  if (wahl === 'ganz') return { x: 0.5, y: 0.5, zoom: 1, modus: 'ganz', grund, auto: true };
+  return { x: m.motiv?.x ?? 0.5, y: m.motiv?.y ?? 0.5, zoom: 1, modus: 'fuellen', auto: true };
+}
+
 // Passt Quelle (qw × qh) in den Rahmen: mittiger Ausschnitt, der ihn füllt.
 export function deckAusschnitt(qw, qh, rw = RAHMEN.w, rh = RAHMEN.h) {
   const quer = qw / qh > rw / rh;
@@ -328,6 +353,13 @@ let unscharf = null;
 // dahinter liegt eine stark vergrößerte, dadurch unscharfe Fassung. Das Original bleibt unberührt.
 export function zeichneQuelle(ctx, bild, qw, qh, W, H, rahmen, { s = 1, qx = 0, qy = 0, gedreht = false } = {}) {
   if (rahmen?.modus === 'ganz') {
+    if (rahmen.grund === 'schwarz' || rahmen.grund === 'weiss') {
+      ctx.fillStyle = rahmen.grund === 'weiss' ? '#fff' : '#000';
+      ctx.fillRect((-W * s) / 2, (-H * s) / 2, W * s, H * s);
+      const f = Math.min(W / qw, H / qh) * s;
+      ctx.drawImage(bild, 0, 0, qw, qh, (-qw * f) / 2, (-qh * f) / 2, qw * f, qh * f);
+      return;
+    }
     if (!unscharf) {
       unscharf = document.createElement('canvas');
       unscharf.width = 18;

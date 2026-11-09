@@ -9,7 +9,7 @@ import { protokolliere, serienEintrag } from '../diagnose.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { REEL_LAENGEN } from '../kennzahlen.mjs';
 import { VORLAGEN_IDS, istVorlage, vorlageAus, eigeneSetzen, eigeneVorlagen } from '../reelvorlagen.mjs';
-import { motivLage, clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
+import { fotoRahmen, motivLage, clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX, FOTO_STAND } from '../clipreel.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
@@ -46,6 +46,8 @@ v.dataset.modus = 'einfach';
 let anteil = 0.35; // 0 nur Musik, 0,5 beide voll, 1 nur Originalton
 let tempo = 'normal';
 let variante = 0;
+let fotoArt = 'auto'; // Fotos im Reel: auto, ganz, fuellen
+let fotoGrund = 'unscharf';
 const wahl = { stil: GANZ, variante: 0 };
 let wahlUI = null;
 let fest = []; // selbst gesetzte Schnitte, Index = Schnitt
@@ -117,9 +119,39 @@ async function rueckblick(dateien) {
   melde(f(T.rueckblickFertig, { n: wahl.length, m: dateien.length }));
 }
 
+// --- Fotos im Reel: einmal für alle ---
+const fotosEl = $('.cl-fotos', v);
+function fotosZeigen() {
+  const fotos = medien.filter((m) => m.typ === 'foto');
+  fotosEl.hidden = !fotos.length;
+  if (!fotos.length) return;
+  for (const b of $('.cl-fotoart', v).children) b.setAttribute('aria-pressed', String(b.dataset.art === fotoArt));
+  for (const b of $('.cl-fotogrund', v).children) b.setAttribute('aria-pressed', String(b.dataset.grund === fotoGrund));
+  $('.cl-fotogrund', v).hidden = !fotos.some((m) => m.rahmen?.modus === 'ganz');
+  const eigene = fotos.filter((m) => m.rahmen && !m.rahmen.auto).length;
+  let text = { auto: T.fotosInfoAuto, ganz: T.fotosInfoGanz, fuellen: T.fotosInfoFuellen }[fotoArt];
+  if (eigene) text += ` ${f(T.fotosEigene, { n: eigene })}`;
+  $('.cl-fotos-info', v).textContent = text;
+}
+async function fotosAnwenden() {
+  for (const m of medien) {
+    if (m.typ !== 'foto') continue;
+    if (m.rahmen && !m.rahmen.auto) {
+      if (m.rahmen.modus === 'ganz') m.rahmen.grund = fotoGrund;
+      else continue;
+    } else m.rahmen = fotoRahmen(m, fotoArt, fotoGrund);
+    await vorschaubild(m, m.leinwand);
+  }
+  fotosZeigen();
+  planZeigen();
+}
+for (const b of $('.cl-fotoart', v).children) b.addEventListener('click', () => { fotoArt = b.dataset.art; fotosAnwenden(); });
+for (const b of $('.cl-fotogrund', v).children) b.addEventListener('click', () => { fotoGrund = b.dataset.grund; fotosAnwenden(); });
+
 // Fotos: Der Ausschnitt folgt dem Motiv statt der Mitte, wie bei Collagen. Ändern lässt er sich trotzdem.
 async function motivSetzen(m) {
   if (m.typ !== 'foto' || m.rahmen) return;
+  m.rahmen = fotoRahmen(m, fotoArt, fotoGrund);
   try {
     const b = await createImageBitmap(m.datei);
     const f = 640 / Math.max(b.width, b.height);
@@ -131,9 +163,13 @@ async function motivSetzen(m) {
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
     const { auftrag } = await import('../rechner.mjs');
     const r = await auftrag('motivraster', { bild: { w: c.width, h: c.height, d, farbraum: 'srgb' } }, [d.buffer]).catch(() => ({ raster: null }));
-    if (!r.raster) return;
-    const l = motivLage(pw, ph, r.raster);
-    m.rahmen = { x: l.x, y: l.y, zoom: 1, modus: 'fuellen' };
+    m.pw = pw;
+    m.ph = ph;
+    if (r.raster) {
+      const l = motivLage(pw, ph, r.raster);
+      m.motiv = { x: l.x, y: l.y };
+    }
+    if (m.rahmen?.auto) m.rahmen = fotoRahmen(m, fotoArt, fotoGrund);
     await vorschaubild(m, m.leinwand);
   } catch (err) {
     protokolliere('motiv', err);
@@ -164,7 +200,7 @@ async function entwurfDatei(m) {
 const entwurfMedium = (m) => ({
   id: m.eid, typ: m.typ, name: m.datei.name, mime: m.datei.type, groesse: m.datei.size, teile: m.teile,
   start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer, text: m.text || '',
-  wechsel: m.wechsel ?? null,
+  wechsel: m.wechsel ?? null, motiv: m.motiv ?? null, pw: m.pw ?? null, ph: m.ph ?? null,
 });
 
 function entwurfSichern(sofort = false) {
@@ -173,7 +209,7 @@ function entwurfSichern(sofort = false) {
   entwurfTakt = setTimeout(() => {
     const leer = !medien.length && !musik;
     const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
-      stil, variante, laenge, anteil, tempo, fest: [...fest], titel: { ...titel }, route,
+      stil, variante, laenge, anteil, tempo, fotoArt, fotoGrund, fest: [...fest], titel: { ...titel }, route,
       kombination: stil === 'e-neu' ? { ...vorlageAus('e-neu') } : null,
       medien: medien.filter((m) => m.teile).map(entwurfMedium),
       musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
@@ -197,6 +233,8 @@ async function entwurfLaden() {
     laenge = e.laenge ?? null;
     anteil = e.anteil ?? anteil;
     tempo = e.tempo ?? 'normal';
+    fotoArt = e.fotoArt ?? 'auto';
+    fotoGrund = e.fotoGrund ?? 'unscharf';
     for (const [nr, x] of e.medien.entries()) {
       ladeSchritt(nr + 1, e.medien.length);
       const b = await db.entwurfDateiLesen(x.id, x.teile, x.mime);
@@ -205,7 +243,7 @@ async function entwurfLaden() {
       const m = neuesMedium(d, x.typ, {
         eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen, text: x.text || '',
         ...(x.ende != null ? { ende: x.ende } : {}), ...(x.laenge != null ? { laenge: x.laenge } : {}), ...(x.rahmen ? { rahmen: x.rahmen } : {}),
-        ...(x.wechsel ? { wechsel: x.wechsel } : {}),
+        ...(x.wechsel ? { wechsel: x.wechsel } : {}), ...(x.motiv ? { motiv: x.motiv } : {}), ...(x.pw ? { pw: x.pw, ph: x.ph } : {}),
       });
       await vorschaubild(m, m.leinwand);
       if (m.fehler) { fehlt++; if (m.url) URL.revokeObjectURL(m.url); continue; }
@@ -432,7 +470,7 @@ function editorEinrichten() {
   $('#ce-text', v).addEventListener('input', (e) => { if (aktuell) aktuell.m.text = e.target.value; });
   $('#ce-zuruecksetzen', v).addEventListener('click', () => {
     const { m } = aktuell;
-    m.rahmen = { x: 0.5, y: 0.5, zoom: 1, modus: 'fuellen' };
+    m.rahmen = m.typ === 'foto' ? fotoRahmen(m, fotoArt, fotoGrund) : { x: 0.5, y: 0.5, zoom: 1, modus: 'fuellen' };
     m.start = 0;
     delete m.ende;
     delete m.laenge;
@@ -447,12 +485,15 @@ function editorEinrichten() {
   for (const b of $('.ce-modus', v).children) {
     b.addEventListener('click', () => {
       aktuell.m.rahmen.modus = b.dataset.modus;
+      delete aktuell.m.rahmen.auto;
+      if (b.dataset.modus === 'ganz') aktuell.m.rahmen.grund ??= fotoGrund;
       editorRegler();
       editorMalen();
     });
   }
   $('#ce-zoom', v).addEventListener('input', (e) => {
     aktuell.m.rahmen.zoom = Number(e.target.value);
+    delete aktuell.m.rahmen.auto;
     editorMalen();
   });
   $('#ce-start', v).addEventListener('input', (e) => {
@@ -482,6 +523,7 @@ function editorEinrichten() {
     const { m, qw, qh } = aktuell;
     const r = m.rahmen;
     if (r.modus === 'ganz') return;
+    delete r.auto;
     const a = rahmenAusschnitt(qw, qh, r);
     const box = eBild.getBoundingClientRect();
     if (qw - a.w > 0.5) r.x = Math.max(0, Math.min(1, r.x - ((dx * a.w) / box.width) / (qw - a.w)));
@@ -491,6 +533,7 @@ function editorEinrichten() {
   const zoomen = (z) => {
     const r = aktuell.m.rahmen;
     if (r.modus === 'ganz') return;
+    delete r.auto;
     r.zoom = Math.max(1, Math.min(3, z));
     $('#ce-zoom', v).value = r.zoom;
     editorMalen();
@@ -594,6 +637,7 @@ function planZeigen() {
   vorschauAktualisieren(p);
   welleZeigen(p);
   let text = f(T.clipsInfo, { n: medien.length, s: p.laenge });
+  if (p.fotoStand && p.fotoStand < FOTO_STAND) text += ` ${f(T.fotosKuerzer, { s: zeitText(p.fotoStand) })}`;
   if (p.gekappt) text += ` ${musik ? T.musikKurz : T.clipsGekappt}`;
   if (p.zuKurz) text += ` ${f(T.clipsZuKurz, { n: p.maxFotos })}`;
   if (p.runden > 1) text += ` ${f(T.clipsRunden, { r: p.runden })}`;
@@ -732,6 +776,7 @@ function zeitleisteZiehen(e) {
 
 function aufbauen() {
   liste.replaceChildren(...medien.map(zeile));
+  fotosZeigen();
   planZeigen();
 }
 

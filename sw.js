@@ -1,5 +1,5 @@
 // Service Worker: alles für den Offline-Betrieb vorhalten. Der Name enthält APP_VERSION.
-const APP_VERSION = '0.25.0';
+const APP_VERSION = '0.26.0';
 const CACHE = 'nahtlos-' + APP_VERSION;
 // Erkennung (Menschen und Fahrzeuge): groß und selten neu. Eigener Speicher, der Updates überdauert.
 // Wird nach der Installation im Hintergrund geladen, damit sie danach offline bereitsteht.

@@ -41,6 +41,9 @@ Die Nummern entsprechen der gemeinsamen Ideenliste.
 
 ## Nächstes Update
 
+- Fotos im Reel aus Clips einmal für alle festlegen: Automatisch (Hochformat füllt, Quer und Quadrat bleiben ganz), Ganz zeigen, Ausfüllen. Hintergrund beim ganzen Foto: unscharf, schwarz oder weiß. Von Hand angepasste Fotos bleiben, wie sie sind.
+- Bis zu 100 Clips und Fotos statt 30. Passen bei „Ganze Clips“ nicht alle in 90 s, stehen die Fotos kürzer (bis 0,8 s), statt hinten wegzufallen.
+
 Bugfixes:
 - Abspielknopf der Clip-Vorschau: Das Dreieck saß auf dem iPhone deutlich rechts von der Mitte (fester Abstand plus Innenabstand des Knopfs in Safari). Jetzt mittig ausgerichtet, nur optisch leicht versetzt.
 

@@ -574,3 +574,4 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .ak-zu { justify-self: start; }
 .ak-ausloeser { width: 76px; height: 76px; border-radius: 50%; border: 4px solid #fff; background: #e5484d; padding: 0; transition: border-radius .15s, transform .15s; }
 .ak-laeuft .ak-ausloeser { border-radius: 22px; transform: scale(.82); }
+.cl-fotogrund { margin-top: 8px; }
