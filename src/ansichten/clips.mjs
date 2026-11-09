@@ -44,6 +44,7 @@ const wahl = { stil: GANZ, variante: 0 };
 let wahlUI = null;
 let fest = []; // selbst gesetzte Schnitte, Index = Schnitt
 const titel = { text: '', stil: 'klar', lage: 'unten' };
+let route = '';
 let signatur = null;
 let musik = null; // { name, url, puffer, bpm, schlaege, sicher, start, alle }
 
@@ -98,6 +99,15 @@ async function dazu(dateien) {
   }
 }
 
+// Tagesrückblick: aus vielen Dateien die besten zehn, ohne Doppelte, nach Aufnahmezeit.
+async function rueckblick(dateien) {
+  const { auswahlTreffen } = await import('../rueckblick.mjs');
+  const wahl = await auswahlTreffen(dateien, { anzahl: Math.min(10, MEDIEN_MAX - medien.length), fortschritt: (i, n) => ladeSchritt(i, n) });
+  await dazu(wahl);
+  if (!stil.startsWith('v-') && !stil.startsWith('e-')) { stil = 'v-reise'; variante = 0; stileBauen(); planZeigen(); }
+  melde(f(T.rueckblickFertig, { n: wahl.length, m: dateien.length }));
+}
+
 function neuesMedium(d, typ, felder = {}) {
   return { id: ++zaehler, eid: db.neueId(), typ, datei: d, url: typ === 'clip' ? URL.createObjectURL(d) : null, dauer: 0, start: 0, leinwand: el('canvas', { width: 90, height: 160 }), ...felder };
 }
@@ -130,7 +140,7 @@ function entwurfSichern(sofort = false) {
   entwurfTakt = setTimeout(() => {
     const leer = !medien.length && !musik;
     const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
-      stil, variante, laenge, anteil, tempo, fest: [...fest], titel: { ...titel },
+      stil, variante, laenge, anteil, tempo, fest: [...fest], titel: { ...titel }, route,
       kombination: stil === 'e-neu' ? { ...vorlageAus('e-neu') } : null,
       medien: medien.filter((m) => m.teile).map(entwurfMedium),
       musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
@@ -150,6 +160,7 @@ async function entwurfLaden() {
     stil = e.stil ?? GANZ;
     variante = e.variante ?? 0;
     Object.assign(titel, e.titel || {});
+    route = e.route || '';
     laenge = e.laenge ?? null;
     anteil = e.anteil ?? anteil;
     tempo = e.tempo ?? 'normal';
@@ -520,7 +531,8 @@ function texteFuer(p) {
 
 function malerMitText(p, W, H, live) {
   const m = clipMaler(medien.slice(), p, { W, H, live });
-  return { ...m, male: ueberlagern(m.male, { texte: texteFuer(p), signatur, W, H, dauer: p.dauer }) };
+  const stationen = route.split(',');
+  return { ...m, male: ueberlagern(m.male, { texte: texteFuer(p), signatur, W, H, dauer: p.dauer, route: { stationen, beginn: p.beginn } }) };
 }
 
 function vorschauDaten(p) {
@@ -763,6 +775,14 @@ eingabe.addEventListener('change', () => {
   dazu(l).catch((err) => { protokolliere('clips', err); melde(T.clipFehler); }).finally(ladeEnde);
 });
 bauenKnopf.addEventListener('click', bauen);
+const rueckEingabe = $('#datei-rueckblick');
+$('#cl-rueckblick', v).addEventListener('click', () => { melde(T.rueckblickHinweis); rueckEingabe.click(); });
+rueckEingabe.addEventListener('change', () => {
+  const l = [...rueckEingabe.files].slice(0, 40);
+  rueckEingabe.value = '';
+  if (!l.length) { ladeEnde(); return; }
+  rueckblick(l).catch((err) => { protokolliere('rueckblick', err); melde(T.clipFehler); }).finally(ladeEnde);
+});
 $('.cl-insta-knopf', v).addEventListener('click', (e) => {
   const an = e.currentTarget.getAttribute('aria-pressed') !== 'true';
   e.currentTarget.setAttribute('aria-pressed', String(an));
@@ -788,6 +808,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { vor
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));
 
 function textZeigen() {
+  const r = $('#cl-route', v);
+  if (document.activeElement !== r) r.value = route;
   const feld = $('#cl-titel', v);
   if (document.activeElement !== feld) feld.value = titel.text;
   for (const b of $('.cl-textstil', v).children) b.setAttribute('aria-pressed', String(b.dataset.textstil === titel.stil));
@@ -798,6 +820,7 @@ $('.cl-textstil', v).replaceChildren(...Object.keys(TEXT_STILE).map((k) => el('b
 })));
 for (const b of $('.cl-textlage', v).children) b.addEventListener('click', () => { titel.lage = b.dataset.lage; textZeigen(); planZeigen(); });
 $('#cl-titel', v).addEventListener('input', (e) => { titel.text = e.target.value; planZeigen(); });
+$('#cl-route', v).addEventListener('input', (e) => { route = e.target.value; planZeigen(); });
 
 function modusSetzen(neu, merken = false) {
   modus = neu === 'erweitert' ? 'erweitert' : 'einfach';

@@ -680,3 +680,28 @@ test('Text und Signatur: Titel in der Vorschau, Signatur aus den Einstellungen o
   assert.equal(hell.unten, 0);
   assert.deepEqual(fehler, []);
 });
+
+test('Tagesrückblick füllt das Reel, Reiseroute liegt oben im Bild', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  const wahl = page.waitForEvent('filechooser');
+  await page.click('#cl-rueckblick');
+  await (await wahl).setFiles([join(DATEN, 'clip-blau.webm'), join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-ton.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 3, null, { timeout: 30000 });
+  assert.equal(await page.locator('.vw-liste .cl-stil[aria-pressed="true"]').getAttribute('data-stil'), 'v-reise');
+  await page.locator('.cl-modus button[data-modus="erweitert"]').click();
+  await page.fill('#cl-route', 'Hafen, Altstadt, Strand');
+  await page.waitForTimeout(500);
+  const hell = await page.evaluate(() => {
+    const c = document.querySelector('#cl-vorschau');
+    const d = c.getContext('2d').getImageData(c.width * 0.1, c.height * 0.12, c.width * 0.8, c.height * 0.03).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) n++;
+    return n;
+  });
+  assert.ok(hell > 20, `Route sichtbar: ${hell}`);
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-route.png` });
+  assert.deepEqual(fehler, []);
+});

@@ -97,6 +97,7 @@
     </div>
     <p class="rt-hinweis" data-t="clipsHinweis"></p>
     <button class="neben2" id="cl-waehlen" data-t="clipsWaehlen"></button>
+    <button class="link" id="cl-rueckblick" data-t="rueckblickKnopf"></button>
     <div class="cl-liste"></div>
     <p class="af-gruppe" data-t="musikTitel"></p>
     <div class="cl-musik">
@@ -134,6 +135,11 @@
       <div class="af-tempi cl-textlage" role="group">
         <button data-lage="oben" data-t="lageOben"></button><button data-lage="mitte" data-t="lageMitte"></button><button data-lage="unten" data-t="lageUnten"></button>
       </div>
+    </div>
+    <div class="cl-route nur-erweitert">
+      <p class="af-gruppe" data-t="routeTitel"></p>
+      <input type="text" id="cl-route" class="co-titel-eingabe" maxlength="160" autocomplete="off" enterkeyhint="done" data-aria="routeFeld">
+      <small class="vw-hinweis" data-t="routeHinweis"></small>
     </div>
     <div class="cl-ton nur-erweitert" hidden>
       <p class="af-gruppe" data-t="tonTitel"></p>
@@ -487,6 +493,7 @@
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
 <div id="laden" role="status" hidden><p class="laden-text"></p><div class="laden-balken"><div></div></div></div>
+<input type="file" id="datei-rueckblick" accept="image/*,video/*" multiple hidden>
 <input type="file" id="datei-vorher" accept="image/*" multiple hidden>
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="datei-clips" accept="video/*,image/*" multiple hidden>

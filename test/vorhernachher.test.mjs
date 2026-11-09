@@ -40,3 +40,33 @@ test('Zeitplan: erst vorher, dann Wischen, dann nachher, je Paar', () => {
   assert.equal(vnZustand(paarDauer() + 0.1, 2).k, 1);
   assert.equal(vnZustand(100, 2).k, 1);
 });
+
+test('Tagesrückblick: schärfste zuerst, keine Doppelten, Reihenfolge des Tages', async () => {
+  const { auswaehlen } = await import('../src/rueckblick.mjs');
+  const szene = (h, cx) => {
+    const d = new Uint8ClampedArray(60 * 80 * 4);
+    for (let y = 0; y < 80; y++) for (let x = 0; x < 60; x++) {
+      const v = Math.hypot(x / 60 - cx, y / 80 - 0.3) < 0.12 ? 230 : y / 80 < h ? 170 : 70;
+      const i = (y * 60 + x) * 4; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+    }
+    return merkmal(d, 60, 80);
+  };
+  const k = [
+    { m: szene(0.3, 0.2), punkte: 5, zeit: 30 },
+    { m: szene(0.3, 0.2), punkte: 9, zeit: 31 }, // fast gleich, schärfer
+    { m: szene(0.7, 0.8), punkte: 4, zeit: 10 },
+    { m: szene(0.5, 0.5), punkte: 1, zeit: 20 },
+  ];
+  assert.deepEqual(auswaehlen(k, 2), [2, 1]);
+  assert.deepEqual(auswaehlen(k, 3), [2, 3, 1]);
+});
+
+test('Reiseroute: Stationen verteilen sich über die Abschnitte', async () => {
+  const { stationBei } = await import('../src/reeltext.mjs');
+  const beginn = [0, 2, 4, 6, 8, 10];
+  assert.equal(stationBei(['A', 'B', 'C'], beginn, 0.5).i, 0);
+  assert.equal(stationBei(['A', 'B', 'C'], beginn, 4.5).i, 1);
+  assert.equal(stationBei(['A', 'B', 'C'], beginn, 11).i, 2);
+  const w = stationBei(['A', 'B', 'C'], beginn, 2).weg;
+  assert.ok(w > 0.4 && w < 0.6);
+});
