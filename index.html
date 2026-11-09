@@ -97,6 +97,7 @@
     </div>
     <p class="rt-hinweis" data-t="clipsHinweis"></p>
     <button class="neben2" id="cl-waehlen" data-t="clipsWaehlen"></button>
+    <button class="link" id="cl-rueckblick" data-t="rueckblickKnopf"></button>
     <div class="cl-liste"></div>
     <p class="af-gruppe" data-t="musikTitel"></p>
     <div class="cl-musik">
@@ -114,7 +115,9 @@
       <div class="cl-vorschau-bild">
         <canvas id="cl-vorschau" width="360" height="640"></canvas>
         <button class="cl-vorschau-knopf" data-aria="vorschauAbspielen"></button>
+        <canvas class="cl-insta" width="360" height="640" hidden></canvas>
       </div>
+      <button class="link cl-insta-knopf" data-t="instaAnsicht" aria-pressed="false"></button>
       <div class="cl-zeitleiste" role="slider" aria-valuemin="0"><div class="cl-zeit-stand"></div></div>
       <div class="cl-welle nur-erweitert" hidden>
         <canvas id="cl-welle" width="720" height="120"></canvas>
@@ -132,6 +135,11 @@
       <div class="af-tempi cl-textlage" role="group">
         <button data-lage="oben" data-t="lageOben"></button><button data-lage="mitte" data-t="lageMitte"></button><button data-lage="unten" data-t="lageUnten"></button>
       </div>
+    </div>
+    <div class="cl-route nur-erweitert">
+      <p class="af-gruppe" data-t="routeTitel"></p>
+      <input type="text" id="cl-route" class="co-titel-eingabe" maxlength="160" autocomplete="off" enterkeyhint="done" data-aria="routeFeld">
+      <small class="vw-hinweis" data-t="routeHinweis"></small>
     </div>
     <div class="cl-ton nur-erweitert" hidden>
       <p class="af-gruppe" data-t="tonTitel"></p>
@@ -171,6 +179,25 @@
       <button class="neben2" id="ce-zuruecksetzen" data-t="clipZuruecksetzen"></button>
       <button class="haupt" id="ce-fertig" data-t="fertig"></button>
     </div>
+  </div>
+</section>
+
+<section id="v-vorher" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2 zurueck" id="vn-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="vnTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="cl-inhalt">
+    <p class="rt-hinweis" data-t="vnHinweis"></p>
+    <button class="neben2" id="vn-waehlen" data-t="vnWaehlen"></button>
+    <div class="vn-paare"></div>
+    <p class="vn-info"></p>
+    <div class="af-tempi vn-art" role="group"><button data-art="reel" data-t="artReel"></button><button data-art="carousel" data-t="artCarousel"></button></div>
+    <label class="vn-beschriftung"><input type="checkbox" checked><span data-t="vnBeschriftung"></span></label>
+    <button class="haupt" id="vn-bauen" data-t="vnBauen" disabled></button>
+    <p class="vn-fort" hidden></p>
+    <div class="vn-ergebnis"></div>
   </div>
 </section>
 
@@ -407,6 +434,7 @@
         <button data-format="4:5">4:5</button><button data-format="1:1">1:1</button><button data-format="9:16">9:16</button>
       </div>
       <button class="neben2 co-wuerfel" data-t="variante"></button>
+      <button class="neben2 co-insta" data-t="instaKurz" aria-pressed="false"></button>
     </div>
     <div class="cl-stile co-stile" role="group">
       <button class="cl-stil" data-stil="rahmen" data-t="stilRahmen"></button><button class="cl-stil" data-stil="nahtlos" data-t="stilNahtlos"></button><button class="cl-stil" data-stil="film" data-t="stilFilm"></button><button class="cl-stil" data-stil="polaroid" data-t="stilPolaroid"></button><button class="cl-stil" data-stil="magazin" data-t="stilMagazin"></button>
@@ -465,6 +493,8 @@
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
 <div id="laden" role="status" hidden><p class="laden-text"></p><div class="laden-balken"><div></div></div></div>
+<input type="file" id="datei-rueckblick" accept="image/*,video/*" multiple hidden>
+<input type="file" id="datei-vorher" accept="image/*" multiple hidden>
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="datei-clips" accept="video/*,image/*" multiple hidden>
 <input type="file" id="datei-musik" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden>

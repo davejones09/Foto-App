@@ -137,12 +137,63 @@ export function signaturZeichnen(ctx, W, H, sig, t = null, dauer = null) {
 }
 
 // Maler mit Text und Signatur darüber.
-export function ueberlagern(male, { texte = null, signatur = null, W, H, dauer = null }) {
+export function ueberlagern(male, { texte = null, signatur = null, W, H, dauer = null, route = null }) {
   const text = textUeber(texte, W, H);
-  if (!text && !signatur?.an) return male;
+  const mitRoute = route?.stationen?.filter((x) => x.trim()).length >= 2;
+  if (!text && !signatur?.an && !mitRoute) return male;
   return async (ctx, t, opt) => {
     await male(ctx, t, opt);
+    if (mitRoute) routeZeichnen(ctx, W, H, route.stationen, route.beginn, t);
     text?.(ctx, t);
     signaturZeichnen(ctx, W, H, signatur, t, dauer);
   };
+}
+
+// --- Reiseroute: schlichte Linie von Station zu Station, ohne Karte und ohne Netz ---
+// stationen: Namen in Reihenfolge. Sie verteilen sich gleichmäßig über die Abschnitte des Reels.
+export function stationBei(stationen, beginn, t) {
+  const n = stationen.length;
+  const k = beginn.length;
+  let abschnitt = 0;
+  while (abschnitt + 1 < k && beginn[abschnitt + 1] <= t) abschnitt++;
+  const i = Math.min(n - 1, Math.floor((abschnitt * n) / k));
+  // Fortschritt zur nächsten Station: innerhalb der Abschnitte dieser Station
+  const erster = Math.ceil((i * k) / n);
+  const letzter = Math.max(erster, Math.ceil(((i + 1) * k) / n) - 1);
+  const von = beginn[erster] ?? 0;
+  const bis = beginn[letzter + 1] ?? beginn[k - 1] + 2;
+  return { i, weg: klemme((t - von) / Math.max(0.1, bis - von)) };
+}
+
+export function routeZeichnen(ctx, W, H, stationen, beginn, t) {
+  const liste = stationen.map((x) => x.trim()).filter(Boolean);
+  if (liste.length < 2) return;
+  const { i, weg } = stationBei(liste, beginn, t);
+  const x0 = W * 0.12;
+  const x1 = W * 0.88;
+  const y = H * 0.135;
+  const px = (k) => x0 + ((x1 - x0) * k) / (liste.length - 1);
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = W * 0.01;
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = Math.max(2, W * 0.004);
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+  // gefahrener Teil
+  const bis = i < liste.length - 1 ? px(i) + (px(i + 1) - px(i)) * weg * 0.9 : px(i);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = Math.max(3, W * 0.007);
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(bis, y); ctx.stroke();
+  for (let k = 0; k < liste.length; k++) {
+    ctx.fillStyle = k <= i ? '#ffffff' : 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.arc(px(k), y, W * (k === i ? 0.016 : 0.009), 0, Math.PI * 2); ctx.fill();
+  }
+  const groesse = Math.round(W * 0.042);
+  ctx.font = `600 ${groesse}px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const tx = Math.min(x1, Math.max(x0, px(i)));
+  ctx.fillText(liste[i], Math.min(W - W * 0.06 - ctx.measureText(liste[i]).width / 2, Math.max(W * 0.06 + ctx.measureText(liste[i]).width / 2, tx)), y - W * 0.03);
+  ctx.restore();
 }

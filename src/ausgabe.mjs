@@ -765,3 +765,26 @@ export function speichern(dateien) {
     setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
   }
 }
+
+// Story 1080 × 1920: das fertige Bild mittig, in voller Breite, darüber und darunter die Grundfarbe.
+// Das Bild wird nur verkleinert, nie beschnitten.
+export async function alsStory(blob, grund = '#000000') {
+  const b = await ladeBitmap(blob);
+  const W = 1080;
+  const H = 1920;
+  const c = leinwand(W, H, 'srgb');
+  const ctx = ctx2d(c);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.fillStyle = grund;
+  ctx.fillRect(0, 0, W, H);
+  const s = Math.min(W / b.width, (H * 0.9) / b.height);
+  const w = Math.round(b.width * s);
+  const h = Math.round(b.height * s);
+  ctx.drawImage(b, Math.round((W - w) / 2), Math.round((H - h) / 2), w, h);
+  b.close?.();
+  try {
+    return await blobSauber(await alsBlob(c, 'image/jpeg', 0.95));
+  } finally {
+    freigeben(c);
+  }
+}

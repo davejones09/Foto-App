@@ -510,3 +510,26 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = fal
   function pause() { for (const v of clips.values()) v.pause(); }
   return { male, ende, pause };
 }
+
+// Bester Ausschnitt eines Fotos für 9:16 nach der Motivkarte: Lage im freien Raum (0 bis 1).
+// raster: { w, h, d } mit Gewichten. Ohne Spiel oder ohne Karte die Mitte.
+export function motivLage(pw, ph, raster, W = RAHMEN.w, H = RAHMEN.h) {
+  const a = deckAusschnitt(pw, ph, W, H);
+  const quer = a.w < pw - 1;
+  const spiel = quer ? pw - a.w : ph - a.h;
+  if (!raster || spiel <= 1) return { x: 0.5, y: 0.5 };
+  let best = { wert: -1, u: 0.5 };
+  for (let k = 0; k <= 40; k++) {
+    const u = k / 40;
+    const v0 = u * spiel;
+    const v1 = v0 + (quer ? a.w : a.h);
+    let wert = 0;
+    for (let ry = 0; ry < raster.h; ry++) for (let rx = 0; rx < raster.w; rx++) {
+      const c = quer ? ((rx + 0.5) / raster.w) * pw : ((ry + 0.5) / raster.h) * ph;
+      if (c >= v0 && c <= v1) wert += raster.d[ry * raster.w + rx];
+    }
+    wert -= 1e-6 * Math.abs(u - 0.5);
+    if (wert > best.wert) best = { wert, u };
+  }
+  return quer ? { x: best.u, y: 0.5 } : { x: 0.5, y: best.u };
+}

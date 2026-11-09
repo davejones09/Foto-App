@@ -6,6 +6,7 @@ import { $, $$, el, frage, melde } from '../ui.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
 import { signaturLaden, signaturZeichnen } from '../reeltext.mjs';
+import { instaZeichnen } from '../instagram.mjs';
 import { ladeSchritt, ladeEnde } from '../laden.mjs';
 import { ctx2d, leinwand, freigeben } from '../bild.mjs';
 import { FARBEN, ABSTAND_MAX, FOTOS_MAX, masse, vorlagenFuer, vorlage, feldRechtecke, feldBei, bewege, belege } from '../collage.mjs';
@@ -39,6 +40,7 @@ let geo = null;
 let W = 0;
 let puffer = null;
 let signatur = null;
+let instaAn = false;
 
 const collageName = (d = new Date()) => f(T.collageName, { monat: MONATE[d.getMonth()], jahr: d.getFullYear() });
 
@@ -75,6 +77,7 @@ async function zeichnen({ schnell = false } = {}) {
   const ctx = ctx2d(canvas);
   ctx.drawImage(puffer, 0, 0);
   signaturZeichnen(ctx, canvas.width, canvas.height, signatur);
+  if (instaAn) instaZeichnen(ctx, canvas.width, canvas.height, c.format === '9:16' ? 'reel' : 'post');
   const rahmen = (i, gestrichelt) => {
     const r = g.r[i];
     if (!r) return;
@@ -196,6 +199,12 @@ kanteEl.addEventListener('input', () => {
 titelEl.addEventListener('input', () => {
   c = { ...c, titel: titelEl.value };
   speichern();
+  zeichnen();
+});
+$('.co-insta', v).addEventListener('click', (e) => {
+  instaAn = !instaAn;
+  e.currentTarget.setAttribute('aria-pressed', String(instaAn));
+  hinweis.textContent = instaAn ? T.instaHinweis : (c.fotos.length >= 2 ? T.collageHinweis : T.collageMehr);
   zeichnen();
 });
 wuerfelKnopf.addEventListener('click', () => {
@@ -360,6 +369,7 @@ exportKnopf.addEventListener('click', async () => {
   const r = await frage(T.collageWas, [
     { text: T.abbrechen, wert: null },
     { text: T.sicherung, wert: 'sicherung' },
+    { text: T.collageStory, wert: 'story' },
     { text: T.collageBild, wert: 'bild', haupt: true },
   ]);
   if (!r.wert) return;
@@ -368,9 +378,10 @@ exportKnopf.addEventListener('click', async () => {
   try {
     fort(0);
     let datei;
-    if (r.wert === 'bild') {
-      const blob = await werk.ausgabe(c, { fortschritt: fort });
-      datei = new File([blob], 'collage.jpg', { type: 'image/jpeg' });
+    if (r.wert === 'bild' || r.wert === 'story') {
+      let blob = await werk.ausgabe(c, { fortschritt: fort });
+      if (r.wert === 'story') blob = await aus.alsStory(blob, werk.grundFarbe(c));
+      datei = new File([blob], r.wert === 'story' ? 'collage-story.jpg' : 'collage.jpg', { type: 'image/jpeg' });
     } else {
       const blob = await werk.sicherung(c, { fortschritt: fort });
       const d = new Date();

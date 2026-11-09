@@ -24,7 +24,7 @@ Die Nummern entsprechen der gemeinsamen Ideenliste.
 - 12 Kanten-Regler für Collagen (mit Abstand zwischen den Bildern ausgeblendet)
 - 23 Eigene Signatur
 
-## 0.24 Teilen und Zeigen
+## 0.24 Teilen und Zeigen (fertig)
 
 - 4 Instagram-Vorschau
 - 10 Story-Format

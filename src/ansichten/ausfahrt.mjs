@@ -49,6 +49,7 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
   balken.hidden = true;
   const reihe = el('div', { klasse: 'af-reihe' });
   const karte = el('section', { klasse: 'af-punkt' }, kopf, infoEl, zusatz, balken, status, reihe);
+  karte.bauen = bauen;
   const fort = (p) => {
     const pr = Math.round(p * 100);
     $('i', balken).style.width = pr + '%';
@@ -148,7 +149,16 @@ function aufbauen() {
       const plan = await karussellPlan;
       const bilder = await aus.karussell(Z.strecke, halte, { fortschritt: fort, waechter: w, plan });
       const dateien = bilder.map((b, i) => datei(b, `carousel-${String(i + 1).padStart(2, '0')}.jpg`));
-      return beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
+      const gruppen = beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
+      // Dieselben Bilder als Story, nur verkleinert, nie beschnitten
+      const stories = [];
+      for (const [i, b] of bilder.slice(0, 20).entries()) stories.push(datei(await aus.alsStory(b, '#000000'), `story-${String(i + 1).padStart(2, '0')}.jpg`));
+      return {
+        knoepfe: [
+          ...gruppen.map((g, i) => ({ text: gruppen.length > 1 ? `${T.teilen} ${i + 1}/${gruppen.length}` : T.teilen, dateien: g, haupt: true })),
+          { text: T.karussellStory, dateien: stories },
+        ],
+      };
     },
   });
   karussellPlan.then(async (plan) => {
@@ -422,9 +432,26 @@ function aufbauen() {
     },
   });
 
+  // Alles auf einmal: Carousel, Reel und Gesamtbild nacheinander bauen, dann in einem Rutsch sichern.
+  const dateienAus = (r) => (Array.isArray(r) ? r.flat() : r.knoepfe.filter((k) => k.haupt).flatMap((k) => k.dateien));
+  const alles = punkt({
+    titel: T.allesTitel,
+    info: T.allesInfo,
+    async bauen(fort, w, extra) {
+      const teile = [karussell, reelKarte, gesamt];
+      const dateien = [];
+      for (const [i, k] of teile.entries()) {
+        const r = await k.bauen((p) => fort((i + p) / teile.length), w, extra);
+        dateien.push(...dateienAus(r));
+      }
+      return [dateien];
+    },
+  });
+  alles.classList.add('af-alles');
+
   // Ein Reel-Projekt zeigt das Reel zuerst. Beide Ausgaben gehen immer aus demselben Projekt.
   const erste = Z.strecke.art === 'reel' ? [reelKarte, karussell] : [karussell, reelKarte];
-  liste.replaceChildren(...erste, gesamt, sicherung);
+  liste.replaceChildren(...erste, gesamt, alles, sicherung);
 }
 
 // --- Einspielen ---

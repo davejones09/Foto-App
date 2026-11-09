@@ -258,3 +258,13 @@ test('Gesetzte Schnitte gelten, bleiben aber im erlaubten Bereich', () => {
   const f = clipPlan(m, { stil: GANZ, raster, takt: 0.5, musikRest: 20, fest: [0.01] });
   assert.ok(f.schnitte[0] > 0);
 });
+
+test('Motivlage: Der 9:16-Ausschnitt eines Querformats wandert zum Motiv', async () => {
+  const { motivLage } = await import('../src/clipreel.mjs');
+  const raster = { w: 10, h: 6, d: new Float32Array(60) };
+  for (let y = 0; y < 6; y++) raster.d[y * 10 + 8] = 1; // Motiv rechts
+  const l = motivLage(4000, 3000, raster);
+  assert.ok(l.x > 0.7, `rechts: ${l.x}`);
+  assert.deepEqual(motivLage(4000, 3000, null), { x: 0.5, y: 0.5 });
+  assert.deepEqual(motivLage(900, 1600, raster), { x: 0.5, y: 0.5 }, 'kein Spiel');
+});

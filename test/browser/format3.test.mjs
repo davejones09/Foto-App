@@ -98,7 +98,7 @@ test('Serie bauen, neu laden: alle Bilder lesbar, Strecke, Karussell, Gesamtbild
   };
   await bauen(0);
   await bauen(2);
-  await bauen(3);
+  await bauen(4);
   const aus = await page.evaluate(async () => {
     const [karussell, [gesamt], [zip]] = window.__geteilt.slice(-3);
     const masse = async (f) => { const bm = await createImageBitmap(f); const m = `${bm.width}x${bm.height}`; bm.close(); return m; };
