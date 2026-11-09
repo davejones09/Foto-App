@@ -22,6 +22,7 @@ import './ansichten/fahrplan.mjs';
 import './ansichten/reeltipps.mjs';
 import './ansichten/clips.mjs';
 import './ansichten/signatur.mjs';
+import './ansichten/vorher.mjs';
 import { serieErinnern } from './ansichten/serie.mjs';
 import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
 import { startVideo } from './startvideo.mjs';

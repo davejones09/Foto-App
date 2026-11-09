@@ -13,6 +13,7 @@ import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAus
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
+import { instaZeichnen } from '../instagram.mjs';
 import { vorlagenWahl, eigeneLaden } from '../vorlagenwahl.mjs';
 import { TEXT_STILE, ueberlagern, signaturLaden } from '../reeltext.mjs';
 import { clipTonLaden, mischen, wavAus } from '../tonmix.mjs';
@@ -762,6 +763,15 @@ eingabe.addEventListener('change', () => {
   dazu(l).catch((err) => { protokolliere('clips', err); melde(T.clipFehler); }).finally(ladeEnde);
 });
 bauenKnopf.addEventListener('click', bauen);
+$('.cl-insta-knopf', v).addEventListener('click', (e) => {
+  const an = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', String(an));
+  const c = $('.cl-insta', v);
+  c.hidden = !an;
+  const k = c.getContext('2d');
+  k.clearRect(0, 0, c.width, c.height);
+  if (an) instaZeichnen(k, c.width, c.height, 'reel');
+});
 for (const b of $('.cl-modus', v).children) b.addEventListener('click', () => modusSetzen(b.dataset.modus, true));
 for (const b of $('.cl-tempo', v).children) b.addEventListener('click', () => { tempo = b.dataset.tempo; planZeigen(); });
 $('#cl-ton', v).addEventListener('input', (e) => { anteil = Number(e.target.value); tonZeigen(); });

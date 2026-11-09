@@ -544,3 +544,13 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .ei-sig-vorschau { width: 135px; height: 240px; align-self: center; border-radius: 10px; background: #000; }
 #v-einstellungen { overflow-y: auto; }
 #v-einstellungen .ei-liste { flex: none; overflow: visible; }
+.cl-insta { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cl-insta[hidden] { display: none; }
+.cl-insta-knopf[aria-pressed="true"] { color: var(--akzent, #FFD400); }
+.co-insta { flex: none; min-height: 40px; padding: 0 14px; }
+.co-insta[aria-pressed="true"] { background: var(--text); color: var(--grund); }
+.vn-paare { display: flex; flex-direction: column; gap: 10px; }
+.vn-paar { display: flex; gap: 8px; align-items: center; background: var(--flaeche); border-radius: 14px; padding: 8px; }
+.vn-paar canvas { width: 72px; height: 90px; border-radius: 8px; background: #000; }
+.vn-paar small { color: var(--text2); font-size: 12px; display: block; text-align: center; }
+.vn-paar .vn-mitte { flex: 1; display: flex; justify-content: flex-end; }

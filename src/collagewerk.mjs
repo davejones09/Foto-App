@@ -316,3 +316,10 @@ function magazinKopf(ctx, c, g) {
   ctx.fillRect(fl.x, Math.round(g.gest.kopf * 0.8), fl.w, Math.max(1, Math.round(g.W * 0.002)));
   ctx.restore();
 }
+
+// Hintergrund der Collage, etwa für die Story-Fassung.
+export function grundFarbe(c) {
+  const g = gestaltung(c.stil, 1000, 1000);
+  if (g) return g.grund ?? c.farbe;
+  return c.stil === 'rahmen' ? c.farbe : '#000000';
+}

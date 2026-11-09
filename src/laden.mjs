@@ -4,7 +4,7 @@
 import { T, f } from './texte.mjs';
 import { $ } from './ui.mjs';
 
-const BEOBACHTET = new Set(['datei-clips', 'datei-bild', 'datei-collage', 'datei-musik']);
+const BEOBACHTET = new Set(['datei-clips', 'datei-bild', 'datei-collage', 'datei-musik', 'datei-vorher']);
 const NOTAUS_MS = 5 * 60 * 1000;
 let notaus = null;
 

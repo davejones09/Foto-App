@@ -114,7 +114,9 @@
       <div class="cl-vorschau-bild">
         <canvas id="cl-vorschau" width="360" height="640"></canvas>
         <button class="cl-vorschau-knopf" data-aria="vorschauAbspielen"></button>
+        <canvas class="cl-insta" width="360" height="640" hidden></canvas>
       </div>
+      <button class="link cl-insta-knopf" data-t="instaAnsicht" aria-pressed="false"></button>
       <div class="cl-zeitleiste" role="slider" aria-valuemin="0"><div class="cl-zeit-stand"></div></div>
       <div class="cl-welle nur-erweitert" hidden>
         <canvas id="cl-welle" width="720" height="120"></canvas>
@@ -171,6 +173,25 @@
       <button class="neben2" id="ce-zuruecksetzen" data-t="clipZuruecksetzen"></button>
       <button class="haupt" id="ce-fertig" data-t="fertig"></button>
     </div>
+  </div>
+</section>
+
+<section id="v-vorher" class="ansicht" hidden>
+  <header class="leiste-oben">
+    <button class="neben2 zurueck" id="vn-zurueck" aria-label="Zurück">‹</button>
+    <h2 data-t="vnTitel"></h2>
+    <span class="platz"></span>
+  </header>
+  <div class="cl-inhalt">
+    <p class="rt-hinweis" data-t="vnHinweis"></p>
+    <button class="neben2" id="vn-waehlen" data-t="vnWaehlen"></button>
+    <div class="vn-paare"></div>
+    <p class="cl-info vn-info"></p>
+    <div class="af-tempi vn-art" role="group"><button data-art="reel" data-t="artReel"></button><button data-art="carousel" data-t="artCarousel"></button></div>
+    <label class="d-option vn-beschriftung"><input type="checkbox" checked><span data-t="vnBeschriftung"></span></label>
+    <button class="haupt" id="vn-bauen" data-t="vnBauen" disabled></button>
+    <p class="cl-fort vn-fort" hidden></p>
+    <div class="cl-ergebnis vn-ergebnis"></div>
   </div>
 </section>
 
@@ -407,6 +428,7 @@
         <button data-format="4:5">4:5</button><button data-format="1:1">1:1</button><button data-format="9:16">9:16</button>
       </div>
       <button class="neben2 co-wuerfel" data-t="variante"></button>
+      <button class="neben2 co-insta" data-t="instaKurz" aria-pressed="false"></button>
     </div>
     <div class="cl-stile co-stile" role="group">
       <button class="cl-stil" data-stil="rahmen" data-t="stilRahmen"></button><button class="cl-stil" data-stil="nahtlos" data-t="stilNahtlos"></button><button class="cl-stil" data-stil="film" data-t="stilFilm"></button><button class="cl-stil" data-stil="polaroid" data-t="stilPolaroid"></button><button class="cl-stil" data-stil="magazin" data-t="stilMagazin"></button>
@@ -465,6 +487,7 @@
 <div id="quer" class="schicht quer"><p data-t="querformat"></p></div>
 
 <div id="laden" role="status" hidden><p class="laden-text"></p><div class="laden-balken"><div></div></div></div>
+<input type="file" id="datei-vorher" accept="image/*" multiple hidden>
 <input type="file" id="datei-bild" accept="image/*" multiple hidden>
 <input type="file" id="datei-clips" accept="video/*,image/*" multiple hidden>
 <input type="file" id="datei-musik" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden>

@@ -137,7 +137,7 @@ test('Carousel: genau aufgehende Slides ohne Abschluss, ohne Text, ohne Stufe, s
 });
 
 test('Sicherung lässt sich verlustfrei einspielen', async () => {
-  await bauenUndTeilen(3);
+  await bauenUndTeilen(4);
   const zip = await page.evaluate(async () => {
     const [f] = window.__geteilt[window.__geteilt.length - 1];
     const u = new Uint8Array(await f.arrayBuffer());
@@ -266,4 +266,33 @@ test('Geht die App in den Hintergrund, bricht die Ausgabe mit Hinweis ab', async
   await punkt(1).locator('.af-status', { hasText: 'Abgebrochen, weil Nahtlos in den Hintergrund ging.' }).waitFor({ timeout: 20000 });
   await page.evaluate(() => { delete document.hidden; });
   assert.equal(await punkt(1).locator('.af-reihe button').textContent(), 'Nochmal');
+});
+
+test('Carousel auch als Story, alles auf einmal sichern', async () => {
+  // Carousel: zweiter Knopf liefert 9:16
+  await punkt(0).locator('.af-reihe button', { hasText: 'Als Story' }).waitFor({ timeout: 60000 }).catch(async () => {
+    await punkt(0).locator('.af-titel').click();
+    await punkt(0).locator('.af-reihe button', { hasText: 'Als Story' }).waitFor({ timeout: 60000 });
+  });
+  const vorher = await page.evaluate(() => window.__geteilt.length);
+  await punkt(0).locator('.af-reihe button', { hasText: 'Als Story' }).click();
+  await warteAuf(page, (n) => window.__geteilt.length > n, vorher);
+  const story = await page.evaluate(async () => {
+    const f = window.__geteilt[window.__geteilt.length - 1];
+    const b = await createImageBitmap(f[0]);
+    return { n: f.length, w: b.width, h: b.height, name: f[0].name };
+  });
+  assert.equal(story.w, 1080);
+  assert.equal(story.h, 1920);
+  assert.match(story.name, /^story-01\.jpg$/);
+  // Alles auf einmal
+  await punkt(3).locator('.af-titel').click();
+  await punkt(3).locator('.af-reihe button.haupt').first().waitFor({ timeout: 240000 });
+  const v2 = await page.evaluate(() => window.__geteilt.length);
+  await punkt(3).locator('.af-reihe button.haupt').first().click();
+  await warteAuf(page, (n) => window.__geteilt.length > n, v2);
+  const namen = await page.evaluate(() => window.__geteilt[window.__geteilt.length - 1].map((f) => f.name));
+  assert.ok(namen.some((n) => n.startsWith('carousel-')), 'Carousel dabei');
+  assert.ok(namen.includes('reel.mp4'), 'Reel dabei');
+  assert.ok(namen.includes('gesamtbild.jpg'), 'Gesamtbild dabei');
 });
