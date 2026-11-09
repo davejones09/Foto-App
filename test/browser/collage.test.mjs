@@ -288,7 +288,7 @@ test('Collage-Arten: Kanten-Regler, Film, Polaroid, Magazin mit Titel, Würfeln'
     await page.screenshot({ path: `${ERGEBNISSE}/co-${art}.png` });
   }
   assert.ok(await page.locator('.co-titel').isVisible());
-  await page.fill('.co-titel-eingabe', 'Sommer');
+  await page.fill('.co-titel .co-titel-eingabe', 'Sommer');
   await page.waitForTimeout(600);
   const st1 = (await stand(page))[0];
   // Würfeln ändert die Aufteilung
