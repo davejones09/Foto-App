@@ -5,7 +5,7 @@ import { clipStellen } from './clipreel.mjs';
 import { tonAusschnitt } from './musik.mjs';
 
 const BLOCK = 0.005; // Sekunden je Rechenschritt für Stelle und Tempo
-export const CLIPTON_MAX = 300 * 1024 * 1024;
+export const CLIPTON_MAX = 200 * 1024 * 1024;
 
 // Ton aus einer Clipdatei, oder null, wenn sie keinen hat oder zu groß ist.
 export async function clipTonLaden(datei, rate = 48000) {

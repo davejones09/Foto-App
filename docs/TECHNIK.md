@@ -145,6 +145,7 @@ dateien:  { schluessel: '<besitzerId>/<feld>', typ, laenge, daten: ArrayBuffer }
 
 - **Rest für den Sucher:** rechte 363 Pixel von `bild`. Halte sind nie angeglichen, deshalb driftet die Farbe über die Kette nicht weg.
 - **Format 5:** neuer Speicher `collagen` (Abschnitt Collage). Die Migration legt nur den Speicher an, Strecken und Halte bleiben unberührt. `strecke.art` fehlt bei alten Projekten und gilt dann als Carousel.
+- **Format 6:** neuer Speicher `reelentwurf` mit einem Eintrag `aktuell` (Reel aus Clips: Medien, Musik, Stil, Länge, Ton-Anteil, Tempo, gesetzte Schnitte). Die Bytes von Clips, Fotos und Musik liegen in Stücken zu 8 MB in `dateien` unter `entwurf/<id>/<n>`, je Datei höchstens 500 MB. Die Migration legt nur den Speicher an.
 - **Neue Felder ohne Migration:** `farbraum` fehlt bei alten Halten und gilt dann als `srgb` (so wurden sie gerechnet). `verfahren` fehlt bei Halten, die noch mit Farbangleichung genäht sind. Die App rechnet sie nie still neu: Die Strecken-Ansicht bietet einmal je Start „Neu nähen“ an, erst nach Rückfrage rechnet `neuNaehen()` Bild und Naht aus dem Rohbild neu.
 
 ### Farbprofil

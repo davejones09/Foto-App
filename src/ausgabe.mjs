@@ -19,6 +19,7 @@ import { auftrag } from './rechner.mjs';
 import { MOTIV } from './serie.mjs';
 import { stilPlan, zustand, lage, reelAusschnitt, nahtGrenze, teilzeiten, RAHMEN, ZEITEN } from './reelstil.mjs';
 import { IST_DESKTOP } from './desktop.mjs';
+import { musikPlan } from './clipreel.mjs';
 import { istVorlage, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
 
 export class Abgebrochen extends Error {}
@@ -509,8 +510,14 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
 }
 
 // Plan für den gewählten Abschnitt: Band wie bisher, sonst ein Stil-Plan über die Fotos von bis.
-export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band' } = {}) {
+// musik: { stellen, takt, rest } – Vorlagen schneiden dann auf die Schläge, Band und ruhige Stile laufen darunter.
+export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band', musik = null } = {}) {
   const b = bis == null ? halte.length - 1 : bis;
+  if (istVorlage(stil) && musik?.stellen?.length) {
+    const fotos = Array.from({ length: b - von + 1 }, () => ({ typ: 'foto' }));
+    const p = musikPlan(fotos, { stil, raster: musik.stellen, laenge, musikRest: musik.rest, takt: musik.takt });
+    return { ...p, vorlage: stil, von, bis: b, vorschlag: null, zuKurz: false };
+  }
   if (istVorlage(stil)) {
     const p = vorlagenPlan(b - von + 1, { laenge, vorlage: stil });
     return { ...p, von, bis: b, vorschlag: p.zuKurz ? { von, bis: Math.min(b, von + p.maxFotos - 1) } : null };
