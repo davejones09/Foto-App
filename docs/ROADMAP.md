@@ -39,6 +39,11 @@ Die Nummern entsprechen der gemeinsamen Ideenliste.
 - 20 Fahrzeug-Übergang: Die App sucht im Clip das Bild, in dem das Fahrzeug am meisten bedeckt, schneidet dort, und das Fahrzeug fährt über der nächsten Szene weiter
 - 13 Nahtlos weiterfilmen: Das letzte Bild liegt halb durchsichtig im Sucher, eine Zahl zeigt, wie gut der neue Clip ansetzt
 
+## Nächstes Update
+
+Bugfixes:
+- Abspielknopf der Clip-Vorschau: Das Dreieck saß auf dem iPhone deutlich rechts von der Mitte (fester Abstand plus Innenabstand des Knopfs in Safari). Jetzt mittig ausgerichtet, nur optisch leicht versetzt.
+
 ## Für alles gilt
 
 - Fotos bleiben unverändert, gerechnet wird nur im Übergang.

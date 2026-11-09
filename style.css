@@ -432,8 +432,9 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-vorschau[hidden] { display: none; }
 .cl-vorschau-bild { position: relative; width: min(50vw, 250px); aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: #000; }
 #cl-vorschau { width: 100%; height: 100%; display: block; }
-.cl-vorschau-knopf { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; font-size: 0; }
-.cl-vorschau-knopf::before { content: ''; display: block; margin-left: 25px; border-style: solid; border-width: 12px 0 12px 20px; border-color: transparent transparent transparent #fff; }
+.cl-vorschau-knopf { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .55); color: #fff; font-size: 0; }
+/* Das Dreieck sitzt optisch mittig: Sein Schwerpunkt liegt ein Drittel von links, darum 3 px nach rechts. */
+.cl-vorschau-knopf::before { content: ''; display: block; margin-left: 6px; border-style: solid; border-width: 12px 0 12px 20px; border-color: transparent transparent transparent #fff; }
 .cl-vorschau-knopf[hidden] { display: none; }
 .cl-zeitleiste { width: min(50vw, 250px); height: 28px; display: flex; align-items: center; touch-action: none; cursor: pointer; background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18)) center / 100% 4px no-repeat; }
 .cl-zeit-stand { height: 4px; width: 0; background: var(--akzent, #FFD400); border-radius: 2px; }
