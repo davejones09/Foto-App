@@ -1,6 +1,15 @@
 // Service Worker: alles für den Offline-Betrieb vorhalten. Der Name enthält APP_VERSION.
-const APP_VERSION = '0.22.0';
+const APP_VERSION = '0.25.0';
 const CACHE = 'nahtlos-' + APP_VERSION;
+// Erkennung (Menschen und Fahrzeuge): groß und selten neu. Eigener Speicher, der Updates überdauert.
+// Wird nach der Installation im Hintergrund geladen, damit sie danach offline bereitsteht.
+const ERKENNUNG_CACHE = 'nahtlos-erkennung-1';
+const ERKENNUNG = [
+  './vendor/erkennung/vision_bundle.mjs',
+  './vendor/erkennung/vision_wasm_internal.js',
+  './vendor/erkennung/vision_wasm_internal.wasm',
+  './vendor/erkennung/deeplab_v3.tflite',
+];
 
 const DATEIEN = [
   './',
@@ -26,6 +35,15 @@ const DATEIEN = [
   './src/clipreel.mjs',
   './src/vorschau.mjs',
   './src/tonmix.mjs',
+  './src/vorlagenwahl.mjs',
+  './src/reeltext.mjs',
+  './src/instagram.mjs',
+  './src/vorhernachher.mjs',
+  './src/rueckblick.mjs',
+  './src/anschlusskamera.mjs',
+  './src/erkennung.mjs',
+  './src/ansichten/vorher.mjs',
+  './src/ansichten/signatur.mjs',
   './src/musik.mjs',
   './src/ansichten/clips.mjs',
   './src/ansichten/reeltipps.mjs',
@@ -83,9 +101,22 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((l) => Promise.all(l.filter((k) => k.startsWith('nahtlos-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((l) => Promise.all(l.filter((k) => k.startsWith('nahtlos-') && k !== CACHE && k !== ERKENNUNG_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
+  // Nicht abwarten: Die App ist sofort bereit, die Erkennung kommt nach.
+  erkennungLaden();
+});
+
+function erkennungLaden() {
+  return caches.open(ERKENNUNG_CACHE).then(async (c) => {
+    for (const f of ERKENNUNG) if (!(await c.match(f))) await c.add(f).catch(() => {});
+  });
+}
+
+// Die App fragt bei jedem Start nach: Fehlt noch etwas (etwa weil iOS den Worker beendet hat), kommt es nach.
+self.addEventListener('message', (e) => {
+  if (e.data === 'erkennung') e.waitUntil(erkennungLaden());
 });
 
 async function teilantwort(antwort, bereich) {
@@ -124,6 +155,16 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       caches.match(r, { ignoreSearch: true }).then((a) => (a ? teilantwort(a, bereich) : fetch(r))),
     );
+    return;
+  }
+  if (url.pathname.includes('/vendor/erkennung/')) {
+    e.respondWith(caches.open(ERKENNUNG_CACHE).then(async (c) => {
+      const a = await c.match(r, { ignoreSearch: true });
+      if (a) return a;
+      const antwort = await fetch(r);
+      if (antwort.ok) c.put(r, antwort.clone());
+      return antwort;
+    }));
     return;
   }
   e.respondWith(

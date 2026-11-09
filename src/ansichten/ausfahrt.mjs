@@ -7,7 +7,9 @@ import * as aus from '../ausgabe.mjs';
 import * as db from '../speicher.mjs';
 import { protokolliere } from '../diagnose.mjs';
 import { STILE, stileFuer } from '../reelstil.mjs';
-import { VORLAGEN_IDS, istVorlage } from '../reelvorlagen.mjs';
+import { VORLAGEN, GRUPPEN, istVorlage, eigeneVorlagen } from '../reelvorlagen.mjs';
+import { eigeneLaden, vorlagenName } from '../vorlagenwahl.mjs';
+import { TEXT_STILE, ueberlagern, signaturLaden } from '../reeltext.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { ladeWarten, ladeEnde } from '../laden.mjs';
@@ -19,6 +21,9 @@ let reelLaenge = 30;
 let reelStil = 'band';
 let reelMusik = null; // { puffer, bpm, schlaege, treffer, name, start, alle }
 let reelAuto = true;
+let reelVariante = 0;
+let reelGruppe = null;
+const reelTitel = { text: '', stil: 'klar', lage: 'unten' };
 try {
   const l = Number(localStorage.getItem('nahtlos-reel-laenge'));
   if (REEL_LAENGEN.includes(l)) reelLaenge = l;
@@ -44,6 +49,7 @@ function punkt({ titel, info = '', zusatz = null, bauen, nachTeilen }) {
   balken.hidden = true;
   const reihe = el('div', { klasse: 'af-reihe' });
   const karte = el('section', { klasse: 'af-punkt' }, kopf, infoEl, zusatz, balken, status, reihe);
+  karte.bauen = bauen;
   const fort = (p) => {
     const pr = Math.round(p * 100);
     $('i', balken).style.width = pr + '%';
@@ -143,7 +149,16 @@ function aufbauen() {
       const plan = await karussellPlan;
       const bilder = await aus.karussell(Z.strecke, halte, { fortschritt: fort, waechter: w, plan });
       const dateien = bilder.map((b, i) => datei(b, `carousel-${String(i + 1).padStart(2, '0')}.jpg`));
-      return beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
+      const gruppen = beitraege(dateien.length).map(([a, e]) => dateien.slice(a, e));
+      // Dieselben Bilder als Story, nur verkleinert, nie beschnitten
+      const stories = [];
+      for (const [i, b] of bilder.slice(0, 20).entries()) stories.push(datei(await aus.alsStory(b, '#000000'), `story-${String(i + 1).padStart(2, '0')}.jpg`));
+      return {
+        knoepfe: [
+          ...gruppen.map((g, i) => ({ text: gruppen.length > 1 ? `${T.teilen} ${i + 1}/${gruppen.length}` : T.teilen, dateien: g, haupt: true })),
+          { text: T.karussellStory, dateien: stories },
+        ],
+      };
     },
   });
   karussellPlan.then(async (plan) => {
@@ -223,7 +238,7 @@ function aufbauen() {
     takt: (60 / reelMusik.bpm) * reelMusik.alle,
     rest: reelMusik.puffer.duration - reelMusik.start,
   } : null);
-  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil, musik: musikPlanDaten() });
+  const reelPlanJetzt = () => aus.reelStilPlan(halte, { von: auswahl.von, bis: auswahl.bis, laenge: autoAn() ? null : reelLaenge, stil: reelStil, musik: musikPlanDaten(), variante: reelVariante });
   const musikEingabe = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.wav,.aac', hidden: true });
   const musikName = el('span', { klasse: 'cl-musik-name' });
   const musikStartText = el('span');
@@ -232,6 +247,14 @@ function aufbauen() {
     el('div', { klasse: 'cl-musik-kopf' }, musikName, el('button', { klasse: 'neben2', text: T.clipWeg, onclick: () => { reelMusik = null; musikZeigen(); reelAktualisieren(); } })),
     el('label', { klasse: 'cl-regler' }, musikStartText, musikStart));
   const musikKnopf = el('button', { klasse: 'neben2 af-musik-waehlen', text: T.musikWaehlen, onclick: () => musikEingabe.click() });
+  // Titel am Anfang des Reels
+  const titelFeld = el('input', { type: 'text', klasse: 'co-titel-eingabe af-titel-feld', maxlength: '60', autocomplete: 'off', 'aria-label': T.textTitelFeld, value: reelTitel.text });
+  titelFeld.addEventListener('input', () => { reelTitel.text = titelFeld.value; });
+  const titelStile = el('div', { klasse: 'cl-stile af-textstil' }, ...Object.keys(TEXT_STILE).map((k) => el('button', {
+    klasse: 'cl-stil', 'data-textstil': k, text: T[`textstil_${k}`], 'aria-pressed': String(k === reelTitel.stil),
+    onclick: (e) => { reelTitel.stil = k; for (const b of e.currentTarget.parentNode.children) b.setAttribute('aria-pressed', String(b.dataset.textstil === k)); },
+  })));
+  const textEl = el('div', { klasse: 'af-text' }, el('p', { klasse: 'af-gruppe', text: T.textTitel }), titelFeld, titelStile);
   const musikEl = el('div', { klasse: 'af-musik' }, el('p', { klasse: 'af-gruppe', text: T.musikTitel }), musikKnopf, musikInfo, musikEingabe);
   function musikZeigen() {
     musikInfo.hidden = !reelMusik;
@@ -268,6 +291,7 @@ function aufbauen() {
       klasse, 'data-stil': st, 'aria-pressed': String(st === reelStil),
       onclick: () => {
         reelStil = st;
+        reelVariante = 0;
         try { localStorage.setItem('nahtlos-reel-stil', st); } catch {}
         for (const b of [...stilKnoepfe, ...vorlagenKnoepfe]) b.setAttribute('aria-pressed', String(b.dataset.stil === st));
         reelAktualisieren();
@@ -275,7 +299,30 @@ function aufbauen() {
     }, cv, el('span', { text }));
   };
   const stilKnoepfe = STILE.map((st) => kachel(st, 'af-stil', T[`stil_${st}`]));
-  const vorlagenKnoepfe = VORLAGEN_IDS.map((st) => kachel(st, 'af-vorlage', T[`vorlage_${st.slice(2)}`]));
+  // Vorlagen nach Stimmung: Nur die Kacheln der gewählten Stimmung sind zu sehen und laufen.
+  const eigene = eigeneVorlagen().filter((v) => v.id !== 'e-neu');
+  const gruppeVon = (id) => (id?.startsWith('e-') ? 'eigene' : VORLAGEN.find((v) => v.id === id)?.gruppe);
+  if (!reelGruppe) reelGruppe = gruppeVon(reelStil) || 'energie';
+  const vorlagenKnoepfe = [...VORLAGEN.map((v) => v.id), ...eigene.map((v) => v.id)].map((st) => {
+    const k = kachel(st, 'af-vorlage', vorlagenName(st));
+    k.dataset.gruppe = gruppeVon(st);
+    return k;
+  });
+  let vorlagenMoeglich = true;
+  const kachelnFiltern = () => {
+    for (const k of vorlagenKnoepfe) k.hidden = !vorlagenMoeglich || k.dataset.gruppe !== reelGruppe;
+    for (const g of gruppenEl.children) g.setAttribute('aria-pressed', String(g.dataset.gruppe === reelGruppe));
+  };
+  const gruppenEl = el('div', { klasse: 'cl-stile af-gruppen', role: 'group', 'aria-label': T.vorlagenStimmung },
+    ...[...GRUPPEN, ...(eigene.length ? ['eigene'] : [])].map((g) => el('button', {
+      klasse: 'cl-stil', 'data-gruppe': g, text: T[`gruppe_${g}`],
+      onclick: () => { reelGruppe = g; kachelnFiltern(); },
+    })));
+  const wuerfelText = el('small');
+  const wuerfelEl = el('div', { klasse: 'vw-variante af-variante' },
+    el('button', { klasse: 'neben2 vw-wuerfel', text: T.variante, onclick: () => { reelVariante = 1 + Math.floor(Math.random() * 9998); reelAktualisieren(); } }),
+    wuerfelText,
+    el('button', { klasse: 'link af-original', text: T.varianteZurueck, onclick: () => { reelVariante = 0; reelAktualisieren(); } }));
   const stileEl = el('div', { klasse: 'af-stile', role: 'group', 'aria-label': T.reelStil }, ...stilKnoepfe);
   const vorlagenEl = el('div', { klasse: 'af-stile af-vorlagen', role: 'group', 'aria-label': T.reelVorlagen }, ...vorlagenKnoepfe);
   vorschauenStoppen();
@@ -286,12 +333,14 @@ function aufbauen() {
       el('button', { klasse: 'link af-clips', text: T.clipsTitel, onclick: () => zeige('clips') }),
       el('button', { klasse: 'link af-tipps', text: T.tippTitel, onclick: () => zeige('reeltipps') })),
     el('p', { klasse: 'af-gruppe', text: T.reelVorlagen }),
+    gruppenEl,
     vorlagenEl,
+    wuerfelEl,
     el('p', { klasse: 'af-gruppe', text: T.reelStil }),
     stileEl,
     laengen,
     el('div', { klasse: 'af-abschnitt' }, el('span', { text: T.reelVon }), vonSel, el('span', { text: T.reelBis }), bisSel),
-    tempoEl, vorschlagEl, musikEl);
+    tempoEl, vorschlagEl, musikEl, textEl);
   const reelKarte = punkt({
     titel: f(T.reel, { laenge: reelLaenge }),
     zusatz,
@@ -301,7 +350,9 @@ function aufbauen() {
       if (reelMusik) {
         try { ton = await aus.tonKodieren(reelMusik.puffer, reelMusik.start, p.dauer); } catch (err) { protokolliere('musik', err); }
       }
-      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton });
+      const signatur = await signaturLaden().catch(() => null);
+      const ueber = (male) => ueberlagern(male, { texte: { titel: { ...reelTitel } }, signatur, W: 1080, H: 1920, dauer: p.dauer });
+      const blob = await aus.reel(Z.strecke, halte, p, { fortschritt: (x) => fort(x * 0.97), waechter: w, ton, ueber });
       const mitTon = ton ? mp4TonProben(await blob.arrayBuffer()) === ton.pakete.length : false;
       if (ton && !mitTon) protokolliere('musik', 'Tonspur fehlt im Foto-Reel');
       const titelBlob = await aus.titelbild(halte, p);
@@ -318,6 +369,9 @@ function aufbauen() {
     const p = reelPlanJetzt();
     $('.af-titel', reelKarte).textContent = f(T.reel, { laenge: p.laenge });
     autoKnopf.hidden = !istVorlage(reelStil);
+    wuerfelEl.hidden = !istVorlage(reelStil);
+    wuerfelText.textContent = reelVariante ? f(T.varianteNr, { n: reelVariante }) : T.varianteOriginal;
+    $('.af-original', wuerfelEl).hidden = !reelVariante;
     autoKnopf.setAttribute('aria-pressed', String(autoAn()));
     for (const b of laengenKnoepfe) b.setAttribute('aria-pressed', String(!autoAn() && Number(b.dataset.laenge) === reelLaenge));
     const n = p.bis - p.von + 1;
@@ -336,16 +390,18 @@ function aufbauen() {
     }
     reelKarte.dataset.stil = p.stil;
   }
+  kachelnFiltern();
   reelAktualisieren();
   aus.reelWeg().then((w) => {
     // Ein Stil, der im Ausweichweg (Echtzeit) nicht sauber geht, wird ausgeblendet.
     const moeglich = stileFuer(w);
     for (const b of stilKnoepfe) b.hidden = !moeglich.includes(b.dataset.stil);
     // Die Vorlagen brauchen Bild für Bild genaues Rechnen, das geht nur mit WebCodecs.
-    const vorlagenMoeglich = w?.art === 'webcodecs';
-    for (const b of vorlagenKnoepfe) b.hidden = !vorlagenMoeglich;
+    vorlagenMoeglich = w?.art === 'webcodecs';
+    kachelnFiltern();
     vorlagenEl.hidden = !vorlagenMoeglich;
-    vorlagenEl.previousElementSibling.hidden = !vorlagenMoeglich;
+    gruppenEl.hidden = !vorlagenMoeglich;
+    gruppenEl.previousElementSibling.hidden = !vorlagenMoeglich;
     if (w && !(moeglich.includes(reelStil) || (vorlagenMoeglich && istVorlage(reelStil)))) stilKnoepfe[0].click();
     if (w) return;
     $('.af-titel', reelKarte).disabled = true;
@@ -376,9 +432,26 @@ function aufbauen() {
     },
   });
 
+  // Alles auf einmal: Carousel, Reel und Gesamtbild nacheinander bauen, dann in einem Rutsch sichern.
+  const dateienAus = (r) => (Array.isArray(r) ? r.flat() : r.knoepfe.filter((k) => k.haupt).flatMap((k) => k.dateien));
+  const alles = punkt({
+    titel: T.allesTitel,
+    info: T.allesInfo,
+    async bauen(fort, w, extra) {
+      const teile = [karussell, reelKarte, gesamt];
+      const dateien = [];
+      for (const [i, k] of teile.entries()) {
+        const r = await k.bauen((p) => fort((i + p) / teile.length), w, extra);
+        dateien.push(...dateienAus(r));
+      }
+      return [dateien];
+    },
+  });
+  alles.classList.add('af-alles');
+
   // Ein Reel-Projekt zeigt das Reel zuerst. Beide Ausgaben gehen immer aus demselben Projekt.
   const erste = Z.strecke.art === 'reel' ? [reelKarte, karussell] : [karussell, reelKarte];
-  liste.replaceChildren(...erste, gesamt, sicherung);
+  liste.replaceChildren(...erste, gesamt, alles, sicherung);
 }
 
 // --- Einspielen ---
@@ -410,6 +483,8 @@ $('#af-zurueck').addEventListener('click', () => zeige('strecke'));
 registriere('ausfahrt', {
   async betreten() {
     await neuLaden();
+    await eigeneLaden().catch(() => {});
+    try { const st = localStorage.getItem('nahtlos-reel-stil'); if (st?.startsWith('e-') && istVorlage(st)) reelStil = st; } catch {}
     aufbauen();
   },
   verlassen() { vorschauenStoppen(); },

@@ -34,7 +34,16 @@ test('Vorlagen: Auswahl, Auto, voller Rahmen in jedem Übergang, MP4', async () 
   await page.click('#zur-strecke');
   await page.click('#zur-ausfahrt');
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-vorlage');
-  assert.equal(await page.locator('.af-vorlage').count(), 11);
+  const { anzahl, energie } = await page.evaluate(async () => {
+    const { VORLAGEN } = await import('./src/reelvorlagen.mjs');
+    return { anzahl: VORLAGEN.length, energie: VORLAGEN.filter((v) => v.gruppe === 'energie').length };
+  });
+  assert.equal(await page.locator('.af-vorlage').count(), anzahl);
+  assert.equal(await page.locator('.af-vorlage:visible').count(), energie, 'Nur die Stimmung Beat und Energie');
+  await page.locator('.af-gruppen [data-gruppe="cinematic"]').click();
+  assert.ok(await page.locator('.af-vorlage[data-stil="v-kino"]').isVisible());
+  assert.ok(await page.locator('.af-vorlage[data-stil="v-beat"]').isHidden());
+  await page.locator('.af-gruppen [data-gruppe="energie"]').click();
   assert.deepEqual((await page.locator('.af-vorlage span').allTextContents()).slice(0, 3), ['Beat', 'Blitz', 'Slide']);
   // Sichtbare Vorschauen laufen
   await warteAuf(page, () => document.querySelector('.af-vorlage canvas').dataset.laeuft === '1', null, 20000);
@@ -54,7 +63,7 @@ test('Vorlagen: Auswahl, Auto, voller Rahmen in jedem Übergang, MP4', async () 
   const r = await page.evaluate(async () => {
     const aus = await import('./src/ausgabe.mjs');
     const db = await import('./src/speicher.mjs');
-    const { VORLAGEN_IDS } = await import('./src/reelvorlagen.mjs');
+    const { VORLAGEN_IDS, vorlagenZustand } = await import('./src/reelvorlagen.mjs');
     const halte = (await db.halte(localStorage.getItem('nahtlos-aktiv'))).filter((h) => h.bild);
     const W = 270;
     const H = 480;
@@ -69,6 +78,9 @@ test('Vorlagen: Auswahl, Auto, voller Rahmen in jedem Übergang, MP4', async () 
       let leer = 0;
       for (let k = 0; k < p.bilder; k += 4) {
         await m.male(ctx, k / 30);
+        // „Über Schwarz“ ist absichtlich kurz schwarz.
+        const z = vorlagenZustand(p, k / 30);
+        if (z.art === 'dunkel') continue;
         for (const [x, y] of [[1, 1], [W - 2, 1], [1, H - 2], [W - 2, H - 2], [W >> 1, H >> 1]]) {
           const d = ctx.getImageData(x, y, 1, 1).data;
           if (d[0] + d[1] + d[2] < 6) leer++;
@@ -132,6 +144,7 @@ test('Foto-Reel mit Musik: Vorlage schneidet auf die Schläge, Ton im MP4', asyn
   await page.click('#zur-strecke');
   await page.click('#zur-ausfahrt');
   await page.waitForSelector('#v-ausfahrt:not([hidden]) .af-vorlage');
+  await page.locator('.af-gruppen [data-gruppe="reise"]').click();
   await page.locator('.af-vorlage[data-stil="v-slide"]').click();
   const karte = page.locator('.af-punkt').filter({ has: page.locator('.af-vorlage') });
   await karte.locator('.af-musik input[type=file]').setInputFiles(wav(30));

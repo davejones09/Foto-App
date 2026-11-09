@@ -427,7 +427,7 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-stile { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .cl-stil { flex: none; padding: 8px 14px; min-height: 40px; border-radius: 12px; background: var(--flaeche); color: var(--text2); font-size: 14px; }
 .cl-stil[aria-pressed="true"] { background: var(--text); color: var(--grund); }
-.cl-info, .cl-fort { margin: 0; color: var(--text2); font-size: 14px; }
+.cl-info, .cl-fort, .vn-info, .vn-fort { margin: 0; color: var(--text2); font-size: 14px; }
 .cl-vorschau { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .cl-vorschau[hidden] { display: none; }
 .cl-vorschau-bild { position: relative; width: min(50vw, 250px); aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: #000; }
@@ -438,7 +438,7 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-zeitleiste { width: min(50vw, 250px); height: 28px; display: flex; align-items: center; touch-action: none; cursor: pointer; background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18)) center / 100% 4px no-repeat; }
 .cl-zeit-stand { height: 4px; width: 0; background: var(--akzent, #FFD400); border-radius: 2px; }
 .cl-vorschau-hinweis { color: var(--text2); font-size: 12px; text-align: center; max-width: 340px; }
-.cl-ergebnis { display: flex; flex-direction: column; gap: 10px; }
+.cl-ergebnis, .vn-ergebnis { display: flex; flex-direction: column; gap: 10px; }
 .cl-video { width: 60%; align-self: center; border-radius: 12px; background: #000; }
 .af-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .cl-inhalt > * { flex: none; }
@@ -521,3 +521,55 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-welle-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .cl-welle-hinweis { color: var(--text2); font-size: 12px; }
 .cl-ton[hidden] { display: none; }
+.vw { display: flex; flex-direction: column; gap: 8px; }
+.vw-liste[hidden], .vw-variante[hidden] { display: none; }
+.vw-variante { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vw-variante small { color: var(--text2); font-size: 13px; }
+.vw-wuerfel { min-height: 40px; padding: 0 14px; }
+.vw-bau { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.vw-titel { margin: 4px 0 0; font-size: 13px; color: var(--text2); }
+.vw-hinweis { color: var(--text2); font-size: 12px; }
+.vw-umbruch { flex-wrap: wrap; overflow: visible; }
+.vw-speichern-zeile { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-top: 6px; }
+.co-reihe[hidden] { display: none; }
+.co-kante input { flex: 1; }
+.co-kante small { color: var(--text2); font-size: 13px; }
+.co-titel-eingabe { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); padding: 0 12px; font-size: 16px; }
+.co-wuerfel { flex: none; min-height: 40px; padding: 0 14px; }
+.ei-sig { padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
+.ei-sig-mehr { display: flex; flex-direction: column; gap: 10px; }
+.ei-sig-mehr[hidden], .ei-sig-text[hidden], .ei-sig-logo-zeile[hidden] { display: none; }
+.ei-sig-logo-zeile { display: flex; gap: 10px; align-items: center; }
+.ei-sig-logo-zeile small { color: var(--text2); font-size: 12px; }
+.ei-sig-vorschau { width: 135px; height: 240px; align-self: center; border-radius: 10px; background: #000; }
+#v-einstellungen { overflow-y: auto; }
+#v-einstellungen .ei-liste { flex: none; overflow: visible; }
+.cl-insta { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cl-insta[hidden] { display: none; }
+.cl-insta-knopf[aria-pressed="true"] { color: var(--akzent, #FFD400); }
+.co-insta { flex: none; min-height: 40px; padding: 0 14px; }
+.co-insta[aria-pressed="true"] { background: var(--text); color: var(--grund); }
+.vn-paare { display: flex; flex-direction: column; gap: 10px; }
+.vn-paar { display: flex; gap: 8px; align-items: center; background: var(--flaeche); border-radius: 14px; padding: 8px; }
+.vn-paar canvas { width: 72px; height: 90px; border-radius: 8px; background: #000; }
+.vn-paar small { color: var(--text2); font-size: 12px; display: block; text-align: center; }
+.vn-paar .vn-mitte { flex: 1; display: flex; justify-content: flex-end; }
+.vn-beschriftung { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.vn-beschriftung input { width: 22px; height: 22px; }
+
+/* Nahtlos weiterfilmen: Sucher mit dem letzten Bild als Geist */
+.ak { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; flex-direction: column; }
+.ak-video, .ak-geist { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ak-geist { opacity: .42; pointer-events: none; }
+.ak-laeuft .ak-geist { opacity: .22; }
+.ak-wert { position: absolute; top: calc(var(--oben) + 14px); right: 16px; min-width: 52px; padding: 6px 10px; border-radius: 12px; background: rgba(0,0,0,.55); font: 600 22px/1 var(--mono); text-align: center; color: var(--text); }
+.ak-wert[data-stufe="gruen"] { color: #8fe3a6; }
+.ak-wert[data-stufe="gelb"] { color: #f2d47a; }
+.ak-wert[data-stufe="rot"] { color: var(--warnung); }
+.ak-hinweis { position: absolute; left: 16px; right: 84px; top: calc(var(--oben) + 12px); margin: 0; padding: 8px 10px; border-radius: 12px; background: rgba(0,0,0,.55); font-size: 14px; line-height: 1.35; }
+.ak-laeuft .ak-hinweis { display: none; }
+.ak-zeit { position: absolute; left: 0; right: 0; bottom: calc(var(--unten) + 124px); text-align: center; font: 600 17px var(--mono); text-shadow: 0 1px 3px #000; }
+.ak-leiste { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 20px calc(var(--unten) + 20px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: linear-gradient(transparent, rgba(0,0,0,.6)); }
+.ak-zu { justify-self: start; }
+.ak-ausloeser { width: 76px; height: 76px; border-radius: 50%; border: 4px solid #fff; background: #e5484d; padding: 0; transition: border-radius .15s, transform .15s; }
+.ak-laeuft .ak-ausloeser { border-radius: 22px; transform: scale(.82); }

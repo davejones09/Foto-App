@@ -20,7 +20,7 @@ import { MOTIV } from './serie.mjs';
 import { stilPlan, zustand, lage, reelAusschnitt, nahtGrenze, teilzeiten, RAHMEN, ZEITEN } from './reelstil.mjs';
 import { IST_DESKTOP } from './desktop.mjs';
 import { musikPlan } from './clipreel.mjs';
-import { istVorlage, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, kreisMaske, streifenMaske, kachelMaske } from './reelvorlagen.mjs';
+import { istVorlage, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, maskePfad } from './reelvorlagen.mjs';
 
 export class Abgebrochen extends Error {}
 
@@ -450,13 +450,7 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
     if (u.maske && u.b) {
       ctx.save();
       ctx.beginPath();
-      if (u.maske === 'kreis') {
-        const m = kreisMaske(z.p, W, H);
-        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
-      } else {
-        const l = u.maske === 'streifen' ? streifenMaske(z.p, W, H) : kachelMaske(z.p, W, H);
-        for (const r of l) ctx.rect(r.x, r.y, r.w, r.h);
-      }
+      maskePfad(ctx, u.maske, z.p, W, H);
       ctx.clip();
       await foto(ctx, z.j, bn);
       ctx.restore();
@@ -464,7 +458,7 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
       await foto(ctx, z.j, mit(bn, u.b));
     }
     if (u.blitz) {
-      ctx.fillStyle = `rgba(255, 255, 255, ${u.blitz})`;
+      ctx.fillStyle = `rgba(${u.farbe ?? '255, 255, 255'}, ${u.blitz})`;
       ctx.fillRect(0, 0, W, H);
     }
   }
@@ -511,15 +505,15 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
 
 // Plan für den gewählten Abschnitt: Band wie bisher, sonst ein Stil-Plan über die Fotos von bis.
 // musik: { stellen, takt, rest } – Vorlagen schneiden dann auf die Schläge, Band und ruhige Stile laufen darunter.
-export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band', musik = null } = {}) {
+export function reelStilPlan(halte, { von = 0, bis = null, laenge = 30, stil = 'band', musik = null, variante = 0 } = {}) {
   const b = bis == null ? halte.length - 1 : bis;
   if (istVorlage(stil) && musik?.stellen?.length) {
     const fotos = Array.from({ length: b - von + 1 }, () => ({ typ: 'foto' }));
-    const p = musikPlan(fotos, { stil, raster: musik.stellen, laenge, musikRest: musik.rest, takt: musik.takt });
+    const p = musikPlan(fotos, { stil, raster: musik.stellen, laenge, musikRest: musik.rest, takt: musik.takt, variante });
     return { ...p, vorlage: stil, von, bis: b, vorschlag: null, zuKurz: false };
   }
   if (istVorlage(stil)) {
-    const p = vorlagenPlan(b - von + 1, { laenge, vorlage: stil });
+    const p = vorlagenPlan(b - von + 1, { laenge, vorlage: stil, variante });
     return { ...p, von, bis: b, vorschlag: p.zuKurz ? { von, bis: Math.min(b, von + p.maxFotos - 1) } : null };
   }
   if (stil === 'band' || !ZEITEN[stil]) return { ...reelPlanBand(halte, { von, bis, laenge }), stil: 'band' };
@@ -534,14 +528,14 @@ export async function reel(strecke, halte, plan, opt = {}) {
     const teil = halte.slice(plan.von, plan.bis + 1);
     const m = await stilMaler(teil, plan);
     try {
-      return await sauber(await videoBauen(weg, m.male, plan.bilder, opt));
+      return await sauber(await videoBauen(weg, opt.ueber ? opt.ueber(m.male) : m.male, plan.bilder, opt));
     } finally {
       m.ende();
     }
   }
   const { male, ende } = reelBildMaler(strecke, halte, plan);
   try {
-    return await sauber(await videoBauen(weg, male, plan.bilder, opt));
+    return await sauber(await videoBauen(weg, opt.ueber ? opt.ueber(male) : male, plan.bilder, opt));
   } finally {
     ende();
   }
@@ -769,5 +763,28 @@ export function speichern(dateien) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+  }
+}
+
+// Story 1080 × 1920: das fertige Bild mittig, in voller Breite, darüber und darunter die Grundfarbe.
+// Das Bild wird nur verkleinert, nie beschnitten.
+export async function alsStory(blob, grund = '#000000') {
+  const b = await ladeBitmap(blob);
+  const W = 1080;
+  const H = 1920;
+  const c = leinwand(W, H, 'srgb');
+  const ctx = ctx2d(c);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.fillStyle = grund;
+  ctx.fillRect(0, 0, W, H);
+  const s = Math.min(W / b.width, (H * 0.9) / b.height);
+  const w = Math.round(b.width * s);
+  const h = Math.round(b.height * s);
+  ctx.drawImage(b, Math.round((W - w) / 2), Math.round((H - h) / 2), w, h);
+  b.close?.();
+  try {
+    return await blobSauber(await alsBlob(c, 'image/jpeg', 0.95));
+  } finally {
+    freigeben(c);
   }
 }

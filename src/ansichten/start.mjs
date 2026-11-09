@@ -72,11 +72,13 @@ export async function neuesBandProjekt(art = 'carousel') {
   const r = await frage(f(T.neuesProjekt, { art: artName(art) }), [
     { text: T.abbrechen, wert: null },
     ...(art === 'reel' ? [{ text: T.quelleClips, wert: 'clips' }] : []),
+    { text: T.quelleVorher, wert: 'vorher' },
     { text: T.quelleMediathek, wert: 'mediathek', sofort: (x) => waehleBild(!!x.option) },
     { text: T.quelleKamera, wert: 'kamera', haupt: true },
   ], { eingabe: namensVorschlag(), option: T.blindOption });
   if (!r.wert) return false;
   if (r.wert === 'clips') { await zeige('clips'); return true; }
+  if (r.wert === 'vorher') { await zeige('vorher', { art }); return true; }
   const anlegen = async () => {
     const s = await db.neueStrecke({ name: r.text || namensVorschlag(), blind: r.option, art });
     await ladeStrecke(s.id);
@@ -111,7 +113,7 @@ registriere('start', {
 $('#ei-zurueck').addEventListener('click', () => zeige('start'));
 $('#ei-einspielen').addEventListener('click', einspielenWaehlen);
 $('#ei-einfuehrung').addEventListener('click', () => zeige('einfuehrung', { danach: 'einstellungen' }));
-registriere('einstellungen', {});
+// Die Ansicht „einstellungen“ registriert ansichten/signatur.mjs.
 
 // Für die Diagnose aus app.mjs: der Knopf in den Einstellungen.
 export function diagnoseKnopf(oeffnen) { $('#ei-diagnose').addEventListener('click', oeffnen); }

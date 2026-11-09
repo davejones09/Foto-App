@@ -21,6 +21,8 @@ import './ansichten/ausfahrt.mjs';
 import './ansichten/fahrplan.mjs';
 import './ansichten/reeltipps.mjs';
 import './ansichten/clips.mjs';
+import './ansichten/signatur.mjs';
+import './ansichten/vorher.mjs';
 import { serieErinnern } from './ansichten/serie.mjs';
 import { einfuehrungNoetig } from './ansichten/einfuehrung.mjs';
 import { startVideo } from './startvideo.mjs';
@@ -36,6 +38,8 @@ const istStandalone = () => navigator.standalone === true || matchMedia('(displa
 let neueVersionBereit = false;
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch((e) => protokolliere('sw', e));
+  // Erkennung im Hintergrund vorhalten, damit sie unterwegs offline bereitsteht.
+  navigator.serviceWorker.ready.then((r) => setTimeout(() => r.active?.postMessage('erkennung'), 4000)).catch(() => {});
   let hatteController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (hatteController) neueVersionBereit = true;
