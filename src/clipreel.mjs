@@ -354,9 +354,23 @@ export async function suche(v, t) {
 }
 
 // Zeichnet das Reel. medien: [{ typ, url, datei, dauer, start }].
-export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
+// Clip in der Vorschau laufen lassen statt Bild für Bild zu suchen. Gesprungen wird nur, wenn er davonläuft.
+export function liveFolgen(v, zeit) {
+  const ziel = Math.max(0, Math.min(zeit, (v.duration || 0) - 0.05));
+  if (v.paused) {
+    if (Math.abs(v.currentTime - ziel) > 0.06) v.currentTime = ziel;
+    v.play().catch(() => {});
+  } else if (!v.seeking && Math.abs(v.currentTime - ziel) > 0.3) {
+    v.currentTime = ziel;
+  }
+}
+
+// live: für die Vorschau. Clips laufen in Echtzeit mit, statt für jedes Bild exakt gesucht zu werden.
+export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h, live = false } = {}) {
   const kx = W / RAHMEN.w;
-  const clips = new Map(); // höchstens zwei gleichzeitig offen
+  const clips = new Map(); // beim Bauen höchstens zwei gleichzeitig offen, in der Vorschau drei
+  const offen = live ? 3 : 2;
+  const genutzt = new Set();
   const berichte = (i, v) => {
     const st = suchStatistik(v);
     if (!st.gesucht) return;
@@ -373,7 +387,7 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
       return { b: fotos.get(i), w: fotos.get(i).width, h: fotos.get(i).height };
     }
     if (!clips.has(i)) {
-      for (const [k, v] of clips) { if (clips.size < 2) break; berichte(k, v); clipWeg(v); clips.delete(k); }
+      for (const [k, v] of clips) { if (clips.size < offen) break; if (!live) berichte(k, v); clipWeg(v); clips.delete(k); }
       clips.set(i, await ladeClip(m.url));
     }
     const v = clips.get(i);
@@ -381,7 +395,10 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
   }
   async function zeichne(ctx, i, zeitImClip, { s = 1, dx = 0, dy = 0, rot = 0, qx = 0, qy = 0, alpha = 1 }) {
     const q = await quelle(i);
-    if (q.video) await suche(q.b, zeitImClip);
+    if (q.video && laufend) { genutzt.add(i); liveFolgen(q.b, zeitImClip); } else if (q.video) {
+      if (!q.b.paused) q.b.pause();
+      await suche(q.b, zeitImClip);
+    }
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(W / 2 + dx * kx, H / 2 + dy * kx);
@@ -389,7 +406,16 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     zeichneQuelle(ctx, q.b, q.w, q.h, W, H, medien[i].rahmen, { s, qx, qy, gedreht: !!rot });
     ctx.restore();
   }
-  async function male(ctx, t) {
+  // Steht die Vorschau, wird genau gesucht wie beim Bauen. Nur beim Abspielen laufen die Clips mit.
+  let laufend = live;
+  async function male(ctx, t, { steht = false } = {}) {
+    laufend = live && !steht;
+    genutzt.clear();
+    try { await maleBild(ctx, t); } finally {
+      if (live) for (const [k, v] of clips) if (!genutzt.has(k) && !v.paused) v.pause();
+    }
+  }
+  async function maleBild(ctx, t) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
     const z = vorlagenZustand(plan, t);
@@ -426,10 +452,11 @@ export function clipMaler(medien, plan, { W = RAHMEN.w, H = RAHMEN.h } = {}) {
     }
   }
   function ende() {
-    for (const [k, v] of clips) { berichte(k, v); clipWeg(v); }
+    for (const [k, v] of clips) { if (!live) berichte(k, v); clipWeg(v); }
     clips.clear();
     for (const b of fotos.values()) b.close?.();
     fotos.clear();
   }
-  return { male, ende };
+  function pause() { for (const v of clips.values()) v.pause(); }
+  return { male, ende, pause };
 }

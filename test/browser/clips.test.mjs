@@ -371,3 +371,139 @@ test('Musik: Der Übergang landet auf dem Schlag', async () => {
   }
   assert.deepEqual(fehler, []);
 });
+
+test('Sofort-Vorschau: zeigt das erste Bild, spielt in Echtzeit, folgt Änderungen ohne Bauen', async () => {
+  // Rot: Rotanteil steigt mit 70 je Sekunde, Blau: Blauanteil mit 100. So zeigt die Farbe die Stelle im Clip.
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  assert.ok(await page.locator('.cl-vorschau').isHidden(), 'ohne Medien keine Vorschau');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.waitForSelector('.cl-vorschau:not([hidden])');
+  const pixel = 'const c = document.querySelector("#cl-vorschau"); const d = c.getContext("2d").getImageData(c.width / 2, c.height / 2, 1, 1).data;';
+  const warte = (bed, ms = 8000) => page.waitForFunction(`(() => { ${pixel} return ${bed}; })()`, null, { timeout: ms, polling: 50 });
+  await warte('d[3] === 255 && d[1] > 10 && d[0] < 40 && d[2] > 10', 15000);
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-vorschau.png` });
+  const t0 = Date.now();
+  await page.click('.cl-vorschau-bild');
+  assert.ok(await page.locator('.cl-vorschau-knopf').isHidden(), 'Spielt: Knopf weg');
+  await warte('d[0] > 100 && d[2] < 40');
+  const rot = (Date.now() - t0) / 1000;
+  assert.ok(rot > 1 && rot < 3.2, `Rot 100 nach ${rot} s, erwartet etwa 1,4 s`);
+  await warte('d[2] > 90 && d[0] < 40');
+  const blau = (Date.now() - t0) / 1000;
+  assert.ok(blau > 3 && blau < 6, `Blau 90 nach ${blau} s, erwartet etwa 3,9 s`);
+  const stand = await page.evaluate(() => parseFloat(document.querySelector('.cl-zeit-stand').style.width));
+  assert.ok(stand > 50, `Zeitleiste bei ${stand} %`);
+  // Anhalten und an den Anfang springen
+  await page.click('.cl-vorschau-bild');
+  assert.ok(await page.locator('.cl-vorschau-knopf').isVisible());
+  await page.locator('.cl-zeitleiste').scrollIntoViewIfNeeded();
+  const leiste = await page.locator('.cl-zeitleiste').boundingBox();
+  await page.mouse.click(leiste.x + leiste.width * 0.2, leiste.y + leiste.height / 2);
+  await warte('d[0] > 50 && d[2] < 40');
+  // Reihenfolge ändern: An derselben Stelle steht sofort der blaue Clip, ohne Bauen.
+  await page.locator('.cl-zeile').first().locator('button', { hasText: '↓' }).click();
+  await warte('d[2] > 60 && d[0] < 40');
+  assert.equal(await page.locator('.cl-video').count(), 0, 'Nichts gebaut');
+  await page.click('#cl-zurueck');
+  await warteAuf(page, () => document.body.dataset.ansicht !== 'clips');
+  const laufend = await page.evaluate(() => [...document.querySelectorAll('body > video')].filter((x) => !x.paused).length);
+  assert.equal(laufend, 0);
+  assert.deepEqual(fehler, []);
+});
+
+test('Entwurf: Clips, Musik und Stil überstehen das Schließen der App, „Neu beginnen“ räumt auf', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  const zuClips = async () => {
+    await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+    await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  };
+  await zuClips();
+  assert.ok(await page.locator('#cl-neu').isHidden());
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-rot.webm'), join(DATEN, 'clip-blau.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.setInputFiles('#datei-musik', [wav(120, 20)]);
+  await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
+  await page.locator('.cl-stil[data-stil="v-slide"]').click();
+  await page.locator('.cl-zeile').first().locator('button', { hasText: '↓' }).click();
+  await page.waitForTimeout(800);
+  // App schließen und neu öffnen
+  await oeffne(page, s.url);
+  await zuClips();
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  await page.waitForSelector('.cl-musik-info:not([hidden])', { timeout: 20000 });
+  assert.equal(await page.locator('.cl-stil[aria-pressed="true"]').getAttribute('data-stil'), 'v-slide');
+  assert.match(await page.locator('#meldung p').textContent(), /Entwurf ist wieder da/);
+  // Reihenfolge blieb: zuerst Blau (2 s), dann Rot (3 s)
+  const infos = await page.locator('.cl-zeile small').allTextContents();
+  assert.match(infos[0], /2,0 s/);
+  assert.match(infos[1], /3,0 s/);
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-entwurf.png` });
+  // Neu beginnen
+  await page.click('#cl-neu');
+  await page.locator('#dialog button', { hasText: 'Neu beginnen' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 0);
+  await page.waitForTimeout(500);
+  const rest = await page.evaluate(async () => {
+    const d = await (await import('./src/speicher.mjs')).oeffne();
+    const keys = await new Promise((ok) => { const r = d.transaction('dateien').objectStore('dateien').getAllKeys(); r.onsuccess = () => ok(r.result); });
+    return keys.filter((k) => k.startsWith('entwurf/')).length;
+  });
+  assert.equal(rest, 0, 'Keine Entwurfsdaten mehr');
+  await oeffne(page, s.url);
+  await zuClips();
+  await page.waitForTimeout(800);
+  assert.equal(await page.locator('.cl-zeile').count(), 0);
+  assert.deepEqual(fehler, []);
+});
+
+test('Speicherformat 6: Daten aus Format 5 bleiben unberührt', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await page.goto(`${s.url}manifest.webmanifest`);
+  await page.evaluate(() => new Promise((ok, nein) => {
+    const r = indexedDB.open('nahtlos', 5);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore('strecken', { keyPath: 'id' });
+      const h = d.createObjectStore('halte', { keyPath: 'id' });
+      h.createIndex('strecke', 'streckeId');
+      d.createObjectStore('einstellungen', { keyPath: 'schluessel' });
+      const se = d.createObjectStore('serie', { keyPath: 'id' });
+      se.createIndex('strecke', 'streckeId');
+      const da = d.createObjectStore('dateien', { keyPath: 'schluessel' });
+      da.createIndex('laenge', 'laenge');
+      d.createObjectStore('collagen', { keyPath: 'id' });
+    };
+    r.onsuccess = () => {
+      const d = r.result;
+      const t = d.transaction(['collagen', 'dateien', 'strecken'], 'readwrite');
+      t.objectStore('collagen').put({ id: 'c1', name: 'Alt', erstellt: 1, fotos: [], felder: [] });
+      t.objectStore('strecken').put({ id: 's1', name: 'Alte Strecke', erstellt: 1 });
+      t.objectStore('dateien').put({ schluessel: 'x/roh', typ: 'image/jpeg', laenge: 3, daten: new Uint8Array([1, 2, 3]).buffer });
+      t.oncomplete = () => { d.close(); ok(); };
+      t.onerror = () => nein(t.error);
+    };
+    r.onerror = () => nein(r.error);
+  }));
+  await oeffne(page, s.url);
+  const r = await page.evaluate(async () => {
+    const db = await import('./src/speicher.mjs');
+    const d = await db.oeffne();
+    return {
+      version: d.version, stores: [...d.objectStoreNames].sort(),
+      collage: (await db.collage('c1'))?.name, strecke: (await db.strecke('s1'))?.name, datei: (await db.datei('x/roh'))?.laenge,
+      entwurf: await db.reelEntwurf(),
+    };
+  });
+  assert.equal(r.version, 6);
+  assert.ok(r.stores.includes('reelentwurf'));
+  assert.equal(r.collage, 'Alt');
+  assert.equal(r.strecke, 'Alte Strecke');
+  assert.equal(r.datei, 3);
+  assert.equal(r.entwurf, undefined);
+  assert.deepEqual(fehler, []);
+});

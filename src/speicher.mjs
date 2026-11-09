@@ -7,7 +7,7 @@
 // { schluessel, laenge, typ } oder null. Gelesen wird über blob(meta, feld), das einen frischen Blob baut.
 
 export const DB_NAME = 'nahtlos';
-export const FORMAT = 5;
+export const FORMAT = 6;
 const KAMERA_BREITE = 1296; // Breite eines 4:5-Halts, so waren alle Halte bis Format 3
 export const BILDFELDER = ['roh', 'bild', 'naht', 'vorschau', 'nahtVorschau'];
 
@@ -39,6 +39,13 @@ const MIGRATIONEN = {
   //   vorschau: Verweis }  Foto: { id, rohB, rohH, farbraum, profil, name, zeit, motiv, roh, vorschau }
   5(db) {
     db.createObjectStore('collagen', { keyPath: 'id' });
+  },
+  // 6: Reel-Entwurf. Nur ein neuer Speicher, an allem anderen ändert sich nichts. Ein Eintrag 'aktuell':
+  // { id, geaendert, stil, laenge, medien: [{ id, typ, name, mime, groesse, teile, start, ende, laenge, eigen, rahmen,
+  //   dauer }], musik: { name, mime, groesse, teile, start, alle } | null }
+  // Die Bytes liegen in Stücken zu höchstens 8 MB in "dateien" unter entwurf/<id>/<n>.
+  6(db) {
+    db.createObjectStore('reelentwurf', { keyPath: 'id' });
   },
 };
 
@@ -593,4 +600,53 @@ export async function schaetzung() {
     if (navigator.storage?.persisted) aus.dauerhaft = await navigator.storage.persisted();
   } catch {}
   return aus;
+}
+
+// --- Reel-Entwurf: Clips, Fotos und Musik, damit nichts verloren geht, wenn iOS die App schließt ---
+
+export const ENTWURF_STUECK = 8 * 1024 * 1024;
+const entwurfTeil = (id, n) => `entwurf/${id}/${n}`;
+
+export function reelEntwurf() {
+  return tx('reelentwurf', 'readonly', (t) => anfrage(t.objectStore('reelentwurf').get('aktuell')));
+}
+
+export function speichereReelEntwurf(entwurf) {
+  keinBlob(entwurf);
+  return tx('reelentwurf', 'readwrite', (t) => anfrage(t.objectStore('reelentwurf').put({ ...entwurf, id: 'aktuell', geaendert: Date.now() })));
+}
+
+// Datei in Stücken ablegen. Jedes Stück wird einzeln gelesen, geschrieben und geprüft, damit nie die ganze
+// Datei auf einmal im Speicher liegt. Gibt die Zahl der Stücke zurück.
+export async function entwurfDateiSpeichern(id, datei) {
+  const n = Math.max(1, Math.ceil(datei.size / ENTWURF_STUECK));
+  for (let i = 0; i < n; i++) {
+    const daten = await datei.slice(i * ENTWURF_STUECK, Math.min(datei.size, (i + 1) * ENTWURF_STUECK)).arrayBuffer();
+    const e = { schluessel: entwurfTeil(id, i), typ: 'application/octet-stream', laenge: daten.byteLength, daten };
+    await tx('dateien', 'readwrite', (t) => anfrage(t.objectStore('dateien').put(e)));
+    await pruefe([e]);
+  }
+  return n;
+}
+
+export async function entwurfDateiLesen(id, teile, typ) {
+  const stuecke = [];
+  for (let i = 0; i < teile; i++) {
+    const r = await datei(entwurfTeil(id, i));
+    if (!r?.daten?.byteLength) return null;
+    stuecke.push(r.daten);
+  }
+  return new Blob(stuecke, { type: typ });
+}
+
+export function entwurfDateiLoeschen(id) {
+  const bereich = IDBKeyRange.bound(`entwurf/${id}/`, `entwurf/${id}/\uffff`);
+  return tx('dateien', 'readwrite', (t) => anfrage(t.objectStore('dateien').delete(bereich)));
+}
+
+export function loescheReelEntwurf() {
+  return tx(['reelentwurf', 'dateien'], 'readwrite', (t) => {
+    t.objectStore('dateien').delete(IDBKeyRange.bound('entwurf/', 'entwurf/\uffff'));
+    return anfrage(t.objectStore('reelentwurf').delete('aktuell'));
+  });
 }

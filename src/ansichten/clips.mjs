@@ -2,7 +2,8 @@
 // Die Auswahl bleibt nur im Arbeitsspeicher: Clips sind oft sehr groß und liegen ohnehin in der Mediathek.
 import { registriere, zeige } from '../zustand.mjs';
 import { T, f } from '../texte.mjs';
-import { $, el, melde } from '../ui.mjs';
+import { $, el, melde, frage } from '../ui.mjs';
+import * as db from '../speicher.mjs';
 import * as aus from '../ausgabe.mjs';
 import { protokolliere, serienEintrag } from '../diagnose.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
@@ -11,6 +12,7 @@ import { VORLAGEN_IDS } from '../reelvorlagen.mjs';
 import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
+import { vorschauSpieler } from '../vorschau.mjs';
 
 const v = $('#v-clips');
 const liste = $('.cl-liste', v);
@@ -29,6 +31,7 @@ let zurueck = 'start';
 let laeuft = false;
 let ergebnisUrl = null;
 let zaehler = 0;
+let erstesMal = true;
 let musik = null; // { name, url, puffer, bpm, schlaege, sicher, start, alle }
 
 const zeitText = (s) => `${s.toFixed(1).replace('.', ',')} s`;
@@ -69,21 +72,119 @@ async function dazu(dateien) {
   for (const [nr, d] of liste.entries()) {
     ladeSchritt(nr + 1, liste.length);
     const typ = d.type.startsWith('image/') ? 'foto' : 'clip';
-    const m = { id: ++zaehler, typ, datei: d, url: typ === 'clip' ? URL.createObjectURL(d) : null, dauer: 0, start: 0, leinwand: el('canvas', { width: 90, height: 160 }) };
+    const m = neuesMedium(d, typ);
     medien.push(m);
     await vorschaubild(m, m.leinwand);
     if (m.fehler) {
       medien = medien.filter((x) => x !== m);
       if (m.url) URL.revokeObjectURL(m.url);
       melde(T.clipFehler);
-    }
+    } else await entwurfDatei(m);
     aufbauen();
   }
+}
+
+function neuesMedium(d, typ, felder = {}) {
+  return { id: ++zaehler, eid: db.neueId(), typ, datei: d, url: typ === 'clip' ? URL.createObjectURL(d) : null, dauer: 0, start: 0, leinwand: el('canvas', { width: 90, height: 160 }), ...felder };
+}
+
+// --- Entwurf: Alles bleibt erhalten, auch wenn iOS die App schließt ---
+const ENTWURF_MAX = 500 * 1024 * 1024;
+let entwurfTakt = 0;
+let stellt = false; // während der Wiederherstellung nichts zurückschreiben
+
+async function entwurfDatei(m) {
+  if (m.datei.size > ENTWURF_MAX) { m.ungesichert = true; melde(T.entwurfZuGross); return; }
+  try {
+    m.teile = await db.entwurfDateiSpeichern(m.eid, m.datei);
+  } catch (err) {
+    m.ungesichert = true;
+    protokolliere('entwurf', err);
+    melde(err instanceof db.SpeicherVoll ? T.entwurfVoll : T.entwurfFehler);
+    db.entwurfDateiLoeschen(m.eid).catch(() => {});
+  }
+}
+
+const entwurfMedium = (m) => ({
+  id: m.eid, typ: m.typ, name: m.datei.name, mime: m.datei.type, groesse: m.datei.size, teile: m.teile,
+  start: m.start, ende: m.ende ?? null, laenge: m.laenge ?? null, eigen: !!m.eigen, rahmen: m.rahmen ?? null, dauer: m.dauer,
+});
+
+function entwurfSichern() {
+  if (stellt) return;
+  clearTimeout(entwurfTakt);
+  entwurfTakt = setTimeout(() => {
+    const leer = !medien.length && !musik;
+    const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
+      stil, laenge,
+      medien: medien.filter((m) => m.teile).map(entwurfMedium),
+      musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
+    });
+    arbeit.catch((err) => protokolliere('entwurf', err));
+  }, 300);
+}
+
+async function entwurfLaden() {
+  let e;
+  try { e = await db.reelEntwurf(); } catch (err) { protokolliere('entwurf', err); return; }
+  if (!e || (!e.medien?.length && !e.musik)) return;
+  stellt = true;
+  let fehlt = 0;
+  try {
+    stil = e.stil ?? GANZ;
+    laenge = e.laenge ?? null;
+    for (const [nr, x] of e.medien.entries()) {
+      ladeSchritt(nr + 1, e.medien.length);
+      const b = await db.entwurfDateiLesen(x.id, x.teile, x.mime);
+      if (!b) { fehlt++; continue; }
+      const d = new File([b], x.name, { type: x.mime });
+      const m = neuesMedium(d, x.typ, {
+        eid: x.id, teile: x.teile, start: x.start || 0, dauer: x.dauer || 0, eigen: !!x.eigen,
+        ...(x.ende != null ? { ende: x.ende } : {}), ...(x.laenge != null ? { laenge: x.laenge } : {}), ...(x.rahmen ? { rahmen: x.rahmen } : {}),
+      });
+      await vorschaubild(m, m.leinwand);
+      if (m.fehler) { fehlt++; if (m.url) URL.revokeObjectURL(m.url); continue; }
+      medien.push(m);
+      aufbauen();
+    }
+    if (e.musik) {
+      const b = await db.entwurfDateiLesen(e.musik.id, e.musik.teile, e.musik.mime);
+      if (b) await musikDazu(new File([b], e.musik.name, { type: e.musik.mime }), { eid: e.musik.id, teile: e.musik.teile, start: e.musik.start, alle: e.musik.alle });
+      else fehlt++;
+    }
+  } finally {
+    stellt = false;
+    ladeEnde();
+  }
+  stileBauen();
+  musikZeigen();
+  aufbauen();
+  melde(fehlt ? f(T.entwurfTeilweise, { n: fehlt }) : T.entwurfZurueck);
+  if (fehlt) entwurfSichern();
+}
+
+async function neuBeginnen() {
+  const r = await frage(T.entwurfNeuFrage, [{ text: T.abbrechen, wert: false }, { text: T.entwurfNeu, wert: true, haupt: true }]);
+  if (!r.wert) return;
+  vorschauAus();
+  for (const m of medien) if (m.url) URL.revokeObjectURL(m.url);
+  medien = [];
+  if (musik) URL.revokeObjectURL(musik.url);
+  musik = null;
+  $('.cl-musik-probe', v).removeAttribute('src');
+  stil = GANZ;
+  laenge = null;
+  ergebnisEl.replaceChildren();
+  clearTimeout(entwurfTakt);
+  await db.loescheReelEntwurf().catch((err) => protokolliere('entwurf', err));
+  musikZeigen();
+  aufbauen();
 }
 
 function entfernen(m) {
   medien = medien.filter((x) => x !== m);
   if (m.url) URL.revokeObjectURL(m.url);
+  db.entwurfDateiLoeschen(m.eid).catch(() => {});
   aufbauen();
 }
 
@@ -164,6 +265,7 @@ function editorRegler() {
 }
 
 async function editorOeffnen(m) {
+  vorschauPause();
   try {
     let q;
     let qw;
@@ -307,14 +409,20 @@ function musikZeigen() {
   for (const b of $('.cl-alle', v).children) b.setAttribute('aria-pressed', String(Number(b.dataset.alle) === musik.alle));
 }
 
-async function musikDazu(datei) {
+async function musikDazu(datei, alt = null) {
   infoEl.textContent = T.musikLaedt;
   ladeWarten(T.musikLaedt);
   try {
     const m = await aus.musikLaden(datei);
-    if (musik) URL.revokeObjectURL(musik.url);
-    musik = { ...m, name: datei.name, url: URL.createObjectURL(datei), start: 0, alle: m.bpm >= 100 ? 2 : 1 };
+    if (musik) { URL.revokeObjectURL(musik.url); if (!alt) db.entwurfDateiLoeschen(musik.eid).catch(() => {}); }
+    musik = {
+      ...m, name: datei.name, mime: datei.type, groesse: datei.size, url: URL.createObjectURL(datei),
+      eid: alt?.eid ?? db.neueId(), teile: alt?.teile ?? null, start: alt?.start ?? 0, alle: alt?.alle ?? (m.bpm >= 100 ? 2 : 1),
+    };
     $('.cl-musik-probe', v).src = musik.url;
+    if (!alt) {
+      try { musik.teile = await db.entwurfDateiSpeichern(musik.eid, datei); } catch (err) { protokolliere('entwurf', err); }
+    }
   } catch (err) {
     protokolliere('musik', err);
     melde(T.musikFehler);
@@ -337,12 +445,15 @@ function planJetzt() {
 }
 
 function planZeigen() {
+  entwurfSichern();
+  $('#cl-neu', v).hidden = !medien.length && !musik;
   bauenKnopf.disabled = laeuft || medien.length === 0;
   laengenEl.hidden = stil === GANZ && !musik;
   for (const b of laengenEl.children) b.setAttribute('aria-pressed', String((b.dataset.laenge ? Number(b.dataset.laenge) : null) === laenge));
   for (const b of stileEl.children) b.setAttribute('aria-pressed', String(b.dataset.stil === stil));
-  if (!medien.length) { infoEl.textContent = T.clipsLeer; return; }
+  if (!medien.length) { infoEl.textContent = T.clipsLeer; vorschauAktualisieren(null); return; }
   const p = planJetzt();
+  vorschauAktualisieren(p);
   let text = f(T.clipsInfo, { n: medien.length, s: p.laenge });
   if (p.gekappt) text += ` ${musik ? T.musikKurz : T.clipsGekappt}`;
   if (p.zuKurz) text += ` ${f(T.clipsZuKurz, { n: p.maxFotos })}`;
@@ -350,6 +461,79 @@ function planZeigen() {
   if (p.eigeneLaengen && laenge) text += ` ${T.clipsEigene}`;
   infoEl.textContent = text;
   bauenKnopf.disabled = laeuft || p.zuKurz;
+}
+
+// --- Sofort-Vorschau ---
+const vorschauEl = $('.cl-vorschau', v);
+const vorschauCanvas = $('#cl-vorschau', v);
+const vorschauKnopf = $('.cl-vorschau-knopf', v);
+const zeitleiste = $('.cl-zeitleiste', v);
+let spieler = null;
+let vorschauPlan = null;
+let vorschauTakt = 0;
+
+function vorschauDaten(p) {
+  return {
+    maler: () => clipMaler(medien.slice(), p, { W: vorschauCanvas.width, H: vorschauCanvas.height, live: true }),
+    dauer: p.dauer,
+    ton: musik?.url ?? null,
+    tonStart: musik?.start ?? 0,
+  };
+}
+
+function vorschauStand() {
+  const spielt = !!spieler?.spielt;
+  vorschauKnopf.hidden = spielt;
+  vorschauKnopf.setAttribute('aria-label', spielt ? T.vorschauAnhalten : T.vorschauAbspielen);
+}
+
+// Jede Änderung am Plan landet nach einem Augenblick in der Vorschau, ohne dass sie neu startet.
+function vorschauAktualisieren(p) {
+  const sichtbar = !!p && medien.length > 0 && !p.zuKurz;
+  vorschauEl.hidden = !sichtbar;
+  if (!sichtbar) { vorschauAus(); return; }
+  vorschauPlan = p;
+  clearTimeout(vorschauTakt);
+  vorschauTakt = setTimeout(() => {
+    if (!spieler) {
+      spieler = vorschauSpieler(vorschauCanvas, {
+        ...vorschauDaten(vorschauPlan),
+        beiZeit: (t, d) => {
+          zeitleiste.firstElementChild.style.width = `${(100 * t) / d}%`;
+          zeitleiste.setAttribute('aria-valuenow', t.toFixed(1));
+          zeitleiste.setAttribute('aria-valuemax', d.toFixed(1));
+        },
+      });
+      spieler.zeigen();
+    } else spieler.neu(vorschauDaten(vorschauPlan));
+    vorschauStand();
+  }, spieler ? 150 : 0);
+}
+
+function vorschauAus() {
+  clearTimeout(vorschauTakt);
+  spieler?.ende();
+  spieler = null;
+  vorschauStand();
+}
+
+function vorschauPause() {
+  spieler?.anhalten();
+  vorschauStand();
+}
+
+function vorschauUmschalten() {
+  if (!spieler) return;
+  if (spieler.spielt) spieler.anhalten();
+  else spieler.spielen();
+  vorschauStand();
+}
+
+function zeitleisteZiehen(e) {
+  if (!spieler || !vorschauPlan) return;
+  const r = zeitleiste.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  spieler.springe(x * vorschauPlan.dauer);
 }
 
 function aufbauen() {
@@ -372,6 +556,7 @@ function stileBauen() {
 async function bauen() {
   if (laeuft) return;
   laeuft = true;
+  vorschauPause();
   bauenKnopf.disabled = true;
   ergebnisEl.replaceChildren();
   fortEl.hidden = false;
@@ -453,6 +638,7 @@ musikEingabe.addEventListener('change', () => {
 });
 $('#cl-musik-weg', v).addEventListener('click', () => {
   URL.revokeObjectURL(musik.url);
+  db.entwurfDateiLoeschen(musik.eid).catch(() => {});
   musik = null;
   $('.cl-musik-probe', v).removeAttribute('src');
   musikZeigen();
@@ -473,12 +659,25 @@ eingabe.addEventListener('change', () => {
   dazu(l).catch((err) => { protokolliere('clips', err); melde(T.clipFehler); }).finally(ladeEnde);
 });
 bauenKnopf.addEventListener('click', bauen);
+$('#cl-neu', v).addEventListener('click', neuBeginnen);
+vorschauCanvas.addEventListener('click', vorschauUmschalten);
+vorschauKnopf.addEventListener('click', vorschauUmschalten);
+zeitleiste.addEventListener('pointerdown', (e) => {
+  zeitleiste.setPointerCapture(e.pointerId);
+  zeitleisteZiehen(e);
+});
+zeitleiste.addEventListener('pointermove', (e) => { if (e.buttons) zeitleisteZiehen(e); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) vorschauPause(); });
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));
 
 registriere('clips', {
-  betreten(_, alt) {
+  verlassen() { vorschauAus(); },
+  async betreten(_, alt) {
     if (alt && alt !== 'clips') zurueck = alt;
     musikZeigen();
     aufbauen();
+    if (!erstesMal) return;
+    erstesMal = false;
+    if (!medien.length && !musik) await entwurfLaden();
   },
 });

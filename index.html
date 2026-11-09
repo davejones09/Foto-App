@@ -88,7 +88,7 @@
   <header class="leiste-oben">
     <button class="neben2 zurueck" id="cl-zurueck" aria-label="Zurück">‹</button>
     <h2 data-t="clipsTitel"></h2>
-    <span class="platz"></span>
+    <button class="neben2 cl-neu" id="cl-neu" data-t="entwurfNeu" hidden></button>
   </header>
   <div class="cl-inhalt">
     <p class="rt-hinweis" data-t="clipsHinweis"></p>
@@ -105,6 +105,14 @@
         <p class="af-gruppe" data-t="musikSchnitte"></p>
         <div class="af-tempi cl-alle" role="group"></div>
       </div>
+    </div>
+    <div class="cl-vorschau" hidden>
+      <div class="cl-vorschau-bild">
+        <canvas id="cl-vorschau" width="360" height="640"></canvas>
+        <button class="cl-vorschau-knopf" data-aria="vorschauAbspielen"></button>
+      </div>
+      <div class="cl-zeitleiste" role="slider" aria-valuemin="0"><div class="cl-zeit-stand"></div></div>
+      <small class="cl-vorschau-hinweis" data-t="vorschauHinweis"></small>
     </div>
     <p class="af-gruppe" data-t="reelStil"></p>
     <div class="cl-stile"></div>

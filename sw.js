@@ -24,6 +24,7 @@ const DATEIEN = [
   './src/reelvorlagen.mjs',
   './src/reeltipps.mjs',
   './src/clipreel.mjs',
+  './src/vorschau.mjs',
   './src/musik.mjs',
   './src/ansichten/clips.mjs',
   './src/ansichten/reeltipps.mjs',
