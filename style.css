@@ -427,7 +427,7 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-stile { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .cl-stil { flex: none; padding: 8px 14px; min-height: 40px; border-radius: 12px; background: var(--flaeche); color: var(--text2); font-size: 14px; }
 .cl-stil[aria-pressed="true"] { background: var(--text); color: var(--grund); }
-.cl-info, .cl-fort { margin: 0; color: var(--text2); font-size: 14px; }
+.cl-info, .cl-fort, .vn-info, .vn-fort { margin: 0; color: var(--text2); font-size: 14px; }
 .cl-vorschau { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .cl-vorschau[hidden] { display: none; }
 .cl-vorschau-bild { position: relative; width: min(50vw, 250px); aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: #000; }
@@ -438,7 +438,7 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .cl-zeitleiste { width: min(50vw, 250px); height: 28px; display: flex; align-items: center; touch-action: none; cursor: pointer; background: linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18)) center / 100% 4px no-repeat; }
 .cl-zeit-stand { height: 4px; width: 0; background: var(--akzent, #FFD400); border-radius: 2px; }
 .cl-vorschau-hinweis { color: var(--text2); font-size: 12px; text-align: center; max-width: 340px; }
-.cl-ergebnis { display: flex; flex-direction: column; gap: 10px; }
+.cl-ergebnis, .vn-ergebnis { display: flex; flex-direction: column; gap: 10px; }
 .cl-video { width: 60%; align-self: center; border-radius: 12px; background: #000; }
 .af-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .cl-inhalt > * { flex: none; }
@@ -554,3 +554,5 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .vn-paar canvas { width: 72px; height: 90px; border-radius: 8px; background: #000; }
 .vn-paar small { color: var(--text2); font-size: 12px; display: block; text-align: center; }
 .vn-paar .vn-mitte { flex: 1; display: flex; justify-content: flex-end; }
+.vn-beschriftung { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.vn-beschriftung input { width: 22px; height: 22px; }

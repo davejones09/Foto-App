@@ -37,6 +37,7 @@ let ergebnisUrl = null;
 let zaehler = 0;
 let erstesMal = true;
 let modus = 'einfach';
+v.dataset.modus = 'einfach';
 let anteil = 0.35; // 0 nur Musik, 0,5 beide voll, 1 nur Originalton
 let tempo = 'normal';
 let variante = 0;

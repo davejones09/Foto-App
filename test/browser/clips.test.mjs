@@ -518,7 +518,7 @@ test('Erweitert: Originalton im Reel, Ton-Regler, Tempo, Schnitte auf der Wellen
   await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
   await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
   // Einfach zeigt keine Profi-Regler
-  assert.equal(await page.getAttribute('#v-clips', 'data-modus'), 'einfach');
+  await page.waitForFunction(() => document.querySelector('#v-clips').dataset.modus === 'einfach');
   await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-ton.webm'), join(DATEN, 'clip-rot.webm')]);
   await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
   assert.ok(await page.locator('.cl-tempo').isHidden());
