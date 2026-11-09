@@ -9,7 +9,7 @@ import { protokolliere, serienEintrag } from '../diagnose.mjs';
 import { mp4TonProben } from '../metadaten.mjs';
 import { REEL_LAENGEN } from '../kennzahlen.mjs';
 import { VORLAGEN_IDS, istVorlage, vorlageAus, eigeneSetzen, eigeneVorlagen } from '../reelvorlagen.mjs';
-import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
+import { motivLage, clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAusschnitt, eigeneLaenge, GANZ, MEDIEN_MAX } from '../clipreel.mjs';
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
@@ -95,7 +95,10 @@ async function dazu(dateien) {
       medien = medien.filter((x) => x !== m);
       if (m.url) URL.revokeObjectURL(m.url);
       melde(T.clipFehler);
-    } else await entwurfDatei(m);
+    } else {
+      await motivSetzen(m);
+      await entwurfDatei(m);
+    }
     aufbauen();
   }
 }
@@ -107,6 +110,29 @@ async function rueckblick(dateien) {
   await dazu(wahl);
   if (!stil.startsWith('v-') && !stil.startsWith('e-')) { stil = 'v-reise'; variante = 0; stileBauen(); planZeigen(); }
   melde(f(T.rueckblickFertig, { n: wahl.length, m: dateien.length }));
+}
+
+// Fotos: Der Ausschnitt folgt dem Motiv statt der Mitte, wie bei Collagen. Ändern lässt er sich trotzdem.
+async function motivSetzen(m) {
+  if (m.typ !== 'foto' || m.rahmen) return;
+  try {
+    const b = await createImageBitmap(m.datei);
+    const f = 640 / Math.max(b.width, b.height);
+    const c = new OffscreenCanvas(Math.max(1, Math.round(b.width * f)), Math.max(1, Math.round(b.height * f)));
+    c.getContext('2d').drawImage(b, 0, 0, c.width, c.height);
+    const pw = b.width;
+    const ph = b.height;
+    b.close?.();
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const { auftrag } = await import('../rechner.mjs');
+    const r = await auftrag('motivraster', { bild: { w: c.width, h: c.height, d, farbraum: 'srgb' } }, [d.buffer]).catch(() => ({ raster: null }));
+    if (!r.raster) return;
+    const l = motivLage(pw, ph, r.raster);
+    m.rahmen = { x: l.x, y: l.y, zoom: 1, modus: 'fuellen' };
+    await vorschaubild(m, m.leinwand);
+  } catch (err) {
+    protokolliere('motiv', err);
+  }
 }
 
 function neuesMedium(d, typ, felder = {}) {
