@@ -531,3 +531,8 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 .vw-hinweis { color: var(--text2); font-size: 12px; }
 .vw-umbruch { flex-wrap: wrap; overflow: visible; }
 .vw-speichern-zeile { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-top: 6px; }
+.co-reihe[hidden] { display: none; }
+.co-kante input { flex: 1; }
+.co-kante small { color: var(--text2); font-size: 13px; }
+.co-titel-eingabe { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--linie); background: var(--flaeche); color: var(--text); padding: 0 12px; font-size: 16px; }
+.co-wuerfel { flex: none; min-height: 40px; padding: 0 14px; }

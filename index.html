@@ -382,13 +382,20 @@
       <div class="af-tempi co-formate" role="group">
         <button data-format="4:5">4:5</button><button data-format="1:1">1:1</button><button data-format="9:16">9:16</button>
       </div>
-      <div class="af-tempi co-stile" role="group">
-        <button data-stil="rahmen" data-t="stilRahmen"></button><button data-stil="nahtlos" data-t="stilNahtlos"></button>
-      </div>
+      <button class="neben2 co-wuerfel" data-t="variante"></button>
+    </div>
+    <div class="cl-stile co-stile" role="group">
+      <button class="cl-stil" data-stil="rahmen" data-t="stilRahmen"></button><button class="cl-stil" data-stil="nahtlos" data-t="stilNahtlos"></button><button class="cl-stil" data-stil="film" data-t="stilFilm"></button><button class="cl-stil" data-stil="polaroid" data-t="stilPolaroid"></button><button class="cl-stil" data-stil="magazin" data-t="stilMagazin"></button>
     </div>
     <div class="co-reihe co-rahmen">
       <input type="range" class="co-abstand" min="0" max="50" step="1" data-aria="abstand">
       <div class="co-farben" role="group"></div>
+    </div>
+    <div class="co-reihe co-kante" hidden>
+      <small data-t="kanteHart"></small><input type="range" class="co-kante-regler" min="0" max="100" step="1" data-aria="kanteTitel"><small data-t="kanteWeich"></small>
+    </div>
+    <div class="co-reihe co-titel" hidden>
+      <input type="text" class="co-titel-eingabe" maxlength="40" autocomplete="off" enterkeyhint="done" data-aria="magazinTitel">
     </div>
     <div class="co-reihe">
       <button class="neben2" id="co-mediathek" data-t="quelleMediathek"></button>

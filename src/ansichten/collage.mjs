@@ -20,6 +20,11 @@ const vorlagenEl = $('.co-vorlagen', v);
 const abstandEl = $('.co-abstand', v);
 const farbenEl = $('.co-farben', v);
 const rahmenReihe = $('.co-rahmen', v);
+const kanteReihe = $('.co-kante', v);
+const kanteEl = $('.co-kante-regler', v);
+const titelReihe = $('.co-titel', v);
+const titelEl = $('.co-titel-eingabe', v);
+const wuerfelKnopf = $('.co-wuerfel', v);
 const exportKnopf = $('#co-export');
 const entfernenKnopf = $('#co-entfernen');
 const eingabe = $('#datei-collage');
@@ -100,9 +105,9 @@ function speichern({ sofort = false } = {}) {
   const jetzt = async () => {
     speichernGeplant = null;
     if (!c) return;
-    const { format, vorlage: vl, stil, abstand, farbe, felder } = c;
+    const { format, vorlage: vl, stil, abstand, farbe, felder, kante, variante, titel } = c;
     try {
-      await db.aendereCollage(c.id, { format, vorlage: vl, stil, abstand, farbe, felder });
+      await db.aendereCollage(c.id, { format, vorlage: vl, stil, abstand, farbe, felder, kante: kante ?? 1, variante: variante ?? 0, titel: titel ?? null });
       clearTimeout(titelGeplant);
       const stand = c;
       titelGeplant = setTimeout(() => werk.titelbildSpeichern(stand, quellen).catch((e) => protokolliere('collage', e)), 1200);
@@ -129,7 +134,7 @@ function vorlagenBauen() {
     return el('button', {
       klasse: 'co-vorlage', 'data-vorlage': vl.id, 'aria-label': f(T.vorlageWahl, { n: i + 1 }), 'aria-pressed': String(vl.id === c.vorlage),
       onclick: () => {
-        c = { ...c, vorlage: vl.id, felder: belege(c.fotos, vl, c.felder) };
+        c = { ...c, vorlage: vl.id, variante: 0, felder: belege(c.fotos, vl, c.felder) };
         sel = -1;
         bedienelemente();
         speichern();
@@ -143,7 +148,13 @@ function bedienelemente() {
   vorlagenBauen();
   for (const b of $$('.co-formate button', v)) b.setAttribute('aria-pressed', String(b.dataset.format === c.format));
   for (const b of $$('.co-stile button', v)) b.setAttribute('aria-pressed', String(b.dataset.stil === c.stil));
-  rahmenReihe.hidden = c.stil !== 'rahmen';
+  rahmenReihe.hidden = c.stil !== 'rahmen' && c.stil !== 'polaroid';
+  abstandEl.hidden = c.stil !== 'rahmen';
+  kanteReihe.hidden = c.stil !== 'nahtlos';
+  kanteEl.value = String(Math.round((c.kante ?? 1) * 100));
+  titelReihe.hidden = c.stil !== 'magazin';
+  if (document.activeElement !== titelEl) titelEl.value = c.titel ?? c.name ?? '';
+  wuerfelKnopf.disabled = c.fotos.length < 2;
   abstandEl.value = String(Math.round((c.abstand / ABSTAND_MAX) * 50));
   for (const b of $$('.co-farbe', farbenEl)) b.setAttribute('aria-pressed', String(b.dataset.farbe === c.farbe));
   const genug = c.fotos.length >= 2;
@@ -173,6 +184,24 @@ for (const b of $$('.co-stile button', v)) {
     zeichnen();
   });
 }
+kanteEl.addEventListener('input', () => {
+  c = { ...c, kante: Number(kanteEl.value) / 100 };
+  speichern();
+  zeichnen({ schnell: true });
+  spaeterVoll();
+});
+titelEl.addEventListener('input', () => {
+  c = { ...c, titel: titelEl.value };
+  speichern();
+  zeichnen();
+});
+wuerfelKnopf.addEventListener('click', () => {
+  c = { ...c, variante: 1 + Math.floor(Math.random() * 9998), felder: c.felder.map((x) => ({ ...x, t: null })) };
+  sel = -1;
+  bedienelemente();
+  speichern();
+  zeichnen();
+});
 abstandEl.addEventListener('input', () => {
   c = { ...c, abstand: (Number(abstandEl.value) / 50) * ABSTAND_MAX };
   speichern();

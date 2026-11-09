@@ -119,3 +119,50 @@ test('Über 50 Vorlagen, je Fotoanzahl mindestens fünf, keine zu schmalen Felde
     assert.ok(w >= 0.2 - 1e-9 && h >= 0.2 - 1e-9, `${v.id}: ${w} × ${h}`);
   }
 });
+
+test('Varianten: gleiche Aufteilung, andere Größen, lückenlos, kein Feld zu schmal', async () => {
+  const { variiere, VORLAGEN: alle } = await import('../src/collage.mjs');
+  for (const v of alle) {
+    if (v.n < 2) continue;
+    assert.equal(variiere(v, 0), v);
+    let anders = 0;
+    for (let k = 1; k <= 4; k++) {
+      const a = variiere(v, k);
+      assert.deepEqual(a, variiere(v, k), 'gleiche Zahl, gleiche Variante');
+      assert.equal(a.felder.length, v.n);
+      const flaeche = a.felder.reduce((s, [, , w, h]) => s + w * h, 0);
+      assert.ok(Math.abs(flaeche - 1) < 1e-6, `${v.id}/${k}: Fläche ${flaeche}`);
+      for (const [x, y, w, h] of a.felder) {
+        assert.ok(w >= 0.08 && h >= 0.08, `${v.id}/${k}: ${w} × ${h}`);
+        assert.ok(x >= -1e-9 && y >= -1e-9 && x + w <= 1 + 1e-9 && y + h <= 1 + 1e-9);
+      }
+      if (JSON.stringify(a.felder) !== JSON.stringify(v.felder)) anders++;
+    }
+    assert.ok(anders >= 3, `${v.id}: nur ${anders} Varianten anders`);
+  }
+});
+
+test('Kanten-Regler: 0 hart, 1 wie bisher, dazwischen schmaler', async () => {
+  const { kantenBreite, uebergangsBreite, zerlege, feldRechtecke, vorlage } = await import('../src/collage.mjs');
+  assert.equal(kantenBreite(1000, 0), 0);
+  assert.equal(kantenBreite(1000, 1), uebergangsBreite(1000));
+  const halb = kantenBreite(1000, 0.5);
+  assert.ok(halb > 0 && halb < uebergangsBreite(1000) && halb % 2 === 0);
+  const r = feldRechtecke(vorlage('z2-spalten', 2), 1080, 1350);
+  assert.ok(zerlege(r, 1080, 1350, { kante: 0 }).schnitte.every((s) => s.breite === 0));
+  assert.ok(zerlege(r, 1080, 1350, { kante: 1 }).schnitte.every((s) => s.breite > 0));
+});
+
+test('Gestaltung: Film, Polaroid und Magazin lassen Platz für ihre Zierde', async () => {
+  const { gestaltung, filmLoecher, polaroid } = await import('../src/collage.mjs');
+  const W = 1080;
+  const H = 1350;
+  const film = gestaltung('film', W, H);
+  for (const l of filmLoecher(W, H)) assert.ok(l.x + l.w <= film.flaeche.x || l.x >= film.flaeche.x + film.flaeche.w, 'Löcher außerhalb der Fotos');
+  const mag = gestaltung('magazin', W, H);
+  assert.ok(mag.flaeche.y >= mag.kopf, 'Titel über den Fotos');
+  const p = polaroid({ x: 100, y: 100, w: 400, h: 500 }, 0, 0);
+  assert.ok(p.foto.y + p.foto.h < 600 - (p.foto.x - 100) * 2, 'unten breiterer Rand');
+  assert.ok(Math.abs(p.drehung) <= (2.5 * Math.PI) / 180 + 1e-9);
+  assert.equal(gestaltung('rahmen', W, H), null);
+});

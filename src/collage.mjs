@@ -91,6 +91,24 @@ const WEITERE = {
   'z9-gross-oben': ze([0.46, 0], [0.54, ze([0.5, sp([0.25, 0], [0.25, 0], [0.25, 0], [0.25, 0])], [0.5, sp([0.25, 0], [0.25, 0], [0.25, 0], [0.25, 0])])]),
   'z9-treppe': sp([d, ze([0.25, 0], [0.4, 0], [0.35, 0])], [d, ze([0.4, 0], [0.35, 0], [0.25, 0])], [d, ze([0.35, 0], [0.25, 0], [0.4, 0])]),
   'z9-mosaik': ze([0.5, sp([0.5, 0], [0.5, ze([0.5, sp([0.5, 0], [0.5, 0])], [0.5, sp([0.5, 0], [0.5, 0])])])], [0.5, sp([d, 0], [d, ze([0.5, 0], [0.5, 0])], [d, 0])]),
+  // Asymmetrische Raster
+  'z2-schmal-links': sp([0.28, 0], [0.72, 0]),
+  'z2-schmal-oben': ze([0.26, 0], [0.74, 0]),
+  'z3-schief': sp([0.58, ze([0.68, 0], [0.32, 0])], [0.42, 0]),
+  'z3-goldener': ze([0.62, 0], [0.38, sp([0.38, 0], [0.62, 0])]),
+  'z3-saeulen': sp([0.22, 0], [0.5, 0], [0.28, 0]),
+  'z4-l-form': ze([0.62, sp([0.7, 0], [0.3, 0])], [0.38, sp([0.3, 0], [0.7, 0])]),
+  'z4-spirale': sp([0.62, ze([0.62, 0], [0.38, 0])], [0.38, ze([0.38, 0], [0.62, 0])]),
+  'z4-schmal': sp([0.2, 0], [0.3, 0], [0.3, 0], [0.2, 0]),
+  'z5-goldener': sp([0.6, 0], [0.4, ze([0.38, 0], [0.62, ze([0.4, 0], [0.6, sp([0.5, 0], [0.5, 0])])])]),
+  'z5-kreuz': ze([0.3, sp([0.3, 0], [0.7, 0])], [0.4, 0], [0.3, sp([0.7, 0], [0.3, 0])]),
+  'z5-streifen': ze([0.2, 0], [0.2, 0], [0.2, 0], [0.2, 0], [0.2, 0]),
+  'z6-goldener': sp([0.62, ze([0.62, 0], [0.38, sp([0.5, 0], [0.5, 0])])], [0.38, gleich('h', 3)]),
+  'z6-versetzt': sp([0.5, ze([0.2, 0], [0.45, 0], [0.35, 0])], [0.5, ze([0.35, 0], [0.45, 0], [0.2, 0])]),
+  'z7-goldener': sp([0.62, ze([0.62, 0], [0.38, sp([0.5, 0], [0.5, 0])])], [0.38, gleich('h', 4)]),
+  'z7-band': ze([0.2, gleich('v', 3)], [0.6, 0], [0.2, gleich('v', 3)]),
+  'z8-goldener': sp([0.62, ze([0.62, 0], [0.38, gleich('v', 3)])], [0.38, gleich('h', 4)]),
+  'z9-band': ze([0.2, gleich('v', 4)], [0.6, 0], [0.2, gleich('v', 4)]),
 };
 for (const [id, k] of Object.entries(WEITERE)) {
   const felder = teile(k, 0, 0, 1, 1);
@@ -118,6 +136,12 @@ export function feldRechtecke(v, W, H, { abstand = 0 } = {}) {
 // Breite des Übergangs an einer Schnittlinie: 22 % des schmaleren Nachbarn, gerade, 16 bis 362 Pixel.
 export const uebergangsBreite = (m) => Math.max(16, Math.min(362, 2 * Math.round(0.11 * m)));
 
+// Übergangsbreite mit dem Kanten-Regler: gerade Pixelzahl, höchstens die volle Breite.
+export const kantenBreite = (m, kante = 1) => {
+  const o = 2 * Math.round((uebergangsBreite(m) * Math.max(0, Math.min(1, kante))) / 2);
+  return o < 2 ? 0 : o;
+};
+
 // Jede Vorlage lässt sich durchgehend zerschneiden (Guillotine): erst eine Linie durch die ganze Fläche,
 // dann durch jede Hälfte und so weiter. Liefert den Schnittbaum der Felder.
 export function baum(r, liste = r.map((_, i) => i)) {
@@ -138,7 +162,8 @@ const blaetter = (k) => (k.blatt != null ? [k.blatt] : [...blaetter(k.a), ...bla
 
 // Für den Stil „Nahtlos“: Bereiche der Felder (jedes reicht an jeder Schnittlinie um die halbe
 // Übergangsbreite hinüber) und die Schnitte selbst, mit ihrer vollen Länge im jeweiligen Bereich.
-export function zerlege(r, W, H) {
+// kante: 0 hart bis 1 weich (bisherige Breite); unter 2 Pixeln wird nicht überblendet.
+export function zerlege(r, W, H, { kante = 1 } = {}) {
   const wurzel = baum(r);
   const bereiche = new Array(r.length);
   const schnitte = [];
@@ -153,13 +178,13 @@ export function zerlege(r, W, H) {
     const ha = huelle(blaetter(k.a));
     const hb = huelle(blaetter(k.b));
     if (k.art === 'v') {
-      const o = uebergangsBreite(Math.min(k.c - ha.x0, hb.x1 - k.c));
+      const o = kantenBreite(Math.min(k.c - ha.x0, hb.x1 - k.c), kante);
       k.breite = o;
       schnitte.push({ art: 'v', pos: k.c, von: b.y, bis: b.y + b.h, breite: o, a: blaetter(k.a), b: blaetter(k.b) });
       geh(k.a, { x: b.x, y: b.y, w: k.c + o / 2 - b.x, h: b.h });
       geh(k.b, { x: k.c - o / 2, y: b.y, w: b.x + b.w - (k.c - o / 2), h: b.h });
     } else {
-      const o = uebergangsBreite(Math.min(k.c - ha.y0, hb.y1 - k.c));
+      const o = kantenBreite(Math.min(k.c - ha.y0, hb.y1 - k.c), kante);
       k.breite = o;
       schnitte.push({ art: 'h', pos: k.c, von: b.x, bis: b.x + b.w, breite: o, a: blaetter(k.a), b: blaetter(k.b) });
       geh(k.a, { x: b.x, y: b.y, w: b.w, h: k.c + o / 2 - b.y });
@@ -266,4 +291,81 @@ export function belege(fotos, v, alt = []) {
   const reihenfolge = [...alt.map((f) => f.foto).filter((id) => fotos.some((x) => x.id === id))];
   for (const f of fotos) if (!reihenfolge.includes(f.id)) reihenfolge.push(f.id);
   return v.felder.map((_, i) => ({ foto: reihenfolge[i] ?? fotos[i % fotos.length].id, t: null }));
+}
+
+// --- Varianten: dieselbe Aufteilung mit anderen Größen. Jede Schnittlinie wandert ein Stück, kein Feld wird schmaler als 16 %. ---
+function zufall(saat) {
+  let x = (saat * 2654435761) >>> 0 || 1;
+  return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
+}
+
+export function variiere(v, variante = 0) {
+  if (!v || !variante || v.n < 2) return v;
+  const S = 10000;
+  const r = v.felder.map(([x, y, w, h]) => ({ x: Math.round(x * S), y: Math.round(y * S), w: Math.round(w * S), h: Math.round(h * S) }));
+  const zz = zufall(variante);
+  const felder = new Array(v.n);
+  const geh = (k, b) => {
+    if (k.blatt != null) { felder[k.blatt] = [b.x / S, b.y / S, b.w / S, b.h / S]; return; }
+    const blA = blaetter(k.a);
+    const blB = blaetter(k.b);
+    const v0 = k.art === 'v' ? b.x : b.y;
+    const laenge = k.art === 'v' ? b.w : b.h;
+    // Kleinster Platz je Seite: 12 % je Feld, das in dieser Richtung hintereinander liegt
+    const tief = (l) => new Set(l.map((i) => (k.art === 'v' ? r[i].x : r[i].y))).size;
+    const minA = 0.16 * S * tief(blA);
+    const minB = 0.16 * S * tief(blB);
+    const anteil = (k.c - (k.art === 'v' ? Math.min(...blA.map((i) => r[i].x)) : Math.min(...blA.map((i) => r[i].y)))) / (k.art === 'v' ? Math.max(...blB.map((i) => r[i].x + r[i].w)) - Math.min(...blA.map((i) => r[i].x)) : Math.max(...blB.map((i) => r[i].y + r[i].h)) - Math.min(...blA.map((i) => r[i].y)));
+    let c = v0 + laenge * (anteil + (zz() - 0.5) * 0.24);
+    c = Math.max(v0 + Math.min(minA, laenge / 2), Math.min(v0 + laenge - Math.min(minB, laenge / 2), c));
+    if (k.art === 'v') { geh(k.a, { x: b.x, y: b.y, w: c - b.x, h: b.h }); geh(k.b, { x: c, y: b.y, w: b.x + b.w - c, h: b.h }); }
+    else { geh(k.a, { x: b.x, y: b.y, w: b.w, h: c - b.y }); geh(k.b, { x: b.x, y: c, w: b.w, h: b.y + b.h - c }); }
+  };
+  geh(baum(r), { x: 0, y: 0, w: S, h: S });
+  return { ...v, felder, variante };
+}
+
+// --- Arten mit eigener Gestaltung: Film, Polaroid, Magazin. Die Fotos bleiben unverändert, nur gerahmt. ---
+export const STILE = ['rahmen', 'nahtlos', 'film', 'polaroid', 'magazin'];
+
+// Fläche für die Felder und Zierde je Art, in Pixeln.
+export function gestaltung(stil, W, H) {
+  if (stil === 'film') {
+    const rand = Math.round(W * 0.09);
+    return { flaeche: { x: rand, y: Math.round(W * 0.03), w: W - 2 * rand, h: H - Math.round(W * 0.06) }, abstand: 0.018, grund: '#0b0b0b' };
+  }
+  if (stil === 'polaroid') {
+    const rand = Math.round(W * 0.05);
+    return { flaeche: { x: rand, y: rand, w: W - 2 * rand, h: H - 2 * rand }, abstand: 0.07, grund: null };
+  }
+  if (stil === 'magazin') {
+    const rand = Math.round(W * 0.06);
+    const kopf = Math.round(H * 0.15);
+    return { flaeche: { x: rand, y: kopf, w: W - 2 * rand, h: H - kopf - rand }, abstand: 0.025, grund: '#f7f4ee', kopf };
+  }
+  return null;
+}
+
+// Lochung am Filmrand: Rechtecke links und rechts.
+export function filmLoecher(W, H) {
+  const rand = Math.round(W * 0.09);
+  const lw = Math.round(rand * 0.42);
+  const lh = Math.round(rand * 0.3);
+  const schritt = Math.round(lh * 2.1);
+  const aus = [];
+  for (let y = Math.round(schritt / 2); y + lh < H; y += schritt) {
+    aus.push({ x: Math.round((rand - lw) / 2), y, w: lw, h: lh });
+    aus.push({ x: W - rand + Math.round((rand - lw) / 2), y, w: lw, h: lh });
+  }
+  return aus;
+}
+
+// Polaroid: weißer Rahmen um die Zelle, unten breiter, leicht gedreht. Liefert Foto-Rechteck und Rahmen.
+export function polaroid(zelle, i, variante = 0) {
+  const b = Math.round(Math.min(zelle.w, zelle.h) * 0.06);
+  const unten = Math.round(b * 3.2);
+  const foto = { x: zelle.x + b, y: zelle.y + b, w: Math.max(1, zelle.w - 2 * b), h: Math.max(1, zelle.h - b - unten) };
+  const z = zufall(i * 7919 + variante * 31 + 3);
+  const drehung = ((z() - 0.5) * 5 * Math.PI) / 180;
+  return { foto, rahmen: zelle, drehung };
 }
