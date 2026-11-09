@@ -31,6 +31,7 @@ const DATEIEN = [
   './src/instagram.mjs',
   './src/vorhernachher.mjs',
   './src/rueckblick.mjs',
+  './src/anschlusskamera.mjs',
   './src/ansichten/vorher.mjs',
   './src/ansichten/signatur.mjs',
   './src/musik.mjs',
