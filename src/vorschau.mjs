@@ -85,6 +85,15 @@ export function vorschauSpieler(canvas, { maler, dauer, ton = null, tonStart = 0
       if (spielt) { t0 = performance.now() - t * 1000; tonAus(); tonAn(); } else bild();
     },
     zeigen() { bild(); },
+    // Neue Tonspur, etwa wenn die Mischung fertig gerechnet ist. Läuft an derselben Stelle weiter.
+    tonSetzen(url, start = 0) {
+      if (url === ton && start === tonStart) return;
+      tonAus();
+      audio = null;
+      ton = url;
+      tonStart = start;
+      if (spielt) tonAn();
+    },
     ende() {
       this.anhalten();
       m.ende();

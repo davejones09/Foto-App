@@ -513,3 +513,11 @@ button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 @keyframes laden-lauf { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .cl-neu { min-height: 40px; padding: 0 12px; font-size: 14px; }
 .cl-neu[hidden] { visibility: hidden; display: inline-block; }
+#v-clips[data-modus="einfach"] .nur-erweitert { display: none !important; }
+.cl-modus { align-self: center; }
+.cl-welle { width: min(92vw, 480px); display: flex; flex-direction: column; gap: 4px; }
+.cl-welle[hidden] { display: none; }
+#cl-welle { width: 100%; height: 60px; display: block; touch-action: none; border-radius: 8px; background: rgba(255, 255, 255, .05); }
+.cl-welle-zeile { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cl-welle-hinweis { color: var(--text2); font-size: 12px; }
+.cl-ton[hidden] { display: none; }

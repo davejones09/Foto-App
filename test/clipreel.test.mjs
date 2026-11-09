@@ -215,3 +215,46 @@ test('Musik: Ein Clip springt nie zurück, auch wenn die Vorlage länger stehen 
   const g = clipPlan([CLIP(2), CLIP(2)], { stil: 'v-slide', raster: Array.from({ length: 40 }, (_, k) => 0.1 + k), musikRest: 40 });
   assert.ok(g.staende[0] <= 2, `${g.staende[0]}`);
 });
+
+test('Tempoformen verbrauchen genau so viel Clip wie normales Tempo und laufen nie rückwärts', async () => {
+  const { tempoForm } = await import('../src/clipreel.mjs');
+  for (const art of ['normal', 'rampe', 'freeze']) {
+    for (const U of [0.4, 1, 1.5, 3, 7]) {
+      for (const [anfang, schluss] of [[true, true], [false, true], [true, false]]) {
+        let alt = -1;
+        for (let i = 0; i <= 400; i++) {
+          const u = (U * i) / 400;
+          const { t, rate } = tempoForm(art, u, U, { anfang, schluss });
+          assert.ok(t >= alt - 1e-9, `${art} U=${U} läuft rückwärts bei ${u}`);
+          assert.ok(rate >= 0 && rate < 4, `${art} Tempo ${rate}`);
+          if (alt >= 0) assert.ok(t - alt <= (U / 400) * 3.5 + 1e-9, `${art} springt bei ${u}`);
+          alt = t;
+        }
+        // Nie mehr Clip als normal, sonst liefe er über sein Ende. Mit beiden Enden genau gleich viel.
+        const ende = tempoForm(art, U, U, { anfang, schluss }).t;
+        assert.ok(ende <= U + 1e-9, `${art} U=${U} ${anfang}/${schluss}: ${ende}`);
+        if (anfang && schluss) assert.ok(Math.abs(ende - U) < 1e-9, `${art} U=${U}: ${ende}`);
+      }
+    }
+  }
+  const r = tempoForm('rampe', 0.05, 3);
+  assert.ok(r.rate < 0.5, 'Rampe beginnt langsam');
+  assert.ok(tempoForm('rampe', 2.98, 3).rate > 1.5, 'Rampe endet schnell');
+  assert.equal(tempoForm('freeze', 0.1, 3).rate, 0, 'Freeze steht am Anfang');
+});
+
+test('Gesetzte Schnitte gelten, bleiben aber im erlaubten Bereich', () => {
+  const raster = Array.from({ length: 40 }, (_, i) => 0.5 * (i + 1));
+  const m = [{ typ: 'foto' }, { typ: 'foto' }, { typ: 'foto' }];
+  const auto = clipPlan(m, { stil: GANZ, raster, takt: 0.5, musikRest: 20 });
+  const fest = [3.5];
+  const p = clipPlan(m, { stil: GANZ, raster, takt: 0.5, musikRest: 20, fest });
+  assert.notEqual(auto.schnitte[0] + auto.uebergaenge[0] / 2, 3.5);
+  assert.ok(Math.abs(p.schnitte[0] + p.uebergaenge[0] / 2 - 3.5) < 1e-9);
+  // Ein Clip kann nicht über sein Ende gezogen werden
+  const c = clipPlan([{ typ: 'clip', dauer: 2, start: 0 }, { typ: 'foto' }], { stil: GANZ, raster, takt: 0.5, musikRest: 20, fest: [5] });
+  assert.ok(c.schnitte[0] + c.uebergaenge[0] / 2 <= 2 + 1e-9);
+  // Zu früh geht auch nicht
+  const f = clipPlan(m, { stil: GANZ, raster, takt: 0.5, musikRest: 20, fest: [0.01] });
+  assert.ok(f.schnitte[0] > 0);
+});

@@ -323,10 +323,19 @@ const kanaeleVon = (puffer) => Array.from({ length: puffer.numberOfChannels }, (
 
 export async function tonKodieren(puffer, start, dauer) {
   const { tonAusschnitt, spitze } = await import('./musik.mjs');
-  const { aacKodieren } = await import('./aac.mjs');
   const kanaele = tonAusschnitt(kanaeleVon(puffer), puffer.sampleRate, start, dauer, TON_RATE);
   const pegel = spitze(kanaele);
   if (pegel < 0.001) throw new Error(`Ton: Musik ist stumm (Pegel ${pegel}, Quelle ${puffer.sampleRate} Hz, ${puffer.numberOfChannels} Kanäle, ${puffer.duration.toFixed(1)} s, Start ${start})`);
+  return tonKodierenKanaele(kanaele, pegel);
+}
+
+export const musikKanaele = (puffer) => ({ kanaele: kanaeleVon(puffer), rate: puffer.sampleRate });
+
+// Fertig gemischte Spur (Stereo, TON_RATE) zu AAC.
+export async function tonKodierenKanaele(kanaele, pegel = null) {
+  const { aacKodieren } = await import('./aac.mjs');
+  if (pegel == null) pegel = (await import('./musik.mjs')).spitze(kanaele);
+  if (pegel < 0.001) throw new Error(`Ton: Spur ist stumm (Pegel ${pegel})`);
   const aac = await aacKodieren(kanaele, TON_RATE, { pause: kurz });
   if (!aac.pakete.length || !aac.beschreibung.length) throw new Error('Ton: keine Daten vom Encoder');
   return { ...aac, rate: TON_RATE, kanaele: 2, pegel };

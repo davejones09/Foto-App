@@ -13,6 +13,7 @@ import { clipPlan, clipMaler, ladeClip, suche, clipWeg, zeichneQuelle, rahmenAus
 import { schnittStellen } from '../musik.mjs';
 import { ladeSchritt, ladeWarten, ladeEnde } from '../laden.mjs';
 import { vorschauSpieler } from '../vorschau.mjs';
+import { clipTonLaden, mischen, wavAus } from '../tonmix.mjs';
 
 const v = $('#v-clips');
 const liste = $('.cl-liste', v);
@@ -32,6 +33,10 @@ let laeuft = false;
 let ergebnisUrl = null;
 let zaehler = 0;
 let erstesMal = true;
+let modus = 'einfach';
+let anteil = 0.35; // 0 nur Musik, 0,5 beide voll, 1 nur Originalton
+let tempo = 'normal';
+let fest = []; // selbst gesetzte Schnitte, Index = Schnitt
 let musik = null; // { name, url, puffer, bpm, schlaege, sicher, start, alle }
 
 const zeitText = (s) => `${s.toFixed(1).replace('.', ',')} s`;
@@ -73,6 +78,7 @@ async function dazu(dateien) {
     ladeSchritt(nr + 1, liste.length);
     const typ = d.type.startsWith('image/') ? 'foto' : 'clip';
     const m = neuesMedium(d, typ);
+    fest = [];
     medien.push(m);
     await vorschaubild(m, m.leinwand);
     if (m.fehler) {
@@ -116,7 +122,7 @@ function entwurfSichern() {
   entwurfTakt = setTimeout(() => {
     const leer = !medien.length && !musik;
     const arbeit = leer ? db.loescheReelEntwurf() : db.speichereReelEntwurf({
-      stil, laenge,
+      stil, laenge, anteil, tempo, fest: [...fest],
       medien: medien.filter((m) => m.teile).map(entwurfMedium),
       musik: musik?.teile ? { id: musik.eid, name: musik.name, mime: musik.mime, groesse: musik.groesse, teile: musik.teile, start: musik.start, alle: musik.alle } : null,
     });
@@ -133,6 +139,8 @@ async function entwurfLaden() {
   try {
     stil = e.stil ?? GANZ;
     laenge = e.laenge ?? null;
+    anteil = e.anteil ?? anteil;
+    tempo = e.tempo ?? 'normal';
     for (const [nr, x] of e.medien.entries()) {
       ladeSchritt(nr + 1, e.medien.length);
       const b = await db.entwurfDateiLesen(x.id, x.teile, x.mime);
@@ -156,6 +164,7 @@ async function entwurfLaden() {
     stellt = false;
     ladeEnde();
   }
+  fest = (await db.reelEntwurf().catch(() => null))?.fest ?? [];
   stileBauen();
   musikZeigen();
   aufbauen();
@@ -174,6 +183,8 @@ async function neuBeginnen() {
   $('.cl-musik-probe', v).removeAttribute('src');
   stil = GANZ;
   laenge = null;
+  tempo = 'normal';
+  fest = [];
   ergebnisEl.replaceChildren();
   clearTimeout(entwurfTakt);
   await db.loescheReelEntwurf().catch((err) => protokolliere('entwurf', err));
@@ -182,6 +193,7 @@ async function neuBeginnen() {
 }
 
 function entfernen(m) {
+  fest = [];
   medien = medien.filter((x) => x !== m);
   if (m.url) URL.revokeObjectURL(m.url);
   db.entwurfDateiLoeschen(m.eid).catch(() => {});
@@ -192,6 +204,7 @@ function schiebe(m, d) {
   const i = medien.indexOf(m);
   const j = i + d;
   if (j < 0 || j >= medien.length) return;
+  fest = [];
   [medien[i], medien[j]] = [medien[j], medien[i]];
   aufbauen();
 }
@@ -420,7 +433,9 @@ async function musikDazu(datei, alt = null) {
       eid: alt?.eid ?? db.neueId(), teile: alt?.teile ?? null, start: alt?.start ?? 0, alle: alt?.alle ?? (m.bpm >= 100 ? 2 : 1),
     };
     $('.cl-musik-probe', v).src = musik.url;
+    welleCache = null;
     if (!alt) {
+      fest = [];
       try { musik.teile = await db.entwurfDateiSpeichern(musik.eid, datei); } catch (err) { protokolliere('entwurf', err); }
     }
   } catch (err) {
@@ -440,6 +455,8 @@ function planJetzt() {
     laenge: stil === GANZ && !musik ? null : laenge,
     raster,
     takt: musik ? (60 / musik.bpm) * musik.alle : null,
+    tempo,
+    fest: musik ? fest : null,
     musikRest: musik ? musik.puffer.duration - musik.start : undefined,
   });
 }
@@ -451,9 +468,12 @@ function planZeigen() {
   laengenEl.hidden = stil === GANZ && !musik;
   for (const b of laengenEl.children) b.setAttribute('aria-pressed', String((b.dataset.laenge ? Number(b.dataset.laenge) : null) === laenge));
   for (const b of stileEl.children) b.setAttribute('aria-pressed', String(b.dataset.stil === stil));
-  if (!medien.length) { infoEl.textContent = T.clipsLeer; vorschauAktualisieren(null); return; }
+  for (const b of $('.cl-tempo', v).children) b.setAttribute('aria-pressed', String(b.dataset.tempo === tempo));
+  tonZeigen();
+  if (!medien.length) { infoEl.textContent = T.clipsLeer; vorschauAktualisieren(null); welleZeigen(null); return; }
   const p = planJetzt();
   vorschauAktualisieren(p);
+  welleZeigen(p);
   let text = f(T.clipsInfo, { n: medien.length, s: p.laenge });
   if (p.gekappt) text += ` ${musik ? T.musikKurz : T.clipsGekappt}`;
   if (p.zuKurz) text += ` ${f(T.clipsZuKurz, { n: p.maxFotos })}`;
@@ -476,9 +496,47 @@ function vorschauDaten(p) {
   return {
     maler: () => clipMaler(medien.slice(), p, { W: vorschauCanvas.width, H: vorschauCanvas.height, live: true }),
     dauer: p.dauer,
-    ton: musik?.url ?? null,
-    tonStart: musik?.start ?? 0,
   };
+}
+
+// --- Ton: Originalton der Clips und Musik, für Vorschau und fertiges Reel gleich gemischt ---
+const tonVon = (m) => (m.typ === 'clip' ? (m.tonV ??= clipTonLaden(m.datei)) : Promise.resolve(null));
+const hatClips = () => medien.some((m) => m.typ === 'clip');
+
+async function tonMischen(p, rate) {
+  const toene = await Promise.all(medien.map(tonVon));
+  const mk = musik ? { ...aus.musikKanaele(musik.puffer), start: musik.start } : null;
+  return mischen({ plan: p, medien, toene, musik: mk, anteil, rate });
+}
+
+let vorschauTonUrl = null;
+let tonZaehler = 0;
+async function vorschauTonNeu(p) {
+  const nr = ++tonZaehler;
+  let url = null;
+  try {
+    const spur = await tonMischen(p, 24000);
+    if (nr !== tonZaehler) return;
+    if (spur) url = URL.createObjectURL(wavAus(spur, 24000));
+  } catch (err) {
+    protokolliere('vorschau ton', err);
+  }
+  if (nr !== tonZaehler) { if (url) URL.revokeObjectURL(url); return; }
+  const alt = vorschauTonUrl;
+  vorschauTonUrl = url;
+  spieler?.tonSetzen(url, 0);
+  if (alt) setTimeout(() => URL.revokeObjectURL(alt), 1000);
+}
+
+function tonZeigen() {
+  const blk = $('.cl-ton', v);
+  blk.hidden = !hatClips();
+  $('#cl-ton', v).value = anteil;
+  const pr = (x) => Math.round(x * 100);
+  $('.cl-ton-text', v).textContent = musik
+    ? f(T.tonAnteil, { m: pr(Math.min(1, 2 * (1 - anteil))), o: pr(Math.min(1, 2 * anteil)) })
+    : f(T.tonOhneMusik, { o: 100 });
+  $('#cl-ton', v).disabled = !musik;
 }
 
 function vorschauStand() {
@@ -499,6 +557,7 @@ function vorschauAktualisieren(p) {
       spieler = vorschauSpieler(vorschauCanvas, {
         ...vorschauDaten(vorschauPlan),
         beiZeit: (t, d) => {
+          welleKopf(t);
           zeitleiste.firstElementChild.style.width = `${(100 * t) / d}%`;
           zeitleiste.setAttribute('aria-valuenow', t.toFixed(1));
           zeitleiste.setAttribute('aria-valuemax', d.toFixed(1));
@@ -507,13 +566,17 @@ function vorschauAktualisieren(p) {
       spieler.zeigen();
     } else spieler.neu(vorschauDaten(vorschauPlan));
     vorschauStand();
+    vorschauTonNeu(vorschauPlan);
   }, spieler ? 150 : 0);
 }
 
 function vorschauAus() {
   clearTimeout(vorschauTakt);
+  tonZaehler++;
   spieler?.ende();
   spieler = null;
+  if (vorschauTonUrl) URL.revokeObjectURL(vorschauTonUrl);
+  vorschauTonUrl = null;
   vorschauStand();
 }
 
@@ -566,7 +629,7 @@ async function bauen() {
   const p = planJetzt();
   const m = clipMaler(medien, p);
   try {
-    const ton = musik ? await tonBauen(p.dauer) : null;
+    const ton = musik || hatClips() ? await tonBauen(p) : null;
     const blob = await aus.videoAusMaler(m.male, p.bilder, { fortschritt: fort, waechter: w, ton });
     const pruefung = ton ? await tonPruefen(blob, ton) : null;
     const hatTon = !!pruefung?.ok;
@@ -575,7 +638,7 @@ async function bauen() {
     ergebnisUrl = URL.createObjectURL(blob);
     ergebnisEl.replaceChildren(
       el('video', { src: ergebnisUrl, controls: true, playsinline: true, muted: !hatTon, loop: true, klasse: 'cl-video' }),
-      el('p', { klasse: 'rt-info', text: hatTon ? T.musikRechte : (musik ? T.musikKeinTon : T.clipsOhneTon) }),
+      el('p', { klasse: 'rt-info', text: hatTon ? (musik ? T.musikRechte : T.clipsMitTon) : (musik ? T.musikKeinTon : T.clipsOhneTon) }),
       pruefung ? el('small', { klasse: 'cl-ton-pruefung', text: pruefung.text }) : null,
       el('button', { klasse: 'haupt', id: 'cl-teilen', text: T.teilen, onclick: () => teile(datei) }),
     );
@@ -596,10 +659,13 @@ async function bauen() {
 }
 
 // Scheitert der Ton, wird das Reel trotzdem fertig, aber mit klarem Hinweis und Eintrag in der Diagnose.
-async function tonBauen(dauer) {
+async function tonBauen(p) {
   try {
-    return await aus.tonKodieren(musik.puffer, musik.start, dauer);
+    const spur = await tonMischen(p, aus.TON_RATE);
+    if (!spur) return null;
+    return await aus.tonKodierenKanaele(spur);
   } catch (err) {
+    if (!musik) return null; // Clips ohne Ton: einfach stumm
     protokolliere('musik', err);
     return null;
   }
@@ -646,11 +712,12 @@ $('#cl-musik-weg', v).addEventListener('click', () => {
 });
 $('#cl-musik-start', v).addEventListener('input', (e) => {
   musik.start = Number(e.target.value);
+  fest = [];
   musikZeigen();
   planZeigen();
 });
 $('.cl-alle', v).replaceChildren(...[1, 2, 4].map((n) => el('button', {
-  'data-alle': n, text: T[`musikAlle${n}`], onclick: () => { musik.alle = n; musikZeigen(); planZeigen(); },
+  'data-alle': n, text: T[`musikAlle${n}`], onclick: () => { musik.alle = n; fest = []; musikZeigen(); planZeigen(); },
 })));
 $('#cl-waehlen', v).addEventListener('click', () => eingabe.click());
 eingabe.addEventListener('change', () => {
@@ -659,6 +726,10 @@ eingabe.addEventListener('change', () => {
   dazu(l).catch((err) => { protokolliere('clips', err); melde(T.clipFehler); }).finally(ladeEnde);
 });
 bauenKnopf.addEventListener('click', bauen);
+for (const b of $('.cl-modus', v).children) b.addEventListener('click', () => modusSetzen(b.dataset.modus, true));
+for (const b of $('.cl-tempo', v).children) b.addEventListener('click', () => { tempo = b.dataset.tempo; planZeigen(); });
+$('#cl-ton', v).addEventListener('input', (e) => { anteil = Number(e.target.value); tonZeigen(); });
+$('#cl-ton', v).addEventListener('change', () => planZeigen());
 $('#cl-neu', v).addEventListener('click', neuBeginnen);
 vorschauCanvas.addEventListener('click', vorschauUmschalten);
 vorschauKnopf.addEventListener('click', vorschauUmschalten);
@@ -670,10 +741,149 @@ zeitleiste.addEventListener('pointermove', (e) => { if (e.buttons) zeitleisteZie
 document.addEventListener('visibilitychange', () => { if (document.hidden) vorschauPause(); });
 $('#cl-zurueck', v).addEventListener('click', () => zeige(zurueck));
 
+function modusSetzen(neu, merken = false) {
+  modus = neu === 'erweitert' ? 'erweitert' : 'einfach';
+  v.dataset.modus = modus;
+  for (const b of $('.cl-modus', v).children) b.setAttribute('aria-pressed', String(b.dataset.modus === modus));
+  if (merken) db.setzeEinstellung('reelModus', modus).catch(() => {});
+  planZeigen();
+}
+
+// --- Wellenform mit Schnittmarken (erweitert) ---
+const welle = $('#cl-welle', v);
+let welleCache = null; // { start, dauer, bild }
+let wellePlan = null;
+let ziehe = null; // { k, t }
+let kopf = 0;
+
+function welleSpitzen(start, dauer) {
+  if (welleCache && welleCache.start === start && welleCache.dauer === dauer) return welleCache.bild;
+  const c = document.createElement('canvas');
+  c.width = welle.width;
+  c.height = welle.height;
+  const k = c.getContext('2d');
+  const d = musik.puffer.getChannelData(0);
+  const rate = musik.puffer.sampleRate;
+  const mitte = c.height / 2;
+  k.fillStyle = 'rgba(255,255,255,0.35)';
+  for (let x = 0; x < c.width; x += 2) {
+    const a = Math.floor((start + (x / c.width) * dauer) * rate);
+    const b = Math.min(d.length, Math.floor((start + ((x + 2) / c.width) * dauer) * rate));
+    let m = 0;
+    for (let i = a; i < b; i += 4) { const w = Math.abs(d[i]); if (w > m) m = w; }
+    const h = Math.max(1, m * (c.height - 8));
+    k.fillRect(x, mitte - h / 2, 1.5, h);
+  }
+  welleCache = { start, dauer, bild: c };
+  return c;
+}
+
+const markenZeiten = (p) => p.schnitte.map((s, k) => (ziehe?.k === k ? ziehe.t : s + p.uebergaenge[k] / 2));
+
+function welleMalen() {
+  const p = wellePlan;
+  if (!p || !musik) return;
+  const k = welle.getContext('2d');
+  const W = welle.width;
+  const H = welle.height;
+  k.clearRect(0, 0, W, H);
+  k.drawImage(welleSpitzen(musik.start, p.dauer), 0, 0);
+  const x = (t) => (t / p.dauer) * W;
+  for (const st of musikRaster() || []) {
+    if (st.t > p.dauer) break;
+    k.fillStyle = `rgba(255, 212, 0, ${0.25 + 0.6 * st.s})`;
+    k.fillRect(x(st.t) - 1, H - 6 - 10 * st.s, 2, 6 + 10 * st.s);
+  }
+  markenZeiten(p).forEach((t, i) => {
+    const gesetzt = fest[i] != null || ziehe?.k === i;
+    k.fillStyle = gesetzt ? '#FFD400' : '#ffffff';
+    k.fillRect(x(t) - 1.5, 0, 3, H);
+    k.beginPath();
+    k.arc(x(t), 9, 9, 0, Math.PI * 2);
+    k.fill();
+  });
+  k.fillStyle = 'rgba(255,255,255,0.9)';
+  k.fillRect(x(kopf) - 1, 0, 2, H);
+}
+
+function welleKopf(t) {
+  kopf = t;
+  if (!$('.cl-welle', v).hidden) welleMalen();
+}
+
+function welleZeigen(p) {
+  const blk = $('.cl-welle', v);
+  blk.hidden = !musik || !p || p.zuKurz || !p.schnitte.length;
+  $('#cl-welle-auto', v).hidden = !fest.some((x) => x != null);
+  wellePlan = p;
+  if (!blk.hidden) welleMalen();
+}
+
+function welleZeit(e) {
+  const r = welle.getBoundingClientRect();
+  return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * wellePlan.dauer;
+}
+
+function einrasten(t) {
+  let best = t;
+  let d = Infinity;
+  for (const st of musikRaster() || []) {
+    const a = Math.abs(st.t - t);
+    if (a < d) { d = a; best = st.t; }
+  }
+  return best;
+}
+
+function welleEinrichten() {
+  welle.addEventListener('pointerdown', (e) => {
+    if (!wellePlan) return;
+    const t = welleZeit(e);
+    const r = welle.getBoundingClientRect();
+    const proPx = wellePlan.dauer / r.width;
+    let k = -1;
+    let d = Infinity;
+    markenZeiten(wellePlan).forEach((m, i) => { const a = Math.abs(m - t); if (a < d) { d = a; k = i; } });
+    if (k < 0 || d > 22 * proPx) { spieler?.springe(t); return; }
+    welle.setPointerCapture(e.pointerId);
+    vorschauPause();
+    ziehe = { k, t: einrasten(t) };
+    spieler?.springe(ziehe.t + 0.02);
+    welleMalen();
+  });
+  welle.addEventListener('pointermove', (e) => {
+    if (!ziehe) return;
+    const t = einrasten(welleZeit(e));
+    if (t === ziehe.t) return;
+    ziehe.t = t;
+    spieler?.springe(t + 0.02);
+    welleMalen();
+  });
+  const los = () => {
+    if (!ziehe) return;
+    fest[ziehe.k] = ziehe.t;
+    ziehe = null;
+    planZeigen();
+  };
+  welle.addEventListener('pointerup', los);
+  welle.addEventListener('pointercancel', () => { ziehe = null; welleMalen(); });
+  welle.addEventListener('dblclick', (e) => {
+    if (!wellePlan) return;
+    const t = welleZeit(e);
+    let k = -1;
+    let d = Infinity;
+    markenZeiten(wellePlan).forEach((m, i) => { const a = Math.abs(m - t); if (a < d) { d = a; k = i; } });
+    if (k >= 0 && fest[k] != null) { fest[k] = null; planZeigen(); }
+  });
+  $('#cl-welle-auto', v).addEventListener('click', () => { fest = []; planZeigen(); });
+}
+
+welleEinrichten();
+
 registriere('clips', {
   verlassen() { vorschauAus(); },
   async betreten(_, alt) {
     if (alt && alt !== 'clips') zurueck = alt;
+    if (erstesMal) modusSetzen(await db.einstellung('reelModus').catch(() => null) || 'einfach');
     musikZeigen();
     aufbauen();
     if (!erstesMal) return;

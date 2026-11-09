@@ -507,3 +507,82 @@ test('Speicherformat 6: Daten aus Format 5 bleiben unberührt', async () => {
   assert.equal(r.entwurf, undefined);
   assert.deepEqual(fehler, []);
 });
+
+test('Erweitert: Originalton im Reel, Ton-Regler, Tempo, Schnitte auf der Wellenform ziehen', async () => {
+  const { page, fehler } = await neueSeite(b);
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  // Einfach zeigt keine Profi-Regler
+  assert.equal(await page.getAttribute('#v-clips', 'data-modus'), 'einfach');
+  await page.setInputFiles('#datei-clips', [join(DATEN, 'clip-ton.webm'), join(DATEN, 'clip-rot.webm')]);
+  await page.waitForFunction(() => document.querySelectorAll('.cl-zeile').length === 2, null, { timeout: 30000 });
+  assert.ok(await page.locator('.cl-tempo').isHidden());
+  assert.ok(await page.locator('#cl-ton').isHidden());
+  // Ohne Musik: Originalton landet im Reel
+  await page.click('#cl-bauen');
+  await page.waitForSelector('.cl-video', { timeout: 120000 });
+  assert.match(await page.locator('.cl-ergebnis p').textContent(), /Originalton/);
+  const holen = async (name) => {
+    const daten = await page.evaluate(async () => Array.from(new Uint8Array(await (await fetch(document.querySelector('.cl-video').src)).arrayBuffer())));
+    const datei = join(ERGEBNISSE, name);
+    writeFileSync(datei, Buffer.from(daten));
+    const ff = spawnSync('ffmpeg', ['-v', 'error', '-i', datei, '-map', '0:a', '-f', 'f32le', '-ac', '1', '-ar', '8000', '-'], { maxBuffer: 1e9 });
+    if (ff.error) return null;
+    assert.equal(ff.status, 0, String(ff.stderr));
+    return new Float32Array(ff.stdout.buffer, ff.stdout.byteOffset, ff.stdout.length >> 2);
+  };
+  const pegel = (k, a, b) => { let s2 = 0; for (let i = a * 8000; i < b * 8000; i++) s2 += k[i] * k[i]; return Math.sqrt(s2 / ((b - a) * 8000)); };
+  const t1 = await holen('cl-originalton.mp4');
+  if (t1) {
+    assert.ok(pegel(t1, 0.3, 2.5) > 0.1, 'Ton aus Clip 1 hörbar');
+    assert.ok(pegel(t1, 3.5, 5.5) < 0.02, 'Clip 2 hat keinen Ton');
+    let z = 0;
+    for (let i = 8001; i < 16000; i++) if (t1[i - 1] < 0 && t1[i] >= 0) z++;
+    assert.ok(Math.abs(z - 440) < 10, `Frequenz ${z}`);
+  }
+  // Erweitert
+  await page.locator('.cl-modus button[data-modus="erweitert"]').click();
+  assert.ok(await page.locator('.cl-tempo').isVisible());
+  assert.ok(await page.locator('#cl-ton').isVisible());
+  assert.ok(await page.locator('#cl-ton').isDisabled(), 'Ohne Musik kein Mischverhältnis');
+  await page.locator('.cl-tempo button[data-tempo="rampe"]').click();
+  assert.equal(await page.locator('.cl-tempo button[aria-pressed="true"]').getAttribute('data-tempo'), 'rampe');
+  // Musik dazu: Wellenform mit Schnitt
+  await page.setInputFiles('#datei-musik', [wav(120, 20)]);
+  await page.waitForSelector('.cl-welle:not([hidden])', { timeout: 20000 });
+  assert.ok(await page.locator('#cl-ton').isEnabled());
+  await page.screenshot({ path: `${ERGEBNISSE}/cl-erweitert.png`, fullPage: true });
+  // Den ersten Schnitt nach rechts ziehen: Er rastet auf einem Schlag ein und wird gelb.
+  await page.locator('#cl-welle').scrollIntoViewIfNeeded();
+  const box = await page.locator('#cl-welle').boundingBox();
+  const marke = await page.evaluate(async () => {
+    // Lage des ersten Schnitts über den gleichen Plan wie die App
+    const c = document.querySelector('#cl-welle');
+    const k = c.getContext('2d').getImageData(0, 4, c.width, 1).data;
+    for (let x = 6; x < c.width; x++) if (k[x * 4] > 240 && k[x * 4 + 1] > 240 && k[x * 4 + 2] > 240) return x / c.width;
+    return null;
+  });
+  assert.ok(marke != null, 'Schnitt auf der Welle zu sehen');
+  await page.mouse.move(box.x + box.width * marke + 2, box.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * (marke - 0.1), box.y + 8, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForSelector('#cl-welle-auto:not([hidden])');
+  const gelb = await page.evaluate(() => {
+    const c = document.querySelector('#cl-welle');
+    const k = c.getContext('2d').getImageData(0, 4, c.width, 1).data;
+    for (let x = 0; x < c.width; x++) if (k[x * 4] > 240 && k[x * 4 + 1] > 190 && k[x * 4 + 1] < 230 && k[x * 4 + 2] < 40) return x / c.width;
+    return null;
+  });
+  assert.ok(gelb != null && gelb < marke - 0.03, `Gezogener Schnitt bei ${gelb}, vorher ${marke}`);
+  // Zurücksetzen
+  await page.click('#cl-welle-auto');
+  await page.waitForSelector('#cl-welle-auto', { state: 'hidden' });
+  // Modus bleibt gemerkt
+  await oeffne(page, s.url);
+  await page.evaluate(async () => { (await import('./src/zustand.mjs')).zeige('clips'); });
+  await warteAuf(page, () => document.body.dataset.ansicht === 'clips');
+  await page.waitForFunction(() => document.querySelector('#v-clips').dataset.modus === 'erweitert');
+  assert.deepEqual(fehler, []);
+});
