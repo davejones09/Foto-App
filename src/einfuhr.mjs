@@ -65,6 +65,17 @@ function masseLesen(datei) {
 // Profil fürs Protokoll und den Halt: nur Name und Art, keine Bytes.
 const kurzProfil = (p) => (p && p.art !== 'keins' ? { name: p.name || '', art: p.art } : null);
 
+// Ist das Bild ganz durchsichtig? Ein Raster aus 16 × 16 Punkten reicht: Ein echtes Foto hat überall Deckkraft.
+export function leer(quelle) {
+  const p = leinwand(16, 16, 'srgb');
+  const k = ctx2d(p, true);
+  k.drawImage(quelle, 0, 0, 16, 16);
+  const d = k.getImageData(0, 0, 16, 16).data;
+  freigeben(p);
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return false;
+  return true;
+}
+
 // Liefert eine Leinwand, längste Seite höchstens ROH_MAX, im Arbeitsfarbraum des Fotos.
 // Dazu c.farbraum ('srgb' oder 'display-p3'), c.profil (eingebettetes Profil) und c.umgerechnet.
 export async function dekodiere(datei) {
@@ -81,11 +92,20 @@ export async function dekodiere(datei) {
     if (f < 1 && raum === 'srgb') {
       try { quelle = await createImageBitmap(datei, { resizeWidth: tw, resizeHeight: th, resizeQuality: 'high' }); } catch { quelle = null; }
     }
-    let c;
+    let c = null;
     if (quelle && quelle.width === tw && quelle.height === th) {
       c = leinwand(tw, th, raum);
       ctx2d(c).drawImage(quelle, 0, 0);
-    } else {
+      // iOS liefert beim Verkleinern großer Fotos manchmal ein leeres Bild in der richtigen Größe.
+      if (leer(c)) {
+        protokolliere('import', `${datei.name || 'Foto'}: verkleinertes Bild leer, neuer Versuch über das Bild-Element`);
+        freigeben(c);
+        freigeben(quelle);
+        quelle = null;
+        c = null;
+      }
+    }
+    if (!c) {
       // Safari ignoriert die Option womöglich: dann über das Bild selbst verkleinern.
       const q = quelle || img;
       const qw = quelle ? quelle.width : w;
@@ -94,6 +114,8 @@ export async function dekodiere(datei) {
       if (!c) { c = leinwand(tw, th, raum); ctx2d(c).drawImage(q, 0, 0, tw, th); }
     }
     freigeben(quelle);
+    // Lieber eine Fehlermeldung als ein leeres Foto, das still gespeichert wird.
+    if (leer(c)) { freigeben(c); throw new Error(`Bild leer dekodiert (${w} × ${h})`); }
     c.profil = kurzProfil(profil);
     c.umgerechnet = wirdUmgerechnet(profil, raum);
     if (c.umgerechnet) protokolliere('farbe', `${datei.name || 'Foto'}: Profil ${profil.name || profil.art} nach ${raum} umgerechnet`);

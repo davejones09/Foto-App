@@ -3,7 +3,7 @@
 // den schmalen Streifen an einer gemeinsamen Kante, an den Rändern des Streifens steht exakt das Foto.
 import * as db from './speicher.mjs';
 import { dekodiere } from './einfuhr.mjs';
-import { ctx2d, leinwand, pixel, alsBlob, ladeBild, freigeben, verkleinere, raumVon, HALT_Q } from './bild.mjs';
+import { zeichneTeil, ctx2d, leinwand, pixel, alsBlob, ladeBild, freigeben, verkleinere, raumVon, HALT_Q } from './bild.mjs';
 import { auftrag } from './rechner.mjs';
 import { anschliessen } from './uebergang.mjs';
 import {
@@ -143,10 +143,10 @@ export async function zeichne(ctx, c, W, { quelle, danach = null, ueberblenden =
         ctx.fillStyle = '#fbfaf7';
         ctx.fillRect(z.x, z.y, z.w, z.h);
         ctx.shadowColor = 'transparent';
-        ctx.drawImage(b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
+        zeichneTeil(ctx, b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
         ctx.restore();
       } else {
-        ctx.drawImage(b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
+        zeichneTeil(ctx, b, r.x - e.x, r.y - e.y, r.w, r.h, r.x, r.y, r.w, r.h);
       }
       freigeben(b);
     }
