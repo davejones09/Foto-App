@@ -318,3 +318,50 @@ test('Collage-Arten: Kanten-Regler, Film, Polaroid, Magazin mit Titel, Würfeln'
   void st1;
   assert.deepEqual(fehler, []);
 });
+
+test('Wie Safari: Ragt der Ausschnitt minimal über das Bild hinaus, bleibt kein Feld leer', async () => {
+  const { ctx, page, fehler } = await seite();
+  // Safari zeichnet nichts, wenn der Quellausschnitt über das Bild hinausragt. Das hier nachstellen.
+  await ctx.addInitScript(() => {
+    for (const P of [CanvasRenderingContext2D.prototype, OffscreenCanvasRenderingContext2D.prototype]) {
+      const orig = P.drawImage;
+      P.drawImage = function streng(bild, ...a) {
+        if (a.length === 8) {
+          const bw = bild.videoWidth || bild.naturalWidth || bild.width;
+          const bh = bild.videoHeight || bild.naturalHeight || bild.height;
+          const [sx, sy, sw, sh] = a;
+          if (sx < 0 || sy < 0 || sx + sw > bw || sy + sh > bh) { window.__ueber = (window.__ueber || 0) + 1; return; }
+        }
+        return orig.call(this, bild, ...a);
+      };
+    }
+  });
+  await page.goto(s.url);
+  await bisHauptmenue(page);
+  const dateien = await fotos(page, 4);
+  await page.click('#v-start .neu-karte[data-art="collage"]');
+  await page.waitForSelector('#dialog:not([hidden])');
+  const wahl = page.waitForEvent('filechooser');
+  await page.click('#dialog button:has-text("Mediathek")');
+  await (await wahl).setFiles(dateien);
+  await bereit(page);
+  const n = await page.locator('.co-vorlage').count();
+  const leer = [];
+  for (let k = 0; k < n; k++) {
+    await page.locator('.co-vorlage').nth(k).click();
+    await bereit(page);
+    // Jedes Feld: Mitte nicht in der Rahmenfarbe (weiß)
+    const weiss = await page.evaluate(async () => {
+      const werk = await import('./src/collagewerk.mjs');
+      const { aktuelleCollage } = await import('./src/ansichten/collage.mjs');
+      const cv = document.querySelector('.co-bild');
+      const g = werk.geometrie(aktuelleCollage(), cv.width);
+      const k = cv.getContext('2d');
+      return g.r.map((r) => { const d = k.getImageData(Math.round(r.x + r.w / 2), Math.round(r.y + r.h / 2), 1, 1).data; return d[0] > 250 && d[1] > 250 && d[2] > 250; });
+    });
+    if (weiss.some(Boolean)) leer.push(k);
+  }
+  assert.deepEqual(leer, [], 'Vorlagen mit leerem Feld');
+  assert.equal(await page.evaluate(() => window.__ueber || 0), 0, 'kein Ausschnitt ragt über das Bild hinaus');
+  assert.deepEqual(fehler, []);
+});

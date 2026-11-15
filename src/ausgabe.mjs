@@ -9,7 +9,7 @@ import {
   karussellPlan, bandProfil, slideAusschnitt, KARUSSELL_B, KARUSSELL_H,
   fahrtPlan, FAHRT_B, FAHRT_H, FAHRT_FPS, gesamtGroesse, reelPlan as reelPlanBand,
 } from './kennzahlen.mjs';
-import { leinwand, ctx2d, alsBlob, freigeben, ladeBitmap, verkleinere, pixel } from './bild.mjs';
+import { zeichneTeil, leinwand, ctx2d, alsBlob, freigeben, ladeBitmap, verkleinere, pixel } from './bild.mjs';
 import { T, f } from './texte.mjs';
 import { datumKurz } from './ui.mjs';
 import { packe, entpacke, pruefe } from './zip.mjs';
@@ -203,7 +203,7 @@ export async function gesamtbild(halte, { fortschritt, waechter } = {}) {
       const f = bm.width / (st.art === 'naht' ? UEBER : breiteVon(halte[st.halt]));
       const links = Math.round(st.x * s);
       const rechts = Math.round((st.x + st.sw) * s);
-      ctx.drawImage(bm, st.sx * f, 0, st.sw * f, bm.height, links, 0, rechts - links, plan.h);
+      zeichneTeil(ctx, bm, st.sx * f, 0, st.sw * f, bm.height, links, 0, rechts - links, plan.h);
       fortschritt?.(Math.min(0.95, (i + 1) / teile.length));
       await kurz();
     }
@@ -466,11 +466,11 @@ export async function stilMaler(halte, plan, { klein = false, W = FAHRT_B, H = F
       const ry = (HALT_H - sh) / 2;
       const ox = Math.max(-rx, Math.min(rx, (qx * sw) / RAHMEN.w));
       const oy = Math.max(-ry, Math.min(ry, (qy * sh) / RAHMEN.h));
-      ctx.drawImage(bm, (a.x0 + rx + ox) * f, (ry + oy) * f, sw * f, sh * f, -W / 2, -H / 2, W, H);
+      zeichneTeil(ctx, bm, (a.x0 + rx + ox) * f, (ry + oy) * f, sw * f, sh * f, -W / 2, -H / 2, W, H);
     } else {
       const dw = W * s;
       const dh = H * s;
-      ctx.drawImage(bm, a.x0 * f, 0, a.w * f, HALT_H * f, -dw / 2, -dh / 2, dw, dh);
+      zeichneTeil(ctx, bm, a.x0 * f, 0, a.w * f, HALT_H * f, -dw / 2, -dh / 2, dw, dh);
     }
     ctx.restore();
   }

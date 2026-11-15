@@ -5,6 +5,7 @@
 import { FPS, RAHMEN } from './reelstil.mjs';
 import { VORLAGEN, UEBERGAENGE, TAKT, vorlagenPlan, vorlagenZustand, bewegung, uebergangLage, maskePfad, vorlageAus } from './reelvorlagen.mjs';
 import { serienEintrag } from './diagnose.mjs';
+import { zeichneTeil } from './bild.mjs';
 
 export const GANZ = 'c-ganz';
 export const MEDIEN_MAX = 100;
@@ -367,7 +368,7 @@ export function zeichneQuelle(ctx, bild, qw, qh, W, H, rahmen, { s = 1, qx = 0, 
     }
     const a = deckAusschnitt(qw, qh);
     const u = unscharf.getContext('2d');
-    u.drawImage(bild, a.x, a.y, a.w, a.h, 0, 0, 18, 32);
+    zeichneTeil(u, bild, a.x, a.y, a.w, a.h, 0, 0, 18, 32);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(unscharf, (-W * s) / 2, (-H * s) / 2, W * s, H * s);
@@ -383,9 +384,9 @@ export function zeichneQuelle(ctx, bild, qw, qh, W, H, rahmen, { s = 1, qx = 0, 
     const ry = (a.h - sh) / 2;
     const ox = Math.max(-rx, Math.min(rx, (qx * sw) / RAHMEN.w));
     const oy = Math.max(-ry, Math.min(ry, (qy * sh) / RAHMEN.h));
-    ctx.drawImage(bild, a.x + rx + ox, a.y + ry + oy, sw, sh, -W / 2, -H / 2, W, H);
+    zeichneTeil(ctx, bild, a.x + rx + ox, a.y + ry + oy, sw, sh, -W / 2, -H / 2, W, H);
   } else {
-    ctx.drawImage(bild, a.x, a.y, a.w, a.h, (-W * s) / 2, (-H * s) / 2, W * s, H * s);
+    zeichneTeil(ctx, bild, a.x, a.y, a.w, a.h, (-W * s) / 2, (-H * s) / 2, W * s, H * s);
   }
 }
 

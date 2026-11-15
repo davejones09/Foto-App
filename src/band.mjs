@@ -1,6 +1,6 @@
 // Strecke anzeigen: nur sichtbare Stücke laden, höchstens etwa 6 große Bilder im Speicher (LRU).
 import { stuecke, bandBreite, breiteVon, HALT_H, UEBER } from './masse.mjs';
-import { ladeBild, freigeben } from './bild.mjs';
+import { ladeBild, freigeben, zeichneTeil } from './bild.mjs';
 import { protokolliere } from './diagnose.mjs';
 import { blobPflicht } from './speicher.mjs';
 
@@ -89,7 +89,7 @@ export function zeichneBand(ctx, halte, lager, { s, x0, y0 = 0, w, h, klein = fa
     }
     if (!bm) { komplett = false; continue; }
     const f = bm.width / breiteQuelle;
-    ctx.drawImage(bm, st.sx * f, 0, st.sw * f, bm.height, links, oben, rechts - links, unten - oben);
+    zeichneTeil(ctx, bm, st.sx * f, 0, st.sw * f, bm.height, links, oben, rechts - links, unten - oben);
   }
   return komplett;
 }

@@ -88,7 +88,26 @@ export function freigeben(x) {
 
 // Verkleinert schrittweise (höchstens halbieren je Schritt), damit nichts flimmert.
 // Alle Stufen im Farbraum farbraum (Vorgabe: der der Quelle).
+// Safari zeichnet gar nichts, wenn der Quellausschnitt auch nur minimal über das Bild hinausragt
+// (Chrome schneidet einfach ab). Rundungsfehler wie 1200,0000000002 statt 1200 reichen dafür.
+export function inQuelle(qw, qh, sx, sy, sw, sh) {
+  const x = Math.max(0, Math.min(sx, qw));
+  const y = Math.max(0, Math.min(sy, qh));
+  return { sx: x, sy: y, sw: Math.max(1e-3, Math.min(sw - (x - sx), qw - x)), sh: Math.max(1e-3, Math.min(sh - (y - sy), qh - y)) };
+}
+
+// drawImage mit Quellausschnitt, für Safari ins Bild geklemmt. Das Ziel schrumpft im selben Verhältnis mit.
+export function zeichneTeil(ctx, bild, sx, sy, sw, sh, dx, dy, dw, dh) {
+  const bw = bild.videoWidth || bild.naturalWidth || bild.width;
+  const bh = bild.videoHeight || bild.naturalHeight || bild.height;
+  const q = inQuelle(bw, bh, sx, sy, sw, sh);
+  const fx = dw / sw;
+  const fy = dh / sh;
+  ctx.drawImage(bild, q.sx, q.sy, q.sw, q.sh, dx + (q.sx - sx) * fx, dy + (q.sy - sy) * fy, q.sw * fx, q.sh * fy);
+}
+
 export function verkleinere(quelle, qw, qh, zw, zh, sx = 0, sy = 0, sw = qw, sh = qh, farbraum = raumVon(quelle)) {
+  ({ sx, sy, sw, sh } = inQuelle(qw, qh, sx, sy, sw, sh));
   let akt = quelle;
   let aw = sw;
   let ah = sh;
